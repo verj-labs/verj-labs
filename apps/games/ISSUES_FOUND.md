@@ -1,0 +1,4 @@
+- When a player leaves lobby, they can't join again.
+- If leader leaves by mistake, someone else should be leader
+- There is no functionality to leave a game. And a person cannot start a new game because the system says they are already in a game. ( i think a rudimentary ability was added. Please check if ok.)
+- minimal sounds. sound when someone plays card. dramatic sounts on skip and reset.

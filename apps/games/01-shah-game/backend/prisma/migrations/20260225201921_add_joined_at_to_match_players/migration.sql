@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "match_players" ADD COLUMN     "joined_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: shah-exchange-backend
+    runtime: node
+    rootDir: 01-shah-game/backend
+    buildCommand: npm install -g pnpm && pnpm install
+    startCommand: pnpm prisma:generate && pnpm prisma:migrate:deploy && node -r tsconfig-paths/register -r ts-node/register/transpile-only src/main.ts
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: shah-exchange-redis
+          property: connectionString
+
+  - type: redis
+    name: shah-exchange-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []

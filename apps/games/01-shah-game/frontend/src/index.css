@@ -1,0 +1,249 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/*
+ ---break---
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ─────────────────────────────────────────────────────────────────
+ * Shah Exchange Design Tokens — Street Cards Chaotic
+ * All colour decisions live here as CSS custom properties.
+ * Reference via var(--token) in plain CSS or bg-[--color-*] in Tailwind.
+ * ─────────────────────────────────────────────────────────────────
+ *
+ * Base Palette (Dark Street)
+ *   --color-bg-0         Main app background
+ *   --color-bg-1         Panels, trays, lobby cards
+ *   --color-surface      Raised cards, modals
+ *   --color-border       Default 1px borders
+ *   --color-text-primary Primary readable text
+ *   --color-text-muted   Secondary text, hints
+ *
+ * Neon Accents (Chaotic but controlled)
+ *   --color-neon-lime    Your turn, selected cards, active rings
+ *   --color-electric-yellow  CTAs, room code, winner state
+ *   --color-hot-pink     Event moments: SKIP, RESET, round won
+ *   --color-danger-red   Error states, invalid plays
+ *   --color-info-blue    System info, direction arrows
+ *
+ * Cards
+ *   --color-card-face    Off-white card face
+ *   --color-card-back    Dark card back pattern
+ *   --color-card-border  Subtle face border
+ *   --color-suit-red     Hearts & Diamonds
+ *   --color-suit-black   Clubs & Spades
+ */
+
+:root {
+  /* ── Base palette ─────────────────────────────────── */
+  --color-bg-0: #0B0B10;
+  --color-bg-1: #12121A;
+  --color-surface: #191926;
+  --color-border: #2A2A3A;
+  --color-text-primary: #F4F4F8;
+  --color-text-muted: #A7A7B5;
+
+  /* ── Neon accents ─────────────────────────────────── */
+  --color-neon-lime: #33FF7A;
+  --color-electric-yellow: #FFD400;
+  --color-hot-pink: #FF3D9A;
+  --color-danger-red: #FF3B3B;
+  --color-info-blue: #2E9BFF;
+
+  /* ── Card visuals ─────────────────────────────────── */
+  --color-card-face: #F7F7FB;
+  --color-card-back: #1e3a5f;
+  --color-card-border: #D3D3E0;
+  --color-suit-red: #dc2626;
+  --color-suit-black: #111827;
+
+  /* ── Legacy aliases (used by existing components) ─── */
+  --color-table: #0B0B10;
+  --color-card-bg: var(--color-card-face);
+  --color-active-player: var(--color-neon-lime);
+  --color-finished-player: var(--color-text-muted);
+
+  /* ── Typography ───────────────────────────────────── */
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* ── ShadCN component tokens ──────────────────────── */
+  --radius: 0.5rem;
+  --background: #0B0B10;
+  --foreground: #F4F4F8;
+  --card: #191926;
+  --card-foreground: #F4F4F8;
+  --popover: #191926;
+  --popover-foreground: #F4F4F8;
+  --primary: #33FF7A;
+  --primary-foreground: #0B0B10;
+  --secondary: #191926;
+  --secondary-foreground: #F4F4F8;
+  --muted: #12121A;
+  --muted-foreground: #A7A7B5;
+  --accent: #FFD400;
+  --accent-foreground: #0B0B10;
+  --destructive: #FF3B3B;
+  --border: #2A2A3A;
+  --input: #2A2A3A;
+  --ring: #33FF7A;
+  --chart-1: #33FF7A;
+  --chart-2: #FFD400;
+  --chart-3: #FF3D9A;
+  --chart-4: #2E9BFF;
+  --chart-5: #FF3B3B;
+  --sidebar: #12121A;
+  --sidebar-foreground: #F4F4F8;
+  --sidebar-primary: #33FF7A;
+  --sidebar-primary-foreground: #0B0B10;
+  --sidebar-accent: #191926;
+  --sidebar-accent-foreground: #F4F4F8;
+  --sidebar-border: #2A2A3A;
+  --sidebar-ring: #33FF7A;
+}
+
+@theme inline {
+  /* Game palette */
+  --color-bg-0: var(--color-bg-0);
+  --color-bg-1: var(--color-bg-1);
+  --color-surface: var(--color-surface);
+  --color-game-border: var(--color-border);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-muted: var(--color-text-muted);
+  --color-neon-lime: var(--color-neon-lime);
+  --color-electric-yellow: var(--color-electric-yellow);
+  --color-hot-pink: var(--color-hot-pink);
+  --color-danger-red: var(--color-danger-red);
+  --color-info-blue: var(--color-info-blue);
+  --color-card-face: var(--color-card-face);
+  --color-card-back: var(--color-card-back);
+  --color-card-border: var(--color-card-border);
+  --color-suit-red: var(--color-suit-red);
+  --color-suit-black: var(--color-suit-black);
+  /* Legacy */
+  --color-table: var(--color-table);
+  --color-card-bg: var(--color-card-bg);
+  --color-active-player: var(--color-active-player);
+  --color-finished-player: var(--color-finished-player);
+  /* ShadCN bridge */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  /* Typography */
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg-0);
+  color: var(--color-text-primary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+/*
+ ---break---
+ */
+
+/* .dark kept for ShadCN compatibility — app is dark-first */
+.dark {
+  --background: #0B0B10;
+  --foreground: #F4F4F8;
+  --card: #191926;
+  --card-foreground: #F4F4F8;
+  --popover: #191926;
+  --popover-foreground: #F4F4F8;
+  --primary: #33FF7A;
+  --primary-foreground: #0B0B10;
+  --secondary: #191926;
+  --secondary-foreground: #F4F4F8;
+  --muted: #12121A;
+  --muted-foreground: #A7A7B5;
+  --accent: #FFD400;
+  --accent-foreground: #0B0B10;
+  --destructive: #FF3B3B;
+  --border: #2A2A3A;
+  --input: #2A2A3A;
+  --ring: #33FF7A;
+  --sidebar: #12121A;
+  --sidebar-foreground: #F4F4F8;
+  --sidebar-primary: #33FF7A;
+  --sidebar-primary-foreground: #0B0B10;
+  --sidebar-accent: #191926;
+  --sidebar-accent-foreground: #F4F4F8;
+  --sidebar-border: #2A2A3A;
+  --sidebar-ring: #33FF7A;
+}
+
+/*
+ ---break---
+ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ── Neon glow utilities ──────────────────────────────────────────── */
+.neon-glow-lime {
+  box-shadow: 0 0 12px 3px rgba(51, 255, 122, 0.4);
+}
+.neon-glow-yellow {
+  box-shadow: 0 0 12px 3px rgba(255, 212, 0, 0.4);
+}
+.neon-glow-pink {
+  box-shadow: 0 0 12px 3px rgba(255, 61, 154, 0.4);
+}
+.neon-glow-red {
+  box-shadow: 0 0 12px 3px rgba(255, 59, 59, 0.4);
+}

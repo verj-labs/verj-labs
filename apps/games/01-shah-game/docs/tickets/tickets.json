@@ -1,0 +1,1575 @@
+{
+  "meta": {
+    "project": "Shah Exchange",
+    "version": "1.0",
+    "lastUpdated": "2026-03-01",
+    "note": "This is the single source of truth for all implementation tickets. Epics are feature-based (BE/FE agnostic). Tickets are typed backend or frontend and should be worked on in dependency order within each epic.",
+    "tooling": {
+      "frontend": {
+        "shadcn_mcp": "The shadcn MCP tool is installed in this workspace (VS Code). When working on any frontend ticket that involves shadcn/ui components, you can use the MCP tool to: browse available components, fetch component source and usage examples, and get the correct CLI add command. Prefer referencing the MCP tool over copying from external docs \u2014 it reflects the exact registry version configured for this project."
+      }
+    }
+  },
+  "criteria": {
+    "definitionOfDone": [
+      "All acceptance criteria are met and verified manually",
+      "A pull request is opened, self-reviewed, and approved by at least one peer",
+      "TypeScript compiles with zero errors in strict mode \u2014 no `any` without an inline justification comment",
+      "All new business logic has unit tests; all new REST endpoints have integration tests",
+      "Tests pass locally and in CI before merge",
+      "No new ESLint errors introduced",
+      "No console.log statements \u2014 use NestJS Logger (BE) or a logger utility (FE)",
+      "New environment variables are documented in the relevant .env.example",
+      "PR description explains the 'why', not just the 'what'",
+      "UI changes include a screenshot or short screen recording in the PR"
+    ],
+    "codeQuality": [
+      "Functions must be single-purpose and under 50 lines; files under 300 lines",
+      "No magic strings or numbers \u2014 use constants, enums, or named variables",
+      "All async operations handle errors explicitly (try/catch or .catch())",
+      "State must never be mutated directly \u2014 use spreads, structuredClone, or Immer",
+      "DTOs must be used for all incoming data (BE: class-validator; FE: Zod or manual validation)",
+      "Prefer explicit types over type inference for function signatures and exported values",
+      "Avoid deep nesting \u2014 extract to named functions if nesting exceeds 3 levels",
+      "No commented-out code in merged PRs"
+    ],
+    "testingStandards": [
+      "Every new function with business logic must have at least: 1 happy-path test, 1 edge-case test, 1 error/invalid-input test",
+      "Game engine module (EP-004) has a hard target of 90%+ line coverage",
+      "Tests must not depend on execution order \u2014 each test is independently runnable",
+      "No skipped tests (xit, xdescribe, test.skip) without a comment explaining why",
+      "Mocks and stubs must be reset/cleared between tests",
+      "Integration tests must use a real test database (not mocked repositories)",
+      "Frontend component tests use React Testing Library \u2014 no direct enzyme or implementation testing"
+    ],
+    "prStandards": [
+      "Maximum 400 lines changed per PR \u2014 split larger changes into stacked PRs",
+      "PR must reference the ticket ID in the title: e.g. '[T-023] Build ProtectedRoute component'",
+      "Branch naming: feature/T-023-protect-route or fix/T-023-session-restore",
+      "Rebase on main before requesting review \u2014 no merge commits",
+      "Reviewer should check: correctness, types, tests, edge cases, naming clarity"
+    ]
+  },
+  "epics": [
+    {
+      "id": "EP-001",
+      "title": "Infrastructure & Project Setup",
+      "description": "Establish the complete development foundation for both backend and frontend. Neither BE nor FE feature work should begin until this epic is fully done. Covers tooling, database connectivity, local dev environment, CI, and project structure.",
+      "priority": "P0",
+      "tickets": [
+        {
+          "id": "T-001",
+          "epicId": "EP-001",
+          "title": "Create NestJS module shell structure",
+          "type": "backend",
+          "layer": "infra",
+          "description": "Create the empty NestJS module shells for: AuthModule, PlayerModule, MatchModule, GameModule, GameEngineModule, GatewayModule. Each gets a *.module.ts, *.service.ts, and (where applicable) *.controller.ts file with correct decorators. No logic yet \u2014 just wiring and DI registration.",
+          "acceptanceCriteria": [
+            "All 6 modules exist under correct src/ subdirectories",
+            "Each module is registered in AppModule",
+            "pnpm start:dev boots without errors",
+            "TypeScript compiles cleanly"
+          ],
+          "dependsOn": [],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-002",
+          "epicId": "EP-001",
+          "title": "Set up Docker Compose with Postgres and Redis",
+          "type": "backend",
+          "layer": "infra",
+          "description": "Create docker-compose.yml at the backend root with postgres:16 and redis:7 services, named volumes, correct port mappings (5432, 6379), and environment variable placeholders. Add a .env.example with DATABASE_URL, REDIS_URL, PORT, NODE_ENV, SESSION_SECRET.",
+          "acceptanceCriteria": [
+            "docker-compose up -d starts both services without errors",
+            "Postgres is reachable at localhost:5432",
+            "Redis is reachable at localhost:6379",
+            ".env.example lists all required variables with placeholder values",
+            ".env is in .gitignore"
+          ],
+          "dependsOn": [],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-003",
+          "epicId": "EP-001",
+          "title": "Configure Prisma + PostgreSQL connection",
+          "type": "backend",
+          "layer": "database",
+          "description": "Install Prisma, initialise the schema, configure the DATABASE_URL from @nestjs/config, and wire PrismaService into the app. Create the initial schema.prisma with all tables from the system design: players, matches, match_players, games, game_rankings, game_events. Run the first migration.",
+          "acceptanceCriteria": [
+            "PrismaService is injectable and connects to the local Postgres instance",
+            "pnpm prisma migrate dev creates all tables successfully",
+            "All columns and foreign keys match the schema in SYSTEM_DESIGN.md \u00a77",
+            "PrismaService is globally available (registered as global module)"
+          ],
+          "dependsOn": [
+            "T-001",
+            "T-002"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-004",
+          "epicId": "EP-001",
+          "title": "Configure Redis module with ioredis",
+          "type": "backend",
+          "layer": "infra",
+          "description": "Install ioredis, create a RedisModule that reads REDIS_URL from config and exposes an REDIS_CLIENT injection token. Add a startup connectivity check that logs a warning on failure. Register in AppModule.",
+          "acceptanceCriteria": [
+            "REDIS_CLIENT can be injected into any service",
+            "App starts and logs 'Redis connected' on successful connection",
+            "App starts (with a warning) even if Redis is temporarily unavailable",
+            "Connection details come from env \u2014 no hardcoded localhost"
+          ],
+          "dependsOn": [
+            "T-001",
+            "T-002"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-005",
+          "epicId": "EP-001",
+          "title": "Add health check endpoint",
+          "type": "backend",
+          "layer": "api",
+          "description": "Install @nestjs/terminus and create GET /health that checks and returns status of: HTTP server, Postgres (via PrismaService.$queryRaw), and Redis (ping). Response shape: { status: 'ok'|'error', components: { postgres: bool, redis: bool } }.",
+          "acceptanceCriteria": [
+            "GET /health returns 200 with { status: 'ok' } when all services are up",
+            "GET /health returns 503 when Postgres or Redis is down",
+            "Endpoint is publicly accessible (no auth required)"
+          ],
+          "dependsOn": [
+            "T-003",
+            "T-004"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-006",
+          "epicId": "EP-001",
+          "title": "Set up ESLint, Prettier, and Husky on backend",
+          "type": "backend",
+          "layer": "infra",
+          "description": "Audit and extend existing eslint.config.mjs: add @typescript-eslint rules for no-explicit-any, no-unused-vars, explicit-function-return-type. Configure Prettier. Add Husky + lint-staged: run eslint --fix and prettier --write on staged .ts files before commit.",
+          "acceptanceCriteria": [
+            "pnpm lint passes with zero errors on the current codebase",
+            "pnpm format formats all files consistently",
+            "git commit is blocked if lint fails",
+            "CI runs pnpm lint as a first step"
+          ],
+          "dependsOn": [
+            "T-001"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-007",
+          "epicId": "EP-001",
+          "title": "Set up GitHub Actions CI pipeline",
+          "type": "backend",
+          "layer": "infra",
+          "description": "Create .github/workflows/backend-ci.yml that runs on PRs to main: steps are install \u2192 lint \u2192 unit tests \u2192 build. Use a Postgres and Redis service container so integration tests can run in CI. Set NODE_ENV=test.",
+          "acceptanceCriteria": [
+            "CI pipeline runs automatically on PRs targeting main",
+            "Pipeline fails if lint, tests, or build fails",
+            "Postgres and Redis are available in the CI environment",
+            "Build artifact is produced successfully"
+          ],
+          "dependsOn": [
+            "T-006"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-008",
+          "epicId": "EP-001",
+          "title": "Initialise frontend project structure and aliases",
+          "type": "frontend",
+          "layer": "infra",
+          "description": "Set up the src/ folder structure as defined in the system design: components/, features/, hooks/, lib/, pages/, store/, types/, services/, router/. Configure path aliases (@/* \u2192 src/*) in vite.config.ts and tsconfig.app.json. Verify aliases resolve in IDE.",
+          "acceptanceCriteria": [
+            "All directories exist",
+            "Import '@/store/sessionStore' resolves correctly",
+            "pnpm dev starts without errors",
+            "TypeScript strict mode is enabled in tsconfig.app.json"
+          ],
+          "dependsOn": [],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-009",
+          "epicId": "EP-001",
+          "title": "Configure Tailwind CSS v4 and design tokens",
+          "type": "frontend",
+          "layer": "infra",
+          "description": "Install tailwindcss and @tailwindcss/vite. Add the plugin to vite.config.ts. Define CSS custom properties in src/index.css: --color-table (dark green), --color-card-bg (white), suit colors, active-player highlight. Configure a custom Tailwind theme that maps to these tokens.",
+          "acceptanceCriteria": [
+            "A component using bg-[--color-table] renders the correct green",
+            "pnpm dev hot-reloads correctly when Tailwind classes change",
+            "Design tokens are documented in a short comment block in index.css"
+          ],
+          "dependsOn": [
+            "T-008"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-010",
+          "epicId": "EP-001",
+          "title": "Install shadcn/ui and add core primitives",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Initialise shadcn/ui via CLI (pnpm dlx shadcn@latest init). Add the following components: button, badge, card, dialog, toast, tooltip, skeleton, separator. Wire the Toaster into App.tsx root. Verify each component renders in isolation.",
+          "technicalNotes": "The shadcn MCP tool is installed in this VS Code workspace. Use it to get the correct add commands, browse component source, and view usage examples \u2014 no need to reference external docs.",
+          "acceptanceCriteria": [
+            "All 8 shadcn primitives are added under src/components/ui/",
+            "<Toaster /> is mounted in App.tsx",
+            "A test render of <Button>, <Badge>, <Dialog> all render without console errors"
+          ],
+          "dependsOn": [
+            "T-009"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-011",
+          "epicId": "EP-001",
+          "title": "Build the Card UI primitive component",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/components/ui/PlayingCard.tsx. Props: rank (Rank), suit (Suit), faceDown (bool), selected (bool), disabled (bool), size ('sm'|'md'|'lg'), onClick. Face-up: renders rank + suit symbol with correct colour (red hearts/diamonds, black clubs/spades). Face-down: card back pattern. Selected: elevated with accent border. Accessible: aria-label='rank of suit'.",
+          "acceptanceCriteria": [
+            "Face-up card shows rank and suit with correct colour",
+            "Face-down card shows a back pattern (no rank/suit visible)",
+            "selected prop adds a visually distinct border/elevation",
+            "disabled prop prevents onClick and reduces opacity",
+            "All three sizes render proportionally",
+            "aria-label is set correctly for screen readers",
+            "Component has a Vitest snapshot test"
+          ],
+          "dependsOn": [
+            "T-010"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-012",
+          "epicId": "EP-001",
+          "title": "Set up Vitest and React Testing Library",
+          "type": "frontend",
+          "layer": "infra",
+          "description": "Install vitest, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, jsdom. Configure vite.config.ts with test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] }. Create setup.ts that imports @testing-library/jest-dom. Add a trivial smoke test that passes.",
+          "acceptanceCriteria": [
+            "pnpm test runs Vitest and passes",
+            "A sample test using render() and screen.getByText() works correctly",
+            "jest-dom matchers (toBeInTheDocument, etc.) are available in all test files"
+          ],
+          "dependsOn": [
+            "T-008"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-013",
+          "epicId": "EP-001",
+          "title": "Set up environment config and API service base on frontend",
+          "type": "frontend",
+          "layer": "infra",
+          "description": "Create .env.example with VITE_API_URL and VITE_SOCKET_URL. Create src/lib/config.ts that reads and validates these. Create src/services/api.ts: an axios (or fetch) wrapper that attaches the session token (from sessionStore) to all requests via an interceptor. Handles 401 by clearing session and redirecting to /.",
+          "acceptanceCriteria": [
+            ".env.example is committed; .env is gitignored",
+            "api.ts correctly includes Authorization: Bearer <token> on outgoing requests",
+            "A 401 response clears the stored token and navigates to /",
+            "Config values are type-safe (not string | undefined)"
+          ],
+          "dependsOn": [
+            "T-008"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        }
+      ]
+    },
+    {
+      "id": "EP-002",
+      "title": "Authentication & Session Management",
+      "description": "Anonymous session-based auth. Players enter a display name, receive an opaque token, and are identified by that token on all HTTP and WebSocket interactions. Session must survive page refresh.",
+      "priority": "P0",
+      "tickets": [
+        {
+          "id": "T-014",
+          "epicId": "EP-002",
+          "title": "Create Player entity and migration",
+          "type": "backend",
+          "layer": "database",
+          "description": "Add the Player model to schema.prisma: id (UUID, auto), display_name (String, max 32), created_at (DateTime, default now). Run migration. Create PlayerService with createPlayer(displayName) and findById(id) methods.",
+          "acceptanceCriteria": [
+            "Migration runs cleanly: players table exists in local DB",
+            "PlayerService.createPlayer() inserts a record and returns it",
+            "PlayerService.findById() returns null for unknown IDs (does not throw)",
+            "Unit tests cover both service methods"
+          ],
+          "dependsOn": [
+            "T-003"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-015",
+          "epicId": "EP-002",
+          "title": "Implement POST /auth/session endpoint",
+          "type": "backend",
+          "layer": "api",
+          "description": "Create AuthController with POST /auth/session. Body DTO: CreateSessionDto { displayName: string } \u2014 validated: min 2, max 32 chars, trimmed. On valid request: create Player record, generate UUID v4 token, store session in Redis (key: session:{token}, value: { playerId, displayName }, TTL: 86400s). Return { token, player: { id, displayName } }.",
+          "acceptanceCriteria": [
+            "POST with valid name returns 201 with token and player object",
+            "POST with name < 2 chars returns 400 with validation message",
+            "POST with name > 32 chars returns 400",
+            "Token is stored in Redis with 24h TTL",
+            "Player record is persisted to Postgres",
+            "Integration test covers happy path + validation failures"
+          ],
+          "dependsOn": [
+            "T-014",
+            "T-004"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-016",
+          "epicId": "EP-002",
+          "title": "Build SessionGuard and @Public() decorator",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create SessionGuard (CanActivate): reads Authorization: Bearer <token> header, looks up token in Redis, if valid attaches player to request.user, if not returns 401. Create @Public() custom decorator that marks an endpoint as skipping the guard. Apply SessionGuard globally in main.ts; mark /auth/session and /health as @Public().",
+          "acceptanceCriteria": [
+            "A protected endpoint returns 401 when no token is provided",
+            "A protected endpoint returns 401 for an expired/unknown token",
+            "request.user is populated with { id, displayName } on valid token",
+            "@Public() endpoints are accessible without a token",
+            "Unit tests cover: missing header, invalid token, valid token, @Public() bypass"
+          ],
+          "dependsOn": [
+            "T-015"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-017",
+          "epicId": "EP-002",
+          "title": "Implement GET /auth/me and sliding session TTL",
+          "type": "backend",
+          "layer": "api",
+          "description": "Add GET /auth/me (protected): returns current player info + active matchId if in a match. Add a session refresh middleware/interceptor that extends the Redis TTL to 24h on every authenticated request (sliding window). Add DELETE /auth/session (protected): deletes the Redis key.",
+          "acceptanceCriteria": [
+            "GET /auth/me returns { player, matchId: null } for a freshly authenticated player",
+            "Every authenticated request extends the Redis session TTL",
+            "DELETE /auth/session removes the token from Redis; subsequent GET /auth/me with the same token returns 401"
+          ],
+          "dependsOn": [
+            "T-016"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-018",
+          "epicId": "EP-002",
+          "title": "Build landing page and session creation form",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/LandingPage.tsx. Centered layout on a dark green background. Game title 'Shah Exchange'. Display name input (min 2, max 32, trimmed, auto-focused). 'Enter Game' button. Client-side validation: show inline error if < 2 chars. Loading state on submit disables input and button. On success: navigate to /lobby.",
+          "acceptanceCriteria": [
+            "Page renders correctly with title and input",
+            "Submitting a name shorter than 2 chars shows an inline error without calling the API",
+            "Input is auto-focused on mount",
+            "Enter key submits the form",
+            "Button is disabled and shows a spinner during the API call",
+            "Successful submission navigates to /lobby"
+          ],
+          "dependsOn": [
+            "T-010",
+            "T-013"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-019",
+          "epicId": "EP-002",
+          "title": "Implement sessionStore and localStorage persistence",
+          "type": "frontend",
+          "layer": "store",
+          "description": "Create src/store/sessionStore.ts (Zustand). State: { token, player, isAuthenticated, isLoading }. Actions: login(displayName) calls POST /auth/session, stores result in state AND localStorage (keys: shah_session_token, shah_player). restoreSession() reads localStorage, calls GET /auth/me to validate \u2014 on 401 clears storage. logout() clears state and storage.",
+          "acceptanceCriteria": [
+            "login() populates state and localStorage on success",
+            "restoreSession() restores state without re-asking for a name on page refresh",
+            "restoreSession() silently clears storage on 401",
+            "logout() clears all state and localStorage",
+            "Unit tests cover: login success, login failure, restoreSession valid, restoreSession invalid"
+          ],
+          "dependsOn": [
+            "T-013"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-020",
+          "epicId": "EP-002",
+          "title": "Build ProtectedRoute and wire session restore on app load",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/router/ProtectedRoute.tsx: if isLoading show <LoadingSpinner />, if !isAuthenticated redirect to / with replace. Set up the router in src/router/index.tsx with all 5 routes; wrap all non-landing routes with <ProtectedRoute>. In App.tsx, call sessionStore.restoreSession() in a useEffect on mount. Authenticated users visiting / are redirected to /lobby.",
+          "acceptanceCriteria": [
+            "Navigating to /lobby without a session redirects to /",
+            "Navigating to / with a valid session redirects to /lobby",
+            "Page refresh on /lobby restores session and stays on /lobby (no redirect to /)",
+            "Page refresh with expired token redirects to /",
+            "LoadingSpinner is shown during the restoreSession check"
+          ],
+          "dependsOn": [
+            "T-019"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        }
+      ]
+    },
+    {
+      "id": "EP-003",
+      "title": "Lobby & Room Management",
+      "description": "Full-stack feature for creating rooms, joining by code, the waiting room UI, and starting a match. Includes real-time player list updates via WebSocket.",
+      "priority": "P0",
+      "tickets": [
+        {
+          "id": "T-021",
+          "epicId": "EP-003",
+          "title": "Create Match and MatchPlayer Prisma models and migration",
+          "type": "backend",
+          "layer": "database",
+          "description": "Add Match and MatchPlayer models to schema.prisma. Match: id, room_code (unique, char 4), host_id (FK to Player), status (enum: LOBBY/IN_PROGRESS/FINISHED), player_count, created_at, ended_at. MatchPlayer: matchId + playerId (composite PK), seat_index, joined_at. Run migration.",
+          "acceptanceCriteria": [
+            "Migration runs cleanly; both tables exist",
+            "Foreign key constraints are enforced (host_id \u2192 players.id, etc.)",
+            "Unique constraint on room_code works (insert duplicate \u2192 DB error)"
+          ],
+          "dependsOn": [
+            "T-003"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-022",
+          "epicId": "EP-003",
+          "title": "Implement room code generation and MatchService.createMatch()",
+          "type": "backend",
+          "layer": "service",
+          "description": "Add MatchService. Implement generateRoomCode(): produces a random 4-char uppercase code from chars A-Z, 2-9 (avoids 0,1,O,I). Retry up to 5 times on uniqueness collision. Implement createMatch(hostPlayerId): creates Match record (status: LOBBY), creates MatchPlayer for host at seat_index 0, stores initial MatchState in Redis (match:{matchId}:state), returns full MatchState.",
+          "acceptanceCriteria": [
+            "Generated codes are always 4 chars and only use valid characters",
+            "Duplicate codes are retried (test with a mock that always returns the same code until the 3rd try)",
+            "Match and MatchPlayer records are written to Postgres",
+            "MatchState is stored in Redis",
+            "Unit tests cover code generation and createMatch() happy path"
+          ],
+          "dependsOn": [
+            "T-021",
+            "T-004"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-023",
+          "epicId": "EP-003",
+          "title": "Implement POST /match and POST /match/join endpoints",
+          "type": "backend",
+          "layer": "api",
+          "description": "Create MatchController. POST /match (auth required): calls MatchService.createMatch(), returns { matchId, roomCode, match: MatchState }. POST /match/join (auth required), body: { roomCode }. Validates: room exists, status is LOBBY, player count < 8, player not already in another active room. Assigns next seat_index. Updates Redis. Returns MatchState. Emit match:updated WebSocket event stub (log for now).",
+          "acceptanceCriteria": [
+            "POST /match returns 201 with matchId, roomCode, and full match state",
+            "POST /match/join with valid code adds player and returns updated state",
+            "POST /match/join on non-existent code returns 404",
+            "POST /match/join on a full room (8 players) returns 409",
+            "POST /match/join on an in-progress match returns 409",
+            "Integration tests cover all error cases"
+          ],
+          "dependsOn": [
+            "T-022",
+            "T-016"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-024",
+          "epicId": "EP-003",
+          "title": "Implement DELETE /match/:id/leave and host migration",
+          "type": "backend",
+          "layer": "service",
+          "description": "Add MatchService.leaveMatch(matchId, playerId). Removes player from MatchPlayer. If player was host and others remain: assign host to the player with the lowest seat_index. If no players remain: delete the match from DB and Redis. POST /match/:id/start (auth, host only): validates player count >= 4, transitions status to IN_PROGRESS, will be fully wired in EP-005.",
+          "acceptanceCriteria": [
+            "Leaving removes the player from the room",
+            "Host leaving with others present migrates host to next-seat player",
+            "Last player leaving deletes the Match and cleans Redis",
+            "Non-host calling start returns 403",
+            "Host calling start with < 4 players returns 400"
+          ],
+          "dependsOn": [
+            "T-023"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-025",
+          "epicId": "EP-003",
+          "title": "Build lobby page (create or join room)",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/LobbyPage.tsx. Two cards side by side: 'Create Room' (button \u2192 calls POST /match) and 'Join Room' (4-char code input + button \u2192 calls POST /match/join). Code input auto-uppercases, limits to 4 chars. Error states: 'Room not found', 'Room is full', 'Game already started'. Loading states on buttons. On success: navigate to /room/:code.",
+          "acceptanceCriteria": [
+            "Create Room calls API and navigates to /room/:code on success",
+            "Join Room's input auto-uppercases and limits to 4 chars",
+            "Joining a non-existent code shows inline 'Room not found' error",
+            "Joining a full room shows 'Room is full' error",
+            "Buttons are disabled during API calls",
+            "Player's display name is visible in the page header"
+          ],
+          "dependsOn": [
+            "T-020",
+            "T-023"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-026",
+          "epicId": "EP-003",
+          "title": "Build waiting room page with player list and seat grid",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/WaitingRoomPage.tsx. Fetches GET /match/:id on mount. Displays: room code with copy button, player seat grid (4\u20138 slots, filled/empty), player count, host crown badge, 'Start Game' button (host only, enabled when >= 4 players), 'Waiting for host...' for non-hosts, Leave Room button.",
+          "acceptanceCriteria": [
+            "Room code is displayed and copyable to clipboard",
+            "Seat grid renders correct number of slots based on current player count",
+            "Host player has a visible host badge",
+            "Start Game is only visible to the host",
+            "Start Game is disabled when < 4 players are present",
+            "Leave Room navigates back to /lobby"
+          ],
+          "dependsOn": [
+            "T-025"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-027",
+          "epicId": "EP-003",
+          "title": "Build matchStore and wire real-time lobby WebSocket events",
+          "type": "frontend",
+          "layer": "store",
+          "description": "Create src/store/matchStore.ts (Zustand): { matchId, roomCode, hostPlayerId, players, status }. Wire socket events in the waiting room: match:updated \u2192 updatePlayers(), match:host_changed \u2192 setHost(), game:started \u2192 navigate to /game/:matchId. Connect socket when the WaitingRoomPage mounts; disconnect on unmount. (Socket client singleton from T-058 can be stubbed here.)",
+          "acceptanceCriteria": [
+            "matchStore updates correctly when match:updated is received",
+            "Host badge updates when match:host_changed is received",
+            "All players in the room see the updated player list when someone joins",
+            "game:started event navigates all players to /game/:matchId",
+            "Unit tests cover store actions"
+          ],
+          "dependsOn": [
+            "T-026"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        }
+      ]
+    },
+    {
+      "id": "EP-004",
+      "title": "Core Game Engine",
+      "description": "Pure, stateless, server-side game rule engine. No I/O. Takes a GameState + intent, returns new GameState + event list. Shared types are defined here and mirrored to the frontend. This is the most test-critical module in the project.",
+      "priority": "P0",
+      "tickets": [
+        {
+          "id": "T-028",
+          "epicId": "EP-004",
+          "title": "Define all shared TypeScript types",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/shared/types/: card.types.ts (Card, Rank, Suit, SetSize), game-state.types.ts (Player, Pile, Play, RoundState, GameState, MatchState, Direction, GameStatus, MatchStatus), events.types.ts (PlayIntent, EngineResult, GameEventType, ExchangeAction). All types must be exported. No logic \u2014 types only.",
+          "acceptanceCriteria": [
+            "All types from SYSTEM_DESIGN.md \u00a75 are defined",
+            "Types compile cleanly with zero errors",
+            "No circular dependencies between type files",
+            "Types are importable from '@/shared/types'"
+          ],
+          "dependsOn": [
+            "T-001"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-029",
+          "epicId": "EP-004",
+          "title": "Implement DeckService: buildDeck and shuffleDeck",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/deck.service.ts. buildDeck(): returns all 52 cards (4 suits \u00d7 13 ranks). shuffleDeck(deck, seed?): Fisher-Yates shuffle, pure function. Both must be pure (no side effects). Include seeded shuffle variant for deterministic testing.",
+          "acceptanceCriteria": [
+            "buildDeck() returns exactly 52 unique cards",
+            "shuffleDeck() output is a permutation of input (same cards, different order)",
+            "shuffleDeck() with the same seed produces the same result every time",
+            "Unit tests: deck length, no duplicates, shuffle is a permutation"
+          ],
+          "dependsOn": [
+            "T-028"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-030",
+          "epicId": "EP-004",
+          "title": "Implement DeckService: dealHands",
+          "type": "backend",
+          "layer": "service",
+          "description": "Add dealHands(playerCount: number, deck: Card[]): { hands: Card[][], discarded: Card[] } to DeckService. Implements the dealing table from the rules: 4\u219213 cards, 5\u219210, 6\u21928, 7\u21927, 8\u21926. Remaining cards are discarded. Throws for invalid player counts.",
+          "acceptanceCriteria": [
+            "All 6 player counts (4\u20138, plus invalid) are tested",
+            "Total cards in hands + discarded always equals 52",
+            "Each hand has the correct card count for its player count",
+            "Invalid player count (e.g. 3 or 9) throws a descriptive error"
+          ],
+          "dependsOn": [
+            "T-029"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-031",
+          "epicId": "EP-004",
+          "title": "Implement rank comparison utilities",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/rank.utils.ts. Implement: PLAY_RANK_ORDER array (3\u2192A, excludes 2), EXCHANGE_RANK_ORDER array (3\u21922), comparePlayRank(a, b): number, isReset(rank): boolean (rank === '2'), getResetRequirement(pileSize): SetSize (returns how many 2s are needed to reset that pile size).",
+          "acceptanceCriteria": [
+            "comparePlayRank('3', 'A') returns negative",
+            "comparePlayRank('K', 'K') returns 0",
+            "isReset('2') returns true; isReset('A') returns false",
+            "getResetRequirement(1) = 1, (2) = 1, (3) = 2, (4) = 3",
+            "Unit tests cover all cases including edge values"
+          ],
+          "dependsOn": [
+            "T-028"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-032",
+          "epicId": "EP-004",
+          "title": "Implement RulesService: normal play validation",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/rules.service.ts. Implement validatePlay(state, intent): ValidationResult for the non-reset path: checks it is the player's turn, player has the cards in hand, all cards are the same rank, set size matches pile (if active), rank >= pile rank. Returns { valid: true } or { valid: false, reason: string }.",
+          "acceptanceCriteria": [
+            "Returns invalid when cards are not in the player's hand",
+            "Returns invalid when cards have mixed ranks",
+            "Returns invalid when pile is active and set size doesn't match",
+            "Returns invalid when rank is lower than pile rank",
+            "Returns valid for same rank (skip case \u2014 just validates, does not apply skip)",
+            "Returns valid for starting a round on an empty pile",
+            "Unit tests cover all 7 invalid scenarios plus happy path"
+          ],
+          "dependsOn": [
+            "T-031"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-033",
+          "epicId": "EP-004",
+          "title": "Implement RulesService: reset (2-card) validation",
+          "type": "backend",
+          "layer": "service",
+          "description": "Extend validatePlay() for the reset path. When all played cards are rank '2': check that the set size meets the reset requirement for the current pile type (single/double \u2192 1\u00d7 2; triple \u2192 2\u00d7 2s; quad \u2192 3\u00d7 2s). Playing 2s on an empty pile is allowed (starts a new round with a 2 as the pile rank \u2014 treated as a normal play since pile is empty).",
+          "acceptanceCriteria": [
+            "Single 2 on single pile \u2192 valid reset",
+            "Single 2 on double pile \u2192 valid reset",
+            "Double 2 on triple pile \u2192 valid reset",
+            "Triple 2 on quad pile \u2192 valid reset",
+            "Single 2 on triple pile \u2192 invalid (insufficient 2s)",
+            "Double 2 on single pile \u2192 invalid (too many 2s \u2014 can only play 1)",
+            "Playing a 2 on empty pile \u2192 valid normal play (no reset)",
+            "Unit tests cover all reset cases"
+          ],
+          "dependsOn": [
+            "T-032"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-034",
+          "epicId": "EP-004",
+          "title": "Implement turn advancement with direction and skip logic",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/turn.utils.ts. Implement getNextActivePlayerIndex(state, currentIndex, skipCount): number. Respects direction (clockwise = +1 mod n, counterclockwise = -1 mod n). Skips finished players. If skipCount = 1, skips one additional active player. Returns -1 only if no active players remain (guard case).",
+          "acceptanceCriteria": [
+            "Clockwise: advances +1 correctly, wraps around",
+            "Counterclockwise: advances -1 correctly, wraps around",
+            "Finished players are skipped automatically",
+            "skipCount=1 skips one additional active player after the normal advance",
+            "Both directions tested with all player counts 4\u20138",
+            "Handles the case where only 1 active player remains"
+          ],
+          "dependsOn": [
+            "T-031"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-035",
+          "epicId": "EP-004",
+          "title": "Implement GameEngineService.processIntent(): pass branch",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/game-engine.service.ts. Implement processIntent() for the pass case only. Increment consecutivePassCount. Advance turn (skip finished players). Check: if consecutivePassCount === activePlayers - 1 \u2192 round ends (clear pile, reset pass count, last-player-who-played becomes active). Return new state + events. Must deep-clone input state before mutating.",
+          "acceptanceCriteria": [
+            "Passing increments consecutivePassCount in the returned state",
+            "Turn advances to the next active player",
+            "Round ends correctly when all others have passed",
+            "The last-play winner becomes the active player after a round-end pass sequence",
+            "Input state is NOT mutated (pure function \u2014 verify with Object.freeze in tests)",
+            "Unit tests: single pass, chain of passes leading to round end"
+          ],
+          "dependsOn": [
+            "T-034"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-036",
+          "epicId": "EP-004",
+          "title": "Implement GameEngineService.processIntent(): normal play branch",
+          "type": "backend",
+          "layer": "service",
+          "description": "Extend processIntent() for valid non-reset plays. Remove played cards from the player's hand. Update pile.topPlay. Reset consecutivePassCount to 0. Emit PILE_UPDATED event. If same rank as pile \u2192 set skip flag for next turn. Check hand empty \u2192 mark player finished, assign rank, emit PLAYER_FINISHED. Check all players finished \u2192 emit GAME_FINISHED. Advance turn.",
+          "acceptanceCriteria": [
+            "Played cards are removed from the player's hand in the returned state",
+            "Pile topPlay is updated correctly",
+            "Same rank play sets the skip flag, and the following player is skipped",
+            "Player with empty hand is marked isFinished=true with correct finishRank",
+            "GAME_FINISHED is emitted when the last player finishes",
+            "processIntent() returns { error } (no state change) for invalid plays",
+            "Unit tests cover: normal beat, same-rank skip, player finish, game finish"
+          ],
+          "dependsOn": [
+            "T-035",
+            "T-032",
+            "T-033"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-037",
+          "epicId": "EP-004",
+          "title": "Implement GameEngineService.processIntent(): reset play branch",
+          "type": "backend",
+          "layer": "service",
+          "description": "Extend processIntent() for valid reset plays (rank === '2'). Remove 2-card(s) from player's hand. Set pile.topPlay = null. Do NOT advance turn (player continues). Reset consecutivePassCount to 0. Emit PILE_RESET event. Check if player hand is now empty (finish possible by playing last 2s). Return state.",
+          "acceptanceCriteria": [
+            "Pile is cleared (topPlay = null) after a valid reset",
+            "Active player index does NOT change after a reset",
+            "Player can play again immediately (next processIntent call with same player is valid)",
+            "Player finishing by playing last 2s as a reset is correctly handled",
+            "Unit tests: single 2 on single pile, double 2 on triple pile, player finishes via reset"
+          ],
+          "dependsOn": [
+            "T-036"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-038",
+          "epicId": "EP-004",
+          "title": "Implement determineDirection() utility",
+          "type": "backend",
+          "layer": "service",
+          "description": "Implement determineDirection(winnerSeatIndex, secondPlaceSeatIndex, totalPlayers): Direction in turn.utils.ts. Uses circular seat geometry: if 2nd place is in the 'right half' (clockwise from winner) \u2192 'clockwise'; if in the 'left half' \u2192 'counterclockwise'. Tie-break (exactly opposite): defaults to 'clockwise'.",
+          "acceptanceCriteria": [
+            "For 4 players: winner=0, 2nd=1 \u2192 clockwise; winner=0, 2nd=3 \u2192 counterclockwise",
+            "For 6 players: correctly handles all 5 possible 2nd-place positions relative to winner",
+            "All player counts 4\u20138 are tested",
+            "Directly opposite seat returns 'clockwise'"
+          ],
+          "dependsOn": [
+            "T-031"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-039",
+          "epicId": "EP-004",
+          "title": "Write comprehensive game engine test suite",
+          "type": "backend",
+          "layer": "testing",
+          "description": "Write a thorough test suite in src/game-engine/__tests__/. Use a GameStateFactory helper to build valid initial states for tests. Cover all scenarios from the rules: deal correctness, all pass scenarios, all play scenarios, reset scenarios, skip scenarios, finish detection, direction determination. Target: 90%+ line coverage on the game-engine module.",
+          "acceptanceCriteria": [
+            "pnpm test --coverage shows >= 90% line coverage for src/game-engine/",
+            "All scenarios listed in BE-EP-004 acceptance criteria have corresponding tests",
+            "No tests rely on other tests' state (fully isolated)",
+            "Tests run in under 5 seconds total"
+          ],
+          "dependsOn": [
+            "T-037",
+            "T-038"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-040",
+          "epicId": "EP-004",
+          "title": "Mirror shared types to frontend",
+          "type": "frontend",
+          "layer": "infra",
+          "description": "Create src/types/ files on the frontend mirroring the backend shared types: card.types.ts, game-state.types.ts, events.types.ts. These are manual copies (not auto-generated yet). Add a README note in the types folder explaining they must stay in sync with backend src/shared/types/.",
+          "acceptanceCriteria": [
+            "All types needed by FE components are available under src/types/",
+            "Types compile cleanly on the frontend",
+            "The Card type is used in the PlayingCard component from T-011"
+          ],
+          "dependsOn": [
+            "T-028",
+            "T-008"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        }
+      ]
+    },
+    {
+      "id": "EP-005",
+      "title": "Real-Time Game Play",
+      "description": "Full-stack: WebSocket gateway, game lifecycle orchestration, game board UI, and socket integration. After this epic, the game is end-to-end playable in a browser.",
+      "priority": "P0",
+      "tickets": [
+        {
+          "id": "T-041",
+          "epicId": "EP-005",
+          "title": "Create Game Prisma model and migration",
+          "type": "backend",
+          "layer": "database",
+          "description": "Add Game model to schema.prisma: id, match_id (FK), game_number (Int), direction (enum), status (enum), started_at, ended_at. Add GameRanking model: game_id + player_id (composite PK), rank (Int). Add GameEvent model: id (BigInt autoincrement), game_id, round_number, event_type, player_id (nullable), payload (Json), created_at. Run migration.",
+          "acceptanceCriteria": [
+            "Migration runs cleanly; all three tables exist",
+            "Foreign keys and indexes are correct (index on game_events.game_id)",
+            "GameEvent.payload column is JSON type"
+          ],
+          "dependsOn": [
+            "T-003"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-042",
+          "epicId": "EP-005",
+          "title": "Build WebSocket Gateway skeleton with authentication",
+          "type": "backend",
+          "layer": "gateway",
+          "description": "Create src/gateway/game.gateway.ts with @WebSocketGateway. Implement handleConnection: extract token from socket.handshake.auth.token, validate via AuthService, if invalid disconnect immediately. Store playerId and matchId in socket.data. Join socket to match:{matchId} room if player is in an active match. Implement handleDisconnect: emit player:disconnected to room, start a 5-min auto-pass timer.",
+          "acceptanceCriteria": [
+            "Connecting without a token disconnects the socket immediately",
+            "Connecting with a valid token joins the socket to the correct room",
+            "socket.data.player is populated after successful connection",
+            "Disconnection emits player:disconnected to the room",
+            "Integration test: connect with valid token succeeds; connect with invalid token fails"
+          ],
+          "dependsOn": [
+            "T-016",
+            "T-041"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-043",
+          "epicId": "EP-005",
+          "title": "Define all GameEvents constants and typed event payloads",
+          "type": "backend",
+          "layer": "gateway",
+          "description": "Create src/gateway/events.enum.ts with the GameEvents const object (all event name strings). Create src/shared/types/events.types.ts with a TypeScript interface for every event payload (both client\u2192server and server\u2192client). Ensure all event names match the WebSocket contract in SYSTEM_DESIGN.md \u00a710.",
+          "acceptanceCriteria": [
+            "All events from the system design are defined",
+            "Every event has a corresponding typed payload interface",
+            "No event payload uses 'any'",
+            "Events enum is used everywhere \u2014 no raw string literals for event names"
+          ],
+          "dependsOn": [
+            "T-028",
+            "T-042"
+          ],
+          "estimate": "XS",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-044",
+          "epicId": "EP-005",
+          "title": "Implement GameService.startMatch(): deal cards and broadcast game:started",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game/game.service.ts. Implement startMatch(matchId). Loads MatchState from Redis. Assigns random startPlayerIndex. Calls DeckService.dealHands(). Builds initial GameState. Stores GameState in Redis. Creates Game record in Postgres. Broadcasts game:started to the match Socket.IO room. Each player's payload includes only their own hand cards \u2014 other players' hands are omitted (send card count only).",
+          "acceptanceCriteria": [
+            "Calling startMatch() stores a valid GameState in Redis",
+            "A Game record is created in Postgres with correct matchId and game_number",
+            "game:started is emitted to all players in the room",
+            "Each player's event payload contains only their own hand (not other players')",
+            "Other players' hands are represented as card counts in the state projection"
+          ],
+          "dependsOn": [
+            "T-042",
+            "T-039"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-045",
+          "epicId": "EP-005",
+          "title": "Implement game:play and game:pass socket event handlers",
+          "type": "backend",
+          "layer": "gateway",
+          "description": "Add @SubscribeMessage('game:play') and @SubscribeMessage('game:pass') handlers in the gateway. Validate PlayIntentDto with class-validator. Delegate to GameService.handlePlayerIntent(). On engine error: emit game:play_rejected to the requesting socket only. On success: emit game:state_updated (player-projected) to the match room. Emit specific sub-events: game:pile_reset, game:player_skipped, game:player_finished as they occur.",
+          "acceptanceCriteria": [
+            "game:play with invalid cards returns game:play_rejected to that socket only",
+            "game:play with valid cards updates Redis state and emits game:state_updated to all",
+            "game:pass updates state and emits game:state_updated to all",
+            "PILE_RESET engine event triggers game:pile_reset broadcast",
+            "PLAYER_FINISHED engine event triggers game:player_finished broadcast",
+            "Integration test: simulate a full round (play, play, pass, round-end)"
+          ],
+          "dependsOn": [
+            "T-044",
+            "T-043"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-046",
+          "epicId": "EP-005",
+          "title": "Implement game-finished flow and next-game initialization",
+          "type": "backend",
+          "layer": "service",
+          "description": "In GameService, handle GAME_FINISHED engine event: persist GameRanking records, update Game.status and ended_at in Postgres, emit game:finished to room. After a configurable delay (3s): trigger ExchangeService (EP-006 stub for now \u2014 just re-deal). Initialize next game: determine new start player (1st place winner), call determineDirection(), deal new hands, build new GameState, emit game:started.",
+          "acceptanceCriteria": [
+            "GameRanking records are written to Postgres with correct ranks",
+            "game:finished is emitted with correct player rankings",
+            "A new Game record is created for game N+1",
+            "The winner of game N is the start player of game N+1",
+            "Direction is correctly determined from winner and 2nd place seat positions"
+          ],
+          "dependsOn": [
+            "T-045"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-047",
+          "epicId": "EP-005",
+          "title": "Implement player reconnect and auto-pass on disconnect",
+          "type": "backend",
+          "layer": "gateway",
+          "description": "On disconnect: store a pending reconnect entry in Redis (game_reconnect:{playerId}) with a 5-minute TTL. During those 5 minutes, when it is the disconnected player's turn: automatically process a 'pass' intent on their behalf. On reconnect (handleConnection detects existing match): emit full current GameState to their socket only, emit player:reconnected to room, cancel the pending reconnect entry.",
+          "acceptanceCriteria": [
+            "Disconnected player's turns are auto-passed for up to 5 minutes",
+            "Reconnecting within 5 minutes restores the player to the game",
+            "Reconnecting player receives full current state via game:state_updated",
+            "Other players receive player:reconnected event",
+            "After 5 minutes without reconnect, player is considered dropped (round still continues)"
+          ],
+          "dependsOn": [
+            "T-045"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-048",
+          "epicId": "EP-005",
+          "title": "Append game events to event log (game_events table)",
+          "type": "backend",
+          "layer": "database",
+          "description": "After each successful processIntent() call in GameService, asynchronously write a GameEvent record to Postgres. Use fire-and-forget (do NOT await \u2014 game should not wait on persistence). Event type and payload shape per SYSTEM_DESIGN event log table. Include round_number in every event. Failures are logged but do not break the game.",
+          "acceptanceCriteria": [
+            "After a play, a 'play' event appears in game_events within a short delay",
+            "After a pass, a 'pass' event appears",
+            "After a reset, a 'reset' event appears",
+            "Persistence failure (DB unavailable) does not cause game:play to fail",
+            "Events are ordered by created_at and match the actual sequence of play"
+          ],
+          "dependsOn": [
+            "T-045"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-049",
+          "epicId": "EP-005",
+          "title": "Build game board layout with all structural sections",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/GamePage.tsx with the full board layout: <GameStatusBar>, <OpponentSection>, <TableArea> (containing <PileDisplay> and <PassIndicator>), <LocalPlayerHand>, <ActionBar>. Use placeholder/static data for now. Full viewport height, no scroll. All sections accept props from gameStore.",
+          "acceptanceCriteria": [
+            "Full board layout renders without horizontal/vertical overflow",
+            "All 5 sections are visible and correctly positioned",
+            "Layout works for 4 players and for 8 players (test with different playerCount props)",
+            "Snapshot test exists"
+          ],
+          "dependsOn": [
+            "T-040",
+            "T-011"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-050",
+          "epicId": "EP-005",
+          "title": "Build OpponentHand and OpponentSection components",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create OpponentHand: displays player display name, face-down card backs (count matching hand size), active turn outline, finished rank badge, '(passed)' indicator, and disconnected overlay. Create OpponentSection: arranges OpponentHand components around the top/sides of the table based on player count.",
+          "acceptanceCriteria": [
+            "Face-down card count matches the number in the player's hand",
+            "Active player has a visible glow/outline",
+            "Finished player shows rank badge and no cards",
+            "Passed player shows a '(passed)' label",
+            "5 and 8 player layouts both render without overlap"
+          ],
+          "dependsOn": [
+            "T-049"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-051",
+          "epicId": "EP-005",
+          "title": "Build PileDisplay and PassIndicator components",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create PileDisplay: empty pile shows 'Table clear \u2014 play anything'; active pile shows the top play cards face-up with set size label (e.g. 'Double Q'). Create PassIndicator: progress dots showing consecutivePassCount out of (activePlayers - 1).",
+          "acceptanceCriteria": [
+            "Empty pile renders the placeholder text",
+            "Active pile renders the correct cards with rank visible",
+            "Set type label ('Single', 'Double', 'Triple', 'Quad') is correct",
+            "PassIndicator dots increment correctly from the passed state"
+          ],
+          "dependsOn": [
+            "T-049"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-052",
+          "epicId": "EP-005",
+          "title": "Build LocalPlayerHand with card selection",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create LocalPlayerHand: renders player's cards as <PlayingCard> components in a row with slight overlap. Cards are clickable when isMyTurn=true. Clicking toggles inclusion in selectedCards (store). Playable cards (valid for current pile) get a subtle green border hint. Non-playable cards are dimmed. Cards are non-interactive when not your turn.",
+          "acceptanceCriteria": [
+            "Clicking a card adds/removes it from selectedCards",
+            "Cards cannot be clicked when it is not the local player's turn",
+            "Playable cards have a green border hint",
+            "Multiple cards can be selected (for doubles, triples, quads)",
+            "Selecting cards of different ranks is allowed UI-side (server will reject the play)"
+          ],
+          "dependsOn": [
+            "T-049",
+            "T-011"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-053",
+          "epicId": "EP-005",
+          "title": "Build ActionBar with Play and Pass buttons",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create ActionBar: 'Play Selected' button and 'Pass' button. Play is enabled only when selectedCards.length > 0 and all selected cards have the same rank. Pass is enabled only when isMyTurn. Both buttons show a spinner when isActionPending is true. A rejection error message (from lastActionError) is shown below the buttons. 'Waiting for [name]...' is shown when it is not the local player's turn.",
+          "acceptanceCriteria": [
+            "Play button is enabled only with a valid (same-rank) selection",
+            "Pass button is enabled when it is the player's turn",
+            "Both buttons show spinners during pending action",
+            "Error message is displayed and cleared on the next state update",
+            "'Waiting for...' message names the correct active player",
+            "Component tests using userEvent cover click flows"
+          ],
+          "dependsOn": [
+            "T-052"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-054",
+          "epicId": "EP-005",
+          "title": "Implement gameStore with derived state",
+          "type": "frontend",
+          "layer": "store",
+          "description": "Create src/store/gameStore.ts. State: gameState, localPlayerId, selectedCards, isActionPending, lastActionError. Derived (computed in selectors): localPlayer, isLocalPlayerTurn, activePile. Actions: setGameState, toggleCard (add/remove from selection; clear selection if it would create a mixed-rank set), clearSelection, setActionPending, setActionError.",
+          "acceptanceCriteria": [
+            "isLocalPlayerTurn returns true only when gameState.currentRound.activePlayerIndex matches localPlayer.seatIndex",
+            "toggleCard clears the selection if the new card is a different rank than already-selected cards",
+            "setGameState clears selectedCards (new server state invalidates old selection)",
+            "Unit tests cover all actions and derived values"
+          ],
+          "dependsOn": [
+            "T-040"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-055",
+          "epicId": "EP-005",
+          "title": "Implement socket client singleton and useSocketSetup hook",
+          "type": "frontend",
+          "layer": "integration",
+          "description": "Create src/services/socket.ts: Socket.IO singleton, initialized with auth token from sessionStore, lazy connection. Create src/hooks/useSocketSetup.ts: sets up all server\u2192client event listeners in one place. Connect socket when GamePage or WaitingRoomPage mounts. Disconnect on unmount or logout.",
+          "acceptanceCriteria": [
+            "Socket is not created until connectSocket() is called",
+            "Socket auth token comes from the live sessionStore value (not a stale closure)",
+            "All listeners are cleaned up with socket.off() when the hook unmounts",
+            "Singleton: calling getSocket() twice returns the same instance"
+          ],
+          "dependsOn": [
+            "T-019"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-056",
+          "epicId": "EP-005",
+          "title": "Wire all game:* socket events to store and UI",
+          "type": "frontend",
+          "layer": "integration",
+          "description": "In useSocketSetup, implement handlers for: game:started (set gameState, navigate to /game/:matchId), game:state_updated (set gameState, clear pending), game:play_rejected (setActionError, clear pending), game:round_ended (toast notification), game:player_skipped (UI flash via store flag), game:pile_reset (toast + clear), game:player_finished (toast with rank), player:disconnected and player:reconnected (update opponent status in gameStore).",
+          "acceptanceCriteria": [
+            "game:started populates gameStore and navigates all players to the game board",
+            "game:state_updated clears isActionPending and reflects new state on all boards",
+            "game:play_rejected shows an error to the sending player only (via gameStore)",
+            "game:player_finished shows a toast: '[Name] finished \u2014 1st place'",
+            "game:pile_reset shows a toast: '[Name] reset the pile!'",
+            "Integration test: emit mocked events and assert store + DOM state"
+          ],
+          "dependsOn": [
+            "T-054",
+            "T-055"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-057",
+          "epicId": "EP-005",
+          "title": "Wire ActionBar outgoing events (play and pass) to socket",
+          "type": "frontend",
+          "layer": "integration",
+          "description": "Create src/services/gameActions.ts: sendPlay(cards: Card[]) emits game:play, sendPass() emits game:pass. Connect ActionBar's Play and Pass onClick to these functions. On click: setActionPending(true) in gameStore and clearSelection(). If no response within 10s: setActionPending(false) with a timeout error.",
+          "acceptanceCriteria": [
+            "Clicking Play emits game:play with the selected cards",
+            "Clicking Pass emits game:pass",
+            "isActionPending is true immediately after click",
+            "isActionPending clears on game:state_updated or game:play_rejected",
+            "A 10-second timeout clears the pending state if no response is received"
+          ],
+          "dependsOn": [
+            "T-053",
+            "T-056"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P0"
+        },
+        {
+          "id": "T-058",
+          "epicId": "EP-005",
+          "title": "Implement socket reconnection and connection-lost banner",
+          "type": "frontend",
+          "layer": "integration",
+          "description": "Handle socket connect_error and disconnect events. On disconnect: show a 'Connection lost \u2014 reconnecting...' banner at the top of the game board. Socket.IO's auto-reconnect fires in the background. On reconnect: the server sends full game state (game:state_updated), which restores the board. Dismiss the banner. On page refresh mid-game: restoreSession + socket connect restores state.",
+          "acceptanceCriteria": [
+            "Disconnection shows the connection-lost banner",
+            "Reconnection hides the banner and restores the board without a page reload",
+            "Page refresh mid-game restores the correct game state",
+            "Other players see a 'disconnected' indicator on the reconnected player's avatar"
+          ],
+          "dependsOn": [
+            "T-056"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        }
+      ]
+    },
+    {
+      "id": "EP-006",
+      "title": "Card Exchange System",
+      "description": "The post-game card exchange mechanic. After each game, 1st\u2194last exchange 2 cards and 2nd\u21942nd-last exchange 1 card, using a specific value ordering where '2' is best. Covers backend algorithm and frontend visualization.",
+      "priority": "P1",
+      "tickets": [
+        {
+          "id": "T-059",
+          "epicId": "EP-006",
+          "title": "Implement ExchangeService: best and worst card selection",
+          "type": "backend",
+          "layer": "service",
+          "description": "Create src/game-engine/exchange.service.ts. Implement getWorstCards(hand, count): returns the N lowest-value cards by exchange ranking (3 is worst). Implement getBestCards(hand, count): returns the N highest-value cards (2 is best). For ties in rank, use suit as a tiebreaker (hearts > diamonds > clubs > spades) for determinism.",
+          "acceptanceCriteria": [
+            "getWorstCards([K\u2660, 3\u2665, 7\u2666], 1) returns [3\u2665]",
+            "getBestCards([K\u2660, 2\u2663, A\u2666], 1) returns [2\u2663] (2 is highest)",
+            "Tiebreaker by suit is deterministic",
+            "Both functions handle requesting more cards than exist in hand gracefully (return all available)",
+            "Unit tests cover: hands with 2s, hands without 2s, exact card count requests, suit tiebreakers"
+          ],
+          "dependsOn": [
+            "T-031"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-060",
+          "epicId": "EP-006",
+          "title": "Implement ExchangeService.computeExchange()",
+          "type": "backend",
+          "layer": "service",
+          "description": "Implement computeExchange(rankedPlayers: Player[]): ExchangeResult. Determines exchange pairs (1st\u2194last, 2nd\u21942nd-last). Calls getWorstCards and getBestCards for each side. Builds ExchangeAction list. Returns both the actions and updatedHands Map<playerId, Card[]>. Must handle all player counts 4\u20138. Cards are matched on both rank AND suit when removing from hands.",
+          "acceptanceCriteria": [
+            "1st place gives 2 worst cards and receives 2 best cards from last",
+            "2nd place gives 1 worst card and receives 1 best card from 2nd-last",
+            "Total cards per player is unchanged after exchange (no cards lost or duplicated)",
+            "Works correctly for all player counts 4\u20138",
+            "Unit tests: 4 players, 6 players, 8 players; hands with multiple 2s; edge case where both exchange partners have the same best card rank"
+          ],
+          "dependsOn": [
+            "T-059"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-061",
+          "epicId": "EP-006",
+          "title": "Integrate exchange into game-finished flow and emit game:exchange",
+          "type": "backend",
+          "layer": "service",
+          "description": "In GameService.handleGameFinished(): after persisting rankings, call ExchangeService.computeExchange(). Apply updated hands to player objects. Store as the initial hand state for the next game. Build ExchangeSummary DTO and emit game:exchange to the match room. Cards given away by each player are visible to all; updated hands are sent privately per player in the next game:started event.",
+          "acceptanceCriteria": [
+            "game:exchange is emitted after every game (except the last game of a match)",
+            "ExchangeSummary contains correct giver, receiver, and card details for each pair",
+            "Updated hands are correctly applied when the next game is dealt",
+            "Each player's updated hand is private (not exposed in the broadcast exchange payload)"
+          ],
+          "dependsOn": [
+            "T-060",
+            "T-046"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-062",
+          "epicId": "EP-006",
+          "title": "Build game-finished rankings overlay",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/features/game/GameFinishedOverlay.tsx. Triggered by game:finished event. Full-screen semi-transparent overlay over the frozen game board. Shows ranked player list: rank number, display name, rank badge emoji. Local player highlighted. 3-second countdown before exchange phase. If local player is 1st: show a brief 'You won!' celebration screen first (2s).",
+          "acceptanceCriteria": [
+            "Overlay renders correctly on game:finished socket event",
+            "Rankings are in correct order (1st through last)",
+            "Local player's entry is visually highlighted",
+            "1st-place local player sees the 'You won!' screen before rankings",
+            "Countdown timer is visible and ticks down",
+            "Overlay is accessible (focusable, role='dialog')"
+          ],
+          "dependsOn": [
+            "T-056",
+            "T-049"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-063",
+          "epicId": "EP-006",
+          "title": "Build card exchange UI with animated card transfers",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/features/game/CardExchangeView.tsx. Triggered by game:exchange event. Shows exchange pairs: '[Alice] gave [3\u2663][4\u2666] to [Dave]'. Cards animate flying from giver to receiver position using Framer Motion layoutId. After animation: show local player's updated hand briefly. Then 5-second countdown to next game.",
+          "acceptanceCriteria": [
+            "Exchange pairs are displayed clearly with correct names and cards",
+            "Cards animate from giver position towards receiver position",
+            "Local player can see which cards they gave and received",
+            "Newly received cards are highlighted (gold border briefly) in the updated hand preview",
+            "Animation respects prefers-reduced-motion (no motion \u2192 instant swap with clear before/after states)",
+            "5-second countdown to next game starts after exchange visualization"
+          ],
+          "dependsOn": [
+            "T-062"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P1"
+        }
+      ]
+    },
+    {
+      "id": "EP-007",
+      "title": "Game End, Rankings & Results",
+      "description": "Match-end experience: the final results page, aggregate match standings, and transitions. Also covers the post-match flow where the host can start a new game or end the session.",
+      "priority": "P1",
+      "tickets": [
+        {
+          "id": "T-064",
+          "epicId": "EP-007",
+          "title": "Implement match:finished event and match cleanup",
+          "type": "backend",
+          "layer": "service",
+          "description": "In GameService: after the last game finishes (match ends), update Match.status=FINISHED and ended_at in Postgres. Build a MatchSummary: total games, per-player aggregate stats (best finish, average rank, games won). Emit match:finished to the room. Schedule Redis key cleanup after 60 minutes (delete match and game state keys).",
+          "acceptanceCriteria": [
+            "Match record in Postgres has status=FINISHED and correct ended_at",
+            "match:finished payload contains correct aggregate rankings for all players",
+            "Redis keys are cleaned up 60 minutes after match end",
+            "A player reconnecting after match:finished gets a 'match ended' response, not old game state"
+          ],
+          "dependsOn": [
+            "T-046"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-065",
+          "epicId": "EP-007",
+          "title": "Implement GET /match/:id/summary endpoint",
+          "type": "backend",
+          "layer": "api",
+          "description": "Create GET /match/:id/summary (protected). Returns full MatchSummary: matchId, roomCode, status, players with seat info, games array (each with game_number, direction, rankings, started_at, ended_at). Queries Postgres (not Redis) \u2014 works for both live and historical matches. Only accessible to players who participated in the match (check match_players table).",
+          "acceptanceCriteria": [
+            "Returns correct summary for a completed match",
+            "Returns current partial summary for an in-progress match",
+            "Returns 403 if the requesting player was not in the match",
+            "Returns 404 for unknown matchId",
+            "Integration test covers happy path and access control"
+          ],
+          "dependsOn": [
+            "T-041",
+            "T-046"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-066",
+          "epicId": "EP-007",
+          "title": "Build match results page",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/ResultsPage.tsx at /results/:matchId. Two modes: live (data in matchStore/gameStore, navigated to on match:finished) and historical (data loaded from GET /match/:id/summary). Shows: match summary header, aggregate standings table (player, games won, average rank), per-game collapsible accordion. 'Return to Lobby' button. 'Play Again' button (stub for p2).",
+          "acceptanceCriteria": [
+            "Live mode: renders immediately after match:finished event with correct data",
+            "Historical mode: loads data from API and renders correctly",
+            "Aggregate standings table ranks players correctly",
+            "Per-game accordion expands to show individual game rankings",
+            "Overall winner is highlighted with a trophy badge",
+            "'Return to Lobby' navigates to /lobby and clears match/game stores"
+          ],
+          "dependsOn": [
+            "T-065",
+            "T-063"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P1"
+        },
+        {
+          "id": "T-067",
+          "epicId": "EP-007",
+          "title": "Add card interaction animations (Framer Motion)",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Install framer-motion. Add animations to the game board: card deal animation (cards fly from center to player positions on game:started), card play animation (selected cards fly from hand to pile, using layoutId), pile reset animation (pile burst/scatter on game:pile_reset), skip animation (red flash on skipped player), player finish animation (rank badge slides in with spring).",
+          "acceptanceCriteria": [
+            "Deal animation plays at the start of each game",
+            "Card play animation fires when a play is confirmed (game:state_updated)",
+            "Pile reset fires the scatter animation on game:pile_reset",
+            "Skip flash animates on game:player_skipped",
+            "Finish badge animates in on game:player_finished",
+            "All animations work with prefers-reduced-motion (fallback to instant transitions)",
+            "No layout shift during animations"
+          ],
+          "dependsOn": [
+            "T-056"
+          ],
+          "estimate": "M",
+          "status": "done",
+          "priority": "P1"
+        }
+      ]
+    },
+    {
+      "id": "EP-008",
+      "title": "Match History",
+      "description": "Players can view their past matches and individual game breakdowns. Covers the history API endpoint and the frontend history list page.",
+      "priority": "P2",
+      "tickets": [
+        {
+          "id": "T-068",
+          "epicId": "EP-008",
+          "title": "Implement GET /player/me/matches (paginated history)",
+          "type": "backend",
+          "layer": "api",
+          "description": "Add GET /player/me/matches (protected). Query params: page (default 1), limit (default 10, max 50). Returns matches the authenticated player participated in, sorted by created_at DESC. Each item: matchId, roomCode, playerCount, gamesPlayed, player's best finish in the match, match status, created_at. Use Prisma pagination (skip/take).",
+          "acceptanceCriteria": [
+            "Returns paginated list with total count and current page",
+            "Only returns matches the authenticated player was part of",
+            "Default page size is 10; max is 50 (enforce via DTO validation)",
+            "Integration test: player with 0 matches returns empty list; player with 15 matches returns 10 on page 1, 5 on page 2"
+          ],
+          "dependsOn": [
+            "T-065"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P2"
+        },
+        {
+          "id": "T-069",
+          "epicId": "EP-008",
+          "title": "Build match history list page",
+          "type": "frontend",
+          "layer": "ui",
+          "description": "Create src/pages/HistoryPage.tsx at /history. Calls GET /player/me/matches on mount. Shows a list of match cards: date (relative time), room code, player count, games played, player's best finish. Loading skeleton while fetching. Empty state with CTA to create a room. 'Show more' button for pagination. Each match card links to /results/:matchId.",
+          "acceptanceCriteria": [
+            "Match list renders with correct data for a player who has history",
+            "Loading skeleton renders while the API call is in flight",
+            "Empty state renders for a new player with no history",
+            "Relative timestamps are correct (e.g. '2 hours ago')",
+            "'Show more' loads the next page and appends to the list",
+            "Navigation to /results/:matchId works from the history list"
+          ],
+          "dependsOn": [
+            "T-068",
+            "T-020"
+          ],
+          "estimate": "S",
+          "status": "done",
+          "priority": "P2"
+        }
+      ]
+    }
+  ]
+}

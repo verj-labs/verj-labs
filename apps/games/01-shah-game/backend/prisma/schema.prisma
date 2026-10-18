@@ -1,0 +1,134 @@
+// This is the Shah Exchange Prisma schema.
+// All tables match SYSTEM_DESIGN.md §7.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum MatchStatus {
+  lobby
+  in_progress
+  finished
+}
+
+enum GameStatus {
+  waiting
+  dealing
+  in_progress
+  finished
+}
+
+enum Direction {
+  clockwise
+  counterclockwise
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+model Player {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  displayName  String   @map("display_name") @db.VarChar(32)
+  sessionToken String   @unique @map("session_token") @db.VarChar(128)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  hostedMatches  Match[]        @relation("HostedMatches")
+  matchPlayers   MatchPlayer[]
+  startedGames   Game[]         @relation("StartedGames")
+  gameRankings   GameRanking[]
+  gameEvents     GameEvent[]
+
+  @@map("players")
+}
+
+model Match {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roomCode     String      @unique @map("room_code") @db.VarChar(8)
+  status       MatchStatus @default(lobby)
+  hostPlayerId String      @map("host_player_id") @db.Uuid
+  playerCount  Int         @map("player_count")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  startedAt    DateTime?   @map("started_at") @db.Timestamptz()
+  endedAt      DateTime?   @map("ended_at") @db.Timestamptz()
+
+  // Relations
+  host         Player        @relation("HostedMatches", fields: [hostPlayerId], references: [id])
+  matchPlayers MatchPlayer[]
+  games        Game[]
+
+  @@map("matches")
+}
+
+model MatchPlayer {
+  matchId   String   @map("match_id") @db.Uuid
+  playerId  String   @map("player_id") @db.Uuid
+  seatIndex Int      @map("seat_index")
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+
+  // Relations
+  match  Match  @relation(fields: [matchId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@id([matchId, playerId])
+  @@map("match_players")
+}
+
+model Game {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  matchId         String     @map("match_id") @db.Uuid
+  gameNumber      Int        @map("game_number")
+  status          GameStatus @default(waiting)
+  startedPlayerId String?    @map("started_player_id") @db.Uuid
+  direction       Direction  @default(clockwise)
+  startedAt       DateTime?  @map("started_at") @db.Timestamptz()
+  endedAt         DateTime?  @map("ended_at") @db.Timestamptz()
+
+  // Relations
+  match         Match         @relation(fields: [matchId], references: [id])
+  startedPlayer Player?       @relation("StartedGames", fields: [startedPlayerId], references: [id])
+  gameRankings  GameRanking[]
+  gameEvents    GameEvent[]
+
+  @@map("games")
+}
+
+model GameRanking {
+  gameId     String @map("game_id") @db.Uuid
+  playerId   String @map("player_id") @db.Uuid
+  finishRank Int    @map("finish_rank")
+
+  // Relations
+  game   Game   @relation(fields: [gameId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@id([gameId, playerId])
+  @@map("game_rankings")
+}
+
+model GameEvent {
+  id        BigInt   @id @default(autoincrement())
+  gameId    String   @map("game_id") @db.Uuid
+  playerId  String?  @map("player_id") @db.Uuid
+  eventType String   @map("event_type") @db.VarChar(64)
+  payload   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  game   Game    @relation(fields: [gameId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@index([gameId])
+  @@map("game_events")
+}
+

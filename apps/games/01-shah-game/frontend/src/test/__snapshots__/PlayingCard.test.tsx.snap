@@ -1,0 +1,66 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PlayingCard > matches face-down snapshot 1`] = `
+<button
+  aria-disabled="false"
+  aria-label="card face down"
+  aria-pressed="false"
+  class="relative rounded-md border select-none transition-all duration-150 flex flex-col justify-between p-1 w-16 h-24 text-sm bg-[var(--color-card-back)] border-[var(--color-card-back)]"
+  type="button"
+>
+  <div
+    aria-hidden="true"
+    class="absolute inset-1 rounded bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.08)_0px,rgba(255,255,255,0.08)_2px,transparent_2px,transparent_8px)]"
+  />
+</button>
+`;
+
+exports[`PlayingCard > matches face-up snapshot 1`] = `
+<button
+  aria-disabled="false"
+  aria-label="A of hearts"
+  aria-pressed="false"
+  class="relative rounded-md border select-none transition-all duration-150 flex flex-col justify-between p-1 w-16 h-24 text-sm bg-[var(--color-card-face)] border-[var(--color-card-border)]"
+  data-testid="card-Ahearts"
+  type="button"
+>
+  <div
+    class="flex flex-col items-start text-xs leading-none"
+  >
+    <span
+      class="font-bold text-[var(--color-suit-red,#dc2626)]"
+    >
+      A
+    </span>
+    <span
+      class="text-[var(--color-suit-red,#dc2626)]"
+    >
+      ♥
+    </span>
+  </div>
+  <div
+    class="absolute inset-0 flex items-center justify-center pointer-events-none"
+  >
+    <span
+      aria-hidden="true"
+      class="select-none text-xl text-[var(--color-suit-red,#dc2626)]"
+    >
+      ♥
+    </span>
+  </div>
+  <div
+    class="flex flex-col items-end rotate-180 text-xs leading-none"
+  >
+    <span
+      class="font-bold text-[var(--color-suit-red,#dc2626)]"
+    >
+      A
+    </span>
+    <span
+      class="text-[var(--color-suit-red,#dc2626)]"
+    >
+      ♥
+    </span>
+  </div>
+</button>
+`;

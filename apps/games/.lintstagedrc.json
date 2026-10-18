@@ -1,0 +1,6 @@
+{
+  "01-shah-game/backend/{src,test}/**/*.ts": [
+    "./01-shah-game/backend/node_modules/.bin/prettier --write --config 01-shah-game/backend/.prettierrc",
+    "./01-shah-game/backend/node_modules/.bin/eslint --fix --config 01-shah-game/backend/eslint.config.mjs"
+  ]
+}
