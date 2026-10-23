@@ -1,0 +1,85 @@
+{
+  "id": "verj",
+  "name": "Verj Labs",
+  "voice": "Plain and specific. A senior-led Canadian software studio that designs, builds and launches products, websites, mobile apps and AI. Short sentences. Name the work. No hype, no invented metrics.",
+  "audience": "Business owners who need software built and shipped, not a pitch about AI in the abstract.",
+  "cta": "Book a call",
+  "colors": {
+    "bg": "#0a0a0a",
+    "fg": "#f4f4f0",
+    "accent": "#d4f53c",
+    "muted": "#333333"
+  },
+  "type": {
+    "display": "Archivo Black",
+    "body": "Archivo",
+    "mono": "JetBrains Mono"
+  },
+  "bannedPhrases": [
+    "game-changer",
+    "game changer",
+    "unlock",
+    "delve",
+    "leverage",
+    "cutting-edge",
+    "cutting edge",
+    "revolutionize",
+    "next-gen",
+    "next gen",
+    "seamless",
+    "elevate",
+    "supercharge",
+    "in today's world",
+    "imagine a world"
+  ],
+  "bannedLooks": [
+    "neon cyberpunk",
+    "purple gradient",
+    "stock smile at a laptop",
+    "floating holographic UI",
+    "robot handshake",
+    "generic glowing brain",
+    "people staring at screens in a glass office"
+  ],
+  "speechVoice": "Rachel",
+  "musicMood": "Sparse instrumental, slow pulse, no vocals, dry and modern. Not a trailer and not EDM.",
+  "logo": "logo.svg",
+  "proof": [],
+  "facts": [
+    {
+      "id": "studio",
+      "title": "The studio",
+      "text": "Verj Labs Inc. is a Canadian software studio. It has delivered 25+ projects: products, websites, mobile apps and AI, from first idea to launch."
+    },
+    {
+      "id": "dealrdash",
+      "title": "DealrDash",
+      "text": "DealrDash is one dashboard for independent car dealerships in Canada and the US. Inventory, leads, deals and accounting live in one place, with deal documents prepared inside the product and a website that stays in sync with inventory. Verj did the product design and the full build. It is live at dealrdash.com."
+    },
+    {
+      "id": "zavara",
+      "title": "Zavara Studio",
+      "text": "Zavara Studio helps jewelers create product visuals and manage clients and orders. Jewelers can wait days for CAD renders, photos and videos. The platform does that creative work in minutes, with a design studio, a video studio, a client portal and a catalog. Verj did the AI product design and the full build. It is live at zavarastudio.com."
+    },
+    {
+      "id": "halal-compass",
+      "title": "Halal Compass",
+      "text": "Halal Compass was a consumer guide to halal restaurants, mosques and community events, on the web and on mobile, with verified listings and community reviews. It is no longer live. Verj did the consumer product design and the full build."
+    },
+    {
+      "id": "websites",
+      "title": "Client websites",
+      "text": "Verj builds fast custom websites for automotive and jewellery businesses. The client's own team edits the site without touching code."
+    },
+    {
+      "id": "ai",
+      "title": "AI for a business",
+      "text": "AI work is scoped at 2 to 6 weeks. It means answers from a company's own documents, automating repetitive work, or adding AI to a product they already have."
+    },
+    {
+      "id": "timelines",
+      "title": "Timelines",
+      "text": "A website is usually 4 to 8 weeks. A mobile app is 6 to 14. A new product is 6 to 16. Website projects are fixed scope and fixed timeline."
+    }
+  ]
+}

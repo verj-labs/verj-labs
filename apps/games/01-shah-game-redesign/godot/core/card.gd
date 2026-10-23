@@ -57,6 +57,14 @@ static func from_code(code: String) -> Card:
 	return Card.new(parsed_rank, SUIT_LETTERS[suit_letter])
 
 
+## "10", "J", "A", "2" ... for display.
+func rank_text() -> String:
+	for letter: String in FACE_LETTERS:
+		if FACE_LETTERS[letter] == rank:
+			return letter
+	return str(rank)
+
+
 func to_code() -> String:
 	var rank_text := str(rank)
 	for letter: String in FACE_LETTERS:

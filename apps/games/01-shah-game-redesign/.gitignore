@@ -1,7 +1,6 @@
 # Godot
 godot/.godot/
 godot/*.translation
-*.import
 godot/builds/
 godot/export_presets.cfg.bak
 godot/reports/

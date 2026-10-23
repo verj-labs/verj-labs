@@ -1,0 +1,31 @@
+{
+  "id": "template",
+  "name": "Brand name",
+  "voice": "How this brand sounds. Short sentences. Specific claims. No hype.",
+  "audience": "Who the video is for.",
+  "cta": "What the end card says",
+  "colors": {
+    "bg": "#0a0a0a",
+    "fg": "#f4f4f0",
+    "accent": "#d4f53c",
+    "muted": "#333333"
+  },
+  "type": {
+    "display": "Archivo Black",
+    "body": "Archivo",
+    "mono": "JetBrains Mono"
+  },
+  "bannedPhrases": ["game-changer", "unlock", "delve"],
+  "bannedLooks": ["neon cyberpunk", "purple gradient", "stock smile at a laptop"],
+  "speechVoice": "Rachel",
+  "musicMood": "Sparse instrumental, no vocals.",
+  "logo": null,
+  "proof": [],
+  "facts": [
+    {
+      "id": "fact-1",
+      "title": "A fact you can say on screen",
+      "text": "Replace this with something true. The director is not allowed to invent numbers or clients."
+    }
+  ]
+}

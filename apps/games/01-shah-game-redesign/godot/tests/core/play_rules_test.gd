@@ -22,9 +22,12 @@ func test_any_set_may_start_a_round(
 	assert_int(result.effect).is_equal(NONE)
 
 
-func test_twos_may_be_led_so_a_player_can_always_go_out() -> void:
-	assert_bool(_legal("", "2H").legal).is_true()
-	assert_bool(_legal("", "2H 2S").legal).is_true()
+func test_twos_on_an_empty_table_are_a_reset_not_a_card(
+	play: String, test_parameters := [["2H"], ["2H 2S"], ["2H 2S 2D"], ["2H 2S 2D 2C"]]
+) -> void:
+	var result := _legal("", play)
+	assert_bool(result.legal).is_true()
+	assert_int(result.effect).is_equal(RESET)
 
 
 # --- Section 9: beating the pile --------------------------------------------------
@@ -129,18 +132,3 @@ func test_wrong_number_of_twos_is_not_a_reset(
 func test_a_two_never_beats_by_rank() -> void:
 	# A double 2 is not "a double that outranks double A". Only the reset table applies.
 	assert_bool(_legal("AH AS", "2H 2S").legal).is_false()
-
-
-func test_single_two_resets_a_pile_of_twos() -> void:
-	assert_int(_legal("2H", "2S").effect).is_equal(RESET)
-
-
-func test_ordinary_cards_cannot_beat_a_led_two() -> void:
-	var result := _legal("2H", "AH")
-	assert_bool(result.legal).is_false()
-	assert_str(result.reason).is_equal(PlayResult.REASON_RANK_TOO_LOW)
-
-
-func test_reset_takes_priority_over_skip() -> void:
-	# Single 2 on a single 2 is the same rank, but it is a reset, not a skip.
-	assert_int(_legal("2H", "2S").effect).is_not_equal(SKIP)

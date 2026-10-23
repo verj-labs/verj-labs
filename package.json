@@ -6,6 +6,8 @@
     "site:dev": "npm --prefix apps/site run dev",
     "site:build": "npm --prefix apps/site run build",
     "site:lint": "npm --prefix apps/site run lint",
-    "site:install": "npm --prefix apps/site install"
+    "site:install": "npm --prefix apps/site install",
+    "marketing:dev": "npm --prefix marketing run dev",
+    "marketing:install": "npm --prefix marketing install"
   }
 }

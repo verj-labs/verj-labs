@@ -1,16 +1,31 @@
 class_name Palette
 extends RefCounted
-## Colour tokens from 01-shah-game/docs/design/DESIGN_GUIDE.md ("Dark Street").
+## Arcade colours: a deep indigo night with neon accents. Cards keep a clean cream face so the
+## game stays readable; everything around them is loud.
 
-const BG_0 := Color("#0B0B10")
-const BG_1 := Color("#12121A")
-const SURFACE := Color("#191926")
-const BORDER := Color("#2A2A3A")
-const TEXT_PRIMARY := Color("#F4F4F8")
-const TEXT_MUTED := Color("#A7A7B5")
+const BG_DEEP := Color("#08031C")
+const BG_MID := Color("#1A0B47")
+const PANEL := Color("#1F1058")
+const PANEL_LIGHT := Color("#33208A")
+const LINE := Color("#4A32B8")
+const FELT := Color("#0E2F4A")
 
-const NEON_LIME := Color("#33FF7A")
-const ELECTRIC_YELLOW := Color("#FFD400")
-const HOT_PINK := Color("#FF3D9A")
-const DANGER_RED := Color("#FF3B3B")
-const INFO_BLUE := Color("#2E9BFF")
+const CREAM := Color("#FFF6DC")
+const DIM := Color("#A99FD9")
+
+const PINK := Color("#FF2E93")
+const CYAN := Color("#22E5FF")
+const YELLOW := Color("#FFE14D")
+const LIME := Color("#7CFF5B")
+const ORANGE := Color("#FF9A1F")
+const PURPLE := Color("#B084FF")
+const RED := Color("#FF4455")
+
+const INK := Color("#120A2E")  ## Dark text on bright buttons and card faces.
+
+## One accent per seat so players are easy to tell apart at a glance. Seat 0 is you.
+const SEAT_COLORS := [YELLOW, CYAN, PINK, LIME, ORANGE, PURPLE, Color("#5AA0FF"), Color("#FF7A7A")]
+
+
+static func seat_color(seat: int) -> Color:
+	return SEAT_COLORS[seat % SEAT_COLORS.size()]

@@ -10,6 +10,10 @@ config/name="Shah Exchange"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 run/main_scene="res://scenes/main_menu.tscn"
 
+[autoload]
+
+AudioDirector="*res://ui/audio_director.gd"
+
 [display]
 
 window/size/viewport_width=720
@@ -21,6 +25,8 @@ window/stretch/aspect="expand"
 window/handheld/orientation=1
 
 [rendering]
+
+textures/canvas_textures/default_texture_filter=0
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

@@ -1,54 +1,87 @@
 extends Control
-## Entry screen. Everything is built in code so the layout is easy to review in a diff.
+## Title screen: an arcade attract mode with a big logo, floating cards and a blinking prompt.
 
-const GAME_TABLE_SCENE := "res://scenes/game_table.tscn"
+const SETUP_SCENE := "res://scenes/setup_screen.tscn"
+const RULES_TEXT := "Be first to empty your hand.
 
-var _rules_dialog: AcceptDialog
+- Play a set of equal cards: single, double, triple or quad.
+- Beat the pile with the same size and the same or a higher rank, or pass.
+- Playing the same rank as the pile skips the next player.
+- A 2 is a reset: it clears the pile and you play again.
+- After each game the best and worst players swap cards."
+const SHOWCASE := ["AS", "2D", "KH"]
 
 
 func _ready() -> void:
 	var column := UIKit.screen_column(self)
 
-	var top_spacer := Control.new()
-	top_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	top_spacer.size_flags_stretch_ratio = 1.2
-	column.add_child(top_spacer)
+	column.add_child(_build_audio_row())
+	column.add_child(UIKit.spacer(0.5))
 
-	column.add_child(UIKit.make_label("SHAH\nEXCHANGE", 84, Palette.ELECTRIC_YELLOW))
-	column.add_child(UIKit.make_label("The card game that ends friendships.", 24, Palette.TEXT_MUTED))
+	column.add_child(ShadowLabel.new("SHAH", 14, Palette.PINK, Palette.LINE))
+	column.add_child(ShadowLabel.new("EXCHANGE", 9, Palette.YELLOW, Palette.PINK))
+	column.add_child(UIKit.pixel_label("THE CARD GAME THAT ENDS FRIENDSHIPS", 2, Palette.CYAN))
 
-	var mid_spacer := Control.new()
-	mid_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(mid_spacer)
+	column.add_child(UIKit.spacer(0.4))
+	column.add_child(_build_card_showcase())
+	column.add_child(UIKit.spacer(0.6))
 
-	var play := UIKit.primary_button("PLAY VS BOTS")
-	play.pressed.connect(_on_play_pressed)
-	column.add_child(play)
+	var prompt := UIKit.pixel_label("PRESS START", 3, Palette.LIME)
+	column.add_child(prompt)
+	_blink(prompt)
 
-	var how_to := UIKit.secondary_button("HOW TO PLAY")
-	how_to.pressed.connect(_on_how_to_pressed)
+	var start := ArcadeButton.make("START GAME", ArcadeButton.Kind.PRIMARY, 4)
+	start.pressed.connect(func() -> void: get_tree().change_scene_to_file(SETUP_SCENE))
+	column.add_child(start)
+	var how_to := ArcadeButton.make("HOW TO PLAY")
+	how_to.pressed.connect(_show_rules)
 	column.add_child(how_to)
+	if not OS.has_feature("mobile"):
+		var quit := ArcadeButton.make("QUIT")
+		quit.pressed.connect(func() -> void: get_tree().quit())
+		column.add_child(quit)
+	column.add_child(UIKit.pixel_label("V0.2  ARCADE EDITION", 1, Palette.DIM))
 
-	var quit := UIKit.secondary_button("QUIT")
-	quit.pressed.connect(func() -> void: get_tree().quit())
-	# Mobile apps don't have a quit button; keep it for desktop builds only.
-	quit.visible = not OS.has_feature("mobile")
-	column.add_child(quit)
-
-	var version := UIKit.make_label("v0.0.1 - redesign", 16, Palette.TEXT_MUTED)
-	column.add_child(version)
-
-	_rules_dialog = AcceptDialog.new()
-	_rules_dialog.title = "How to play"
-	_rules_dialog.dialog_text = "Be the first to empty your hand.\n\nSingles, doubles, triples and quads. Beat the pile or pass. A 2 resets the pile.\n\n(Full rules coming with the game engine.)"
-	_rules_dialog.dialog_autowrap = true
-	_rules_dialog.min_size = Vector2i(560, 0)
-	add_child(_rules_dialog)
+	add_child(CrtOverlay.new())
 
 
-func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file(GAME_TABLE_SCENE)
+func _build_audio_row() -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 14)
+	row.add_child(AudioToggle.make(AudioToggle.Kind.MUSIC))
+	row.add_child(AudioToggle.make(AudioToggle.Kind.SFX))
+	return row
 
 
-func _on_how_to_pressed() -> void:
-	_rules_dialog.popup_centered()
+## Three cards fanned out, bobbing gently.
+func _build_card_showcase() -> Control:
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(0, 190)
+	var size := Vector2(104, 148)
+	var tilt := [-0.22, 0.0, 0.22]
+	var lift := [14.0, 0.0, 14.0]
+	for i in SHOWCASE.size():
+		var view := CardView.new(Card.from_code(SHOWCASE[i]), size)
+		view.tappable = false
+		view.pivot_offset = size / 2.0
+		view.rotation = tilt[i]
+		view.position = Vector2(320.0 - size.x / 2.0 + (i - 1) * 130.0, lift[i] + 6.0)
+		stage.add_child(view)
+		var bob := create_tween().set_loops()
+		var rest := view.position.y
+		bob.tween_property(view, "position:y", rest - 10.0, 0.9 + i * 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		bob.tween_property(view, "position:y", rest, 0.9 + i * 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return stage
+
+
+func _blink(node: CanvasItem) -> void:
+	var tween := create_tween().set_loops()
+	tween.tween_property(node, "modulate:a", 0.15, 0.55)
+	tween.tween_property(node, "modulate:a", 1.0, 0.55)
+
+
+func _show_rules() -> void:
+	var modal := ArcadeModal.new("HOW TO PLAY", RULES_TEXT, Palette.CYAN, "GOT IT")
+	add_child(modal)
+	move_child(modal, get_child_count() - 2)  # keep the CRT overlay on top
