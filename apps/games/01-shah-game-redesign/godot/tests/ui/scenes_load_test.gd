@@ -22,6 +22,32 @@ func test_setup_screen_loads() -> void:
 	assert_object(scene).is_not_null()
 
 
+func test_online_screen_loads() -> void:
+	var scene := await _load_and_run("res://scenes/online_screen.tscn")
+	assert_object(scene).is_not_null()
+	assert_str(scene._name_input.placeholder_text).is_equal("TYPE A NAME")
+
+
+func test_lobby_screen_loads_and_draws_a_room() -> void:
+	var scene := await _load_and_run("res://scenes/lobby_screen.tscn")
+	var room := {
+		"code": "ABCD", "phase": "lobby", "host_seat": 0, "you_seat": 0,
+		"options": {"difficulty": "medium", "speed": "normal"},
+		"seats": [
+			{"seat": 0, "kind": "human", "name": "ME", "connected": true, "bot_playing": false},
+			{"seat": 1, "kind": "human", "name": "FRIEND", "connected": false, "bot_playing": false},
+			{"seat": 2, "kind": "bot", "name": "ACE", "connected": false, "bot_playing": true},
+			{"seat": 3, "kind": "empty", "name": "", "connected": false, "bot_playing": false},
+		],
+	}
+	scene._refresh(room)
+	assert_int(scene._rows.get_child_count()).is_equal(4)
+	assert_bool(scene._start.disabled).is_false()  # host with 3 seats filled
+	room["you_seat"] = 1
+	scene._refresh(room)
+	assert_bool(scene._start.disabled).is_true()  # not the host
+
+
 func test_game_table_loads_and_shows_every_seat(players: int, test_parameters := [[3], [5], [8]]) -> void:
 	SessionConfig.player_count = players
 	var scene := await _load_and_run("res://scenes/game_table.tscn")

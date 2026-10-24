@@ -1,0 +1,11 @@
+# Railway config-as-code for the online game server.
+# In the Railway dashboard set this service's Root Directory to apps/games/01-shah-game-redesign.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

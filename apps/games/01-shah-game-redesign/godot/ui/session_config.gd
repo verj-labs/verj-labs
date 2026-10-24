@@ -6,6 +6,8 @@ const MIN_PLAYERS := 3
 const MAX_PLAYERS := 8
 
 static var player_count: int = 4
+## Set by the online lobby just before the table opens; the table takes it over (and clears it).
+static var online_source: TableSource = null
 static var difficulty: int = Bot.Difficulty.MEDIUM
 
 enum Speed { SLOW, NORMAL, FAST }

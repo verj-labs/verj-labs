@@ -2,6 +2,7 @@ extends Control
 ## Title screen: an arcade attract mode with a big logo, floating cards and a blinking prompt.
 
 const SETUP_SCENE := "res://scenes/setup_screen.tscn"
+const ONLINE_SCENE := "res://scenes/online_screen.tscn"
 const RULES_TEXT := "Be first to empty your hand.
 
 - Play a set of equal cards: single, double, triple or quad.
@@ -33,6 +34,9 @@ func _ready() -> void:
 	var start := ArcadeButton.make("START GAME", ArcadeButton.Kind.PRIMARY, 4)
 	start.pressed.connect(func() -> void: get_tree().change_scene_to_file(SETUP_SCENE))
 	column.add_child(start)
+	var online := ArcadeButton.make("PLAY ONLINE", ArcadeButton.Kind.SECONDARY, 3)
+	online.pressed.connect(func() -> void: get_tree().change_scene_to_file(ONLINE_SCENE))
+	column.add_child(online)
 	var how_to := ArcadeButton.make("HOW TO PLAY")
 	how_to.pressed.connect(_show_rules)
 	column.add_child(how_to)

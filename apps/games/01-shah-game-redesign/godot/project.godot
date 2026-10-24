@@ -13,6 +13,7 @@ run/main_scene="res://scenes/main_menu.tscn"
 [autoload]
 
 AudioDirector="*res://ui/audio_director.gd"
+Online="*res://online/online_client.gd"
 
 [display]
 

@@ -15,13 +15,20 @@ const BOB := 5.0
 var pile_view: PileView
 var _seat_views: Array[SeatView] = []
 var _player_count: int = 0
+var _my_seat: int = 0
 var _current: int = -1
 var _direction: int = Direction.CLOCKWISE
 var _time: float = 0.0
 
 
-func setup(player_count: int, names: Array) -> void:
+func is_built() -> bool:
+	return _player_count > 0
+
+
+## `my_seat` is drawn at the bottom; everyone else is placed around you in seat order.
+func setup(player_count: int, names: Array, my_seat: int = 0) -> void:
 	_player_count = player_count
+	_my_seat = maxi(my_seat, 0)
 	for seat in player_count:
 		var view := SeatView.new()
 		view.size = SEAT_SIZE
@@ -71,11 +78,16 @@ func _oval_point(t: float, scale_factor: float = 1.0) -> Vector2:
 	return size / 2.0 + Vector2(-radii.x * sin(t), radii.y * cos(t))
 
 
+## How many places clockwise from the bottom seat (you) this seat sits.
+func _slot(seat: int) -> int:
+	return posmod(seat - _my_seat, _player_count)
+
+
 func _layout() -> void:
 	if _player_count == 0:
 		return
 	for seat in _player_count:
-		_seat_views[seat].position = _oval_point(TAU * seat / _player_count) - SEAT_SIZE / 2.0
+		_seat_views[seat].position = _oval_point(TAU * _slot(seat) / _player_count) - SEAT_SIZE / 2.0
 	pile_view.position = size / 2.0 - pile_view.size / 2.0
 	queue_redraw()
 
@@ -113,7 +125,7 @@ func _draw_felt() -> void:
 
 ## Arrow on the stretch of oval between `seat` and the next seat clockwise.
 func _draw_arrow(seat: int) -> void:
-	var t := TAU * (seat + 0.5) / _player_count
+	var t := TAU * (_slot(seat) + 0.5) / _player_count
 	var radii := _radii()
 	var tangent := Vector2(-radii.x * cos(t), -radii.y * sin(t)).normalized()
 	if _direction == Direction.COUNTER_CLOCKWISE:
@@ -139,7 +151,7 @@ func _arrow_is_active(segment_after_seat: int) -> bool:
 
 ## A bobbing triangle just inside the ring, pointing at the player whose turn it is.
 func _draw_pointer() -> void:
-	var seat_middle := _oval_point(TAU * _current / _player_count)
+	var seat_middle := _oval_point(TAU * _slot(_current) / _player_count)
 	var toward_centre := (size / 2.0 - seat_middle).normalized()
 	var half := SEAT_SIZE / 2.0
 	var reach := minf(half.x / maxf(absf(toward_centre.x), 0.001), half.y / maxf(absf(toward_centre.y), 0.001))

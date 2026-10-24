@@ -35,3 +35,23 @@ static func _evaluate_normal(pile: Play, play: Play) -> PlayResult:
 	if play.strength() == pile.strength():
 		return PlayResult.allowed(PlayResult.Effect.SKIP)
 	return PlayResult.allowed(PlayResult.Effect.NONE)
+
+
+## One representative play for every rank and set size in `hand` that is legal on `pile`.
+## (Which suits are used does not matter to the rules.)
+static func legal_plays(hand: Array, pile: Play) -> Array[Play]:
+	var by_rank := {}
+	for card: Card in hand:
+		if not by_rank.has(card.rank):
+			by_rank[card.rank] = [] as Array[Card]
+		by_rank[card.rank].append(card)
+	var ranks := by_rank.keys()
+	ranks.sort()
+	var result: Array[Play] = []
+	for rank: int in ranks:
+		var group: Array = by_rank[rank]
+		for size in range(Play.MIN_SIZE, mini(group.size(), Play.MAX_SIZE) + 1):
+			var candidate := Play.from_cards(group.slice(0, size))
+			if evaluate(pile, candidate).legal:
+				result.append(candidate)
+	return result

@@ -10,11 +10,11 @@ const SEAT_START_SCALE := 0.5
 const THROW_SECONDS := 0.45
 const THROW_STAGGER := 0.07
 const SHRUNK_SCALE := 0.18
-const MOVE_SECONDS := 0.75
-const MOVE_STAGGER := 0.14
-const INTRO_SECONDS := 1.2
-const STEP_PAUSE := 0.45
-const FINISH_PAUSE := 0.4
+const MOVE_SECONDS := ExchangeTiming.MOVE_SECONDS
+const MOVE_STAGGER := ExchangeTiming.MOVE_STAGGER
+const INTRO_SECONDS := ExchangeTiming.INTRO_SECONDS
+const STEP_PAUSE := ExchangeTiming.STEP_PAUSE
+const FINISH_PAUSE := ExchangeTiming.FINISH_PAUSE
 
 var human_seat: int = 0
 
@@ -35,8 +35,7 @@ static func exchange_seconds(transfers: Array[Dictionary], human_seat: int) -> f
 	for transfer in transfers:
 		if transfer["from"] == human_seat or transfer["to"] == human_seat:
 			mine += 1
-	var one_step := MOVE_SECONDS + MOVE_STAGGER * 2 + STEP_PAUSE
-	return INTRO_SECONDS + mine * one_step + FINISH_PAUSE
+	return ExchangeTiming.seconds(mine)
 
 
 ## Cards fly from where they were played (a seat, or the exact cards in your hand) to the pile.
@@ -116,9 +115,10 @@ func _receive_into_hand(transfer: Dictionary, working: Array[Card]) -> void:
 
 ## Exchange between two other players: face-down cards hop from seat to seat.
 func _fly_between_seats(transfer: Dictionary) -> void:
-	var cards: Array = transfer["cards"]
-	for i in cards.size():
-		_layer.fly(cards[i], true, _ring.seat_center(transfer["from"]), _ring.seat_center(transfer["to"]), PILE_CARD, SEAT_START_SCALE, SHRUNK_SCALE, MOVE_SECONDS, i * MOVE_STAGGER, true)
+	# Online, cards between two other players are hidden from us: only a count is sent.
+	var count: int = transfer["count"] if transfer.has("count") else (transfer["cards"] as Array).size()
+	for i in count:
+		_layer.fly(null, true, _ring.seat_center(transfer["from"]), _ring.seat_center(transfer["to"]), PILE_CARD, SEAT_START_SCALE, SHRUNK_SCALE, MOVE_SECONDS, i * MOVE_STAGGER, true)
 		AudioDirector.play_sfx_after(i * MOVE_STAGGER, "swoosh_out", 0.08, -9.0)
 
 

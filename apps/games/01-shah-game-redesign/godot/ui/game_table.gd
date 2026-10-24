@@ -5,14 +5,15 @@ extends Control
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const BOT_NAMES := ["YOU", "ACE", "DUKE", "MIMI", "ROCCO", "ZED", "LOLA", "KIKO"]
-const HUMAN := TableController.HUMAN_SEAT
 const LOG_LINES := 3
 const RESET_NOTES := ["", "A 2 RESETS", "TWO 2S: RESET!", "THREE 2S: RESET!", "FOUR 2S: RESET!"]
 const ORDINALS := ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH"]
 const PLACE_COLORS := [Palette.YELLOW, Palette.CREAM, Palette.ORANGE]
 const SHAKE_SECONDS := 0.28
 
-var controller: TableController
+var controller: TableSource
+## Your seat (seat 0 in single player).
+var _me: int = 0
 
 var _world: Control
 var _top: Control
@@ -31,6 +32,8 @@ var _pass_button: ArcadeButton
 var _overlay: Control
 var _overlay_title: ShadowLabel
 var _overlay_rows: VBoxContainer
+var _next_button: ArcadeButton
+var _connection_banner: Label
 
 var _log: Array[String] = []
 ## While set, the middle keeps showing the play that just won a round (or reset the pile).
@@ -50,11 +53,9 @@ func _ready() -> void:
 	_build_layout()
 	_build_overlay()
 	add_child(CrtOverlay.new())
-	controller = TableController.new()
+	controller = _make_source()
+	_me = controller.human_seat
 	add_child(controller)
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	controller.setup(SessionConfig.player_count, SessionConfig.difficulty, rng)
 	controller.think_time = SessionConfig.think_seconds()
 	controller.turn_seconds = SessionConfig.turn_seconds()
 	controller.timed_out.connect(_on_timed_out)
@@ -63,15 +64,33 @@ func _ready() -> void:
 	controller.state_changed.connect(_refresh)
 	controller.move_made.connect(_on_move_made)
 	controller.game_finished.connect(_on_game_finished)
-	_ring.setup(SessionConfig.player_count, BOT_NAMES)
+	controller.move_rejected.connect(_on_move_rejected)
+	controller.connection_changed.connect(_on_connection_changed)
 	_fx = TableFx.new()
 	add_child(_fx)
 	_fx.setup(_layer, _ring, _hand)
+	_fx.human_seat = _me
 	controller.start_next_game()
 
 
+## An online match hands over its source through SessionConfig; otherwise this is a local game.
+func _make_source() -> TableSource:
+	if SessionConfig.online_source != null:
+		var online: TableSource = SessionConfig.online_source
+		SessionConfig.online_source = null  # the table owns it now
+		return online
+	var local := TableController.new()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var seat_names: Array[String] = []
+	seat_names.assign(BOT_NAMES.slice(0, SessionConfig.player_count))
+	local.names = seat_names
+	local.setup(SessionConfig.player_count, SessionConfig.difficulty, rng)
+	return local
+
+
 func _process(_delta: float) -> void:
-	if controller == null or controller.game == null:
+	if controller == null or controller.state == null:
 		return
 	var my_turn := controller.is_human_turn()
 	_timer_bar.show_time(my_turn, controller.time_left / controller.turn_seconds)
@@ -133,7 +152,7 @@ func _build_header() -> Control:
 	var menu := ArcadeButton.make("MENU", ArcadeButton.Kind.SECONDARY, 2)
 	menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	menu.custom_minimum_size.y = 56
-	menu.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
+	menu.pressed.connect(_leave_to_menu)
 	row.add_child(menu)
 	_game_label = UIKit.pixel_label("", 3, Palette.CREAM)
 	_game_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -199,49 +218,50 @@ func _build_overlay() -> void:
 	_overlay_rows = VBoxContainer.new()
 	_overlay_rows.add_theme_constant_override("separation", 8)
 	column.add_child(_overlay_rows)
-	var next := ArcadeButton.make("NEXT GAME", ArcadeButton.Kind.PRIMARY, 3)
-	next.pressed.connect(func() -> void: controller.start_next_game())
-	column.add_child(next)
+	_next_button = ArcadeButton.make("NEXT GAME", ArcadeButton.Kind.PRIMARY, 3)
+	_next_button.pressed.connect(func() -> void: controller.start_next_game())
+	column.add_child(_next_button)
 	var menu := ArcadeButton.make("MENU", ArcadeButton.Kind.SECONDARY, 3)
-	menu.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
+	menu.pressed.connect(_leave_to_menu)
 	column.add_child(menu)
 
 
 # --- reacting to the game -----------------------------------------------------------
 
 func _on_game_started() -> void:
+	if not _ring.is_built():
+		_ring.setup(controller.state.player_count, controller.state.names, _me)
 	_overlay.visible = false
 	_release_hold()
 	_hand.clear_selection()
 	_chain_seat = -1
 	_log.clear()
 	_refresh_log()
-	_game_label.text = "GAME %d" % controller.match_session.games_played
-	var transfers := controller.match_session.last_transfers
+	_game_label.text = "GAME %d" % controller.state.game_number
+	var transfers := controller.exchange_transfers
 	if transfers.is_empty():
 		return
 	_exchange_active = true
-	controller.hold_for(TableFx.exchange_seconds(transfers, HUMAN))
+	controller.hold_for(TableFx.exchange_seconds(transfers, _me))
 	_run_exchange(transfers)
 
 
 func _run_exchange(transfers: Array[Dictionary]) -> void:
 	_show_toast("EXCHANGE!", Palette.YELLOW, 8)
-	var dealt: Array[Card] = controller.match_session.dealt_hands[HUMAN]
-	await _fx.run_exchange(transfers, dealt, controller.game.hand_of(HUMAN))
+	await _fx.run_exchange(transfers, controller.dealt_hand, controller.state.my_hand)
 	if not is_inside_tree():
 		return
 	_exchange_active = false
 	for transfer in transfers:
-		if transfer["from"] == HUMAN:
+		if transfer["from"] == _me:
 			_add_log("You gave %s to %s" % [_codes(transfer["cards"]), _name(transfer["to"])])
-		elif transfer["to"] == HUMAN:
+		elif transfer["to"] == _me:
 			_add_log("%s gave you %s" % [_name(transfer["from"]), _codes(transfer["cards"])])
 	_refresh()
 
 
 func _on_game_finished(ranking: Array[int]) -> void:
-	var you_won := ranking[0] == HUMAN
+	var you_won := ranking[0] == _me
 	_overlay_title.set_text("YOU WIN!" if you_won else "GAME OVER")
 	_overlay_title.set_colors(Palette.LIME if you_won else Palette.RED, Palette.BG_DEEP)
 	for row in _overlay_rows.get_children():
@@ -249,6 +269,9 @@ func _on_game_finished(ranking: Array[int]) -> void:
 		row.queue_free()
 	for place in ranking.size():
 		_overlay_rows.add_child(_ranking_row(place, ranking[place]))
+	var can_continue := controller.can_start_next_game()
+	_next_button.disabled = not can_continue
+	_next_button.text = "NEXT GAME" if can_continue else "WAITING FOR HOST"
 	AudioDirector.play_sfx("win" if you_won else "game_over")
 	if you_won:
 		_celebrate()
@@ -267,7 +290,7 @@ func _ranking_row(place: int, seat: int) -> Control:
 	chip.custom_minimum_size = Vector2(22, 22)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(chip)
-	var player_name := UIKit.pixel_label(_name(seat), 3, Palette.CREAM if seat != HUMAN else Palette.CYAN)
+	var player_name := UIKit.pixel_label(_name(seat), 3, Palette.CREAM if seat != _me else Palette.CYAN)
 	player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.add_child(player_name)
 	return row
@@ -276,14 +299,14 @@ func _ranking_row(place: int, seat: int) -> Control:
 func _on_move_made(seat: int, play: Play, result: MoveResult) -> void:
 	_release_hold()
 	_log_move(seat, play, result)
-	if seat == HUMAN:
+	if seat == _me:
 		_hand.clear_selection()
 	if play == null:
 		_chain_seat = -1
 		_announce(seat, null, result)
 		return
 	var origins: Array[Vector2] = []
-	if seat == HUMAN:
+	if seat == _me:
 		origins = _pending_origins
 	_pending_origins = []
 	_flights += 1
@@ -313,6 +336,26 @@ func _announce(seat: int, play: Play, result: MoveResult) -> void:
 	if result.round_won_by >= 0:
 		var shown := play if play != null else _shown_pile
 		_hold(shown, "%s TOOK THE ROUND" % _name(result.round_won_by), controller.round_end_hold())
+
+
+func _leave_to_menu() -> void:
+	controller.leave()
+	get_tree().change_scene_to_file(MENU_SCENE)
+
+
+## The server refused a move: forget the pending animation and say why.
+func _on_move_rejected(reason: String) -> void:
+	_pending_origins = []
+	_hint.text = reason.to_upper()
+	_hint.add_theme_color_override("font_color", Palette.RED)
+
+
+func _on_connection_changed(connected: bool) -> void:
+	if _connection_banner == null:
+		_connection_banner = UIKit.pixel_label("RECONNECTING...", 3, Palette.ORANGE)
+		_connection_banner.position = Vector2(150, 90)
+		_top.add_child(_connection_banner)
+	_connection_banner.visible = not connected
 
 
 func _on_timed_out() -> void:
@@ -345,14 +388,18 @@ func _on_play_pressed() -> void:
 # --- drawing the current state ------------------------------------------------------
 
 func _refresh() -> void:
-	var game := controller.game
-	_ring.set_turn(game.current_player, game.direction)
-	_direction_label.text = "CLOCKWISE" if game.direction == Direction.CLOCKWISE else "REVERSE"
+	var state := controller.state
+	if state == null:
+		return
+	if not _ring.is_built():
+		_ring.setup(state.player_count, state.names, _me)
+	_ring.set_turn(state.current_player, state.direction)
+	_direction_label.text = "CLOCKWISE" if state.direction == Direction.CLOCKWISE else "REVERSE"
 	if not _exchange_active:
-		_hand.set_cards(game.hand_of(HUMAN))
+		_hand.set_cards(state.my_hand)
 	_hand.interactive = controller.is_human_turn() and not _exchange_active
 	_refresh_pile()
-	for seat in game.player_count:
+	for seat in state.player_count:
 		_refresh_seat(seat)
 	_refresh_buttons()
 
@@ -360,69 +407,71 @@ func _refresh() -> void:
 func _refresh_pile() -> void:
 	if _flights > 0:
 		return
-	var game := controller.game
+	var state := controller.state
 	if _held_play != null:
 		_ring.pile_view.show_pile(_held_play, "", _held_note)
 		return
-	if game.pile != null:
-		_shown_pile = game.pile
-	_ring.pile_view.show_pile(game.pile, _name(game.pile_owner) if game.pile_owner >= 0 else "")
+	if state.pile != null:
+		_shown_pile = state.pile
+	_ring.pile_view.show_pile(state.pile, _name(state.pile_owner) if state.pile_owner >= 0 else "")
 
 
 func _refresh_seat(seat: int) -> void:
-	var game := controller.game
-	var out := game.is_finished(seat)
-	var skipped := game.is_skipped(seat)
-	var is_turn := seat == game.current_player
+	var state := controller.state
+	var out := state.is_finished(seat)
+	var skipped := state.is_skipped(seat)
+	var is_turn := seat == state.current_player
 	var status := ""
 	var mode := "idle"
 	if out:
-		status = "OUT #%d" % (game.finished.find(seat) + 1)
+		status = "OUT #%d" % (state.finished.find(seat) + 1)
 		mode = "out"
 	elif is_turn and skipped:
 		status = "LAST CHANCE!"
 		mode = "last_chance"
 	elif is_turn:
-		status = "YOUR TURN" if seat == HUMAN else "Thinking..."
+		status = "YOUR TURN" if seat == _me else "Thinking..."
 		mode = "turn"
 	elif skipped:
 		status = "SKIPPED"
 		mode = "skipped"
-	elif game.has_declined(seat):
+	elif state.has_declined(seat):
 		status = "Passed"
-	elif seat == game.pile_owner:
+	elif seat == state.pile_owner:
 		status = "On top"
-	_ring.seat_view(seat).refresh(game.hand_of(seat).size(), status, mode)
+	_ring.seat_view(seat).refresh(state.hand_size(seat), status, mode)
 
 
 func _refresh_buttons() -> void:
-	var game := controller.game
+	var state := controller.state
+	if state == null:
+		return
 	var my_turn := controller.is_human_turn() and not _exchange_active
-	var nothing_playable := my_turn and game.pile != null and game.view_for(HUMAN).legal_plays.is_empty()
-	_pass_button.disabled = not (my_turn and game.pile != null)
+	var nothing_playable := my_turn and state.pile != null and state.legal_plays().is_empty()
+	_pass_button.disabled = not (my_turn and state.pile != null)
 	_pass_button.set_kind(ArcadeButton.Kind.PRIMARY if nothing_playable else ArcadeButton.Kind.SECONDARY, 3)
 	var chosen := _hand.selected_cards()
 	var verdict := _check_selection(chosen)
 	_play_button.disabled = not (my_turn and verdict == "")
 	_hint.add_theme_color_override("font_color", Palette.CYAN)
-	_hint.text = _hint_text(game, my_turn, nothing_playable, chosen, verdict)
+	_hint.text = _hint_text(state, my_turn, nothing_playable, chosen, verdict)
 
 
-func _hint_text(game: Game, my_turn: bool, nothing_playable: bool, chosen: Array[Card], verdict: String) -> String:
+func _hint_text(state: TableState, my_turn: bool, nothing_playable: bool, chosen: Array[Card], verdict: String) -> String:
 	if _exchange_active:
 		return "SWAPPING CARDS..."
-	if game.is_over():
+	if state.is_over():
 		return ""
-	if game.is_finished(HUMAN):
+	if state.is_finished(_me):
 		return "YOU'RE OUT! WATCHING THE REST..."
 	if not my_turn:
-		return "%s IS THINKING..." % _name(game.current_player)
+		return "%s IS THINKING..." % _name(state.current_player)
 	if nothing_playable:
 		return "NOTHING TO PLAY: PRESS PASS"
 	if chosen.is_empty():
-		if game.is_skipped(HUMAN):
+		if state.is_skipped(_me):
 			return "SKIPPED! LAST CHANCE: PLAY OR PASS"
-		return "YOUR TURN: LEAD ANYTHING" if game.pile == null else "YOUR TURN: BEAT THE PILE OR PASS"
+		return "YOUR TURN: LEAD ANYTHING" if state.pile == null else "YOUR TURN: BEAT THE PILE OR PASS"
 	return verdict.to_upper() if verdict != "" else "READY TO PLAY!"
 
 
@@ -430,7 +479,7 @@ func _hint_text(game: Game, my_turn: bool, nothing_playable: bool, chosen: Array
 func _check_selection(chosen: Array[Card]) -> String:
 	if chosen.is_empty():
 		return "pick cards"
-	var verdict := controller.game.evaluate(Play.from_cards(chosen))
+	var verdict := controller.state.evaluate(Play.from_cards(chosen))
 	return "" if verdict.legal else _explain(verdict.reason)
 
 
@@ -449,6 +498,8 @@ func _explain(reason: String) -> String:
 # --- effects and small helpers -------------------------------------------------------
 
 func _name(seat: int) -> String:
+	if controller != null and controller.state != null and seat < controller.state.names.size():
+		return controller.state.names[seat]
 	return BOT_NAMES[seat]
 
 

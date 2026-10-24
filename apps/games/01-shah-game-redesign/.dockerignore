@@ -1,0 +1,7 @@
+godot/.godot/
+godot/reports/
+godot/builds/
+godot/tests/
+godot/addons/gdUnit4/
+docs/
+tools/

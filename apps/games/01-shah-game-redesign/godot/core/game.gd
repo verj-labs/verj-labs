@@ -65,6 +65,22 @@ func has_declined(player: int) -> bool:
 	return _declined.has(player)
 
 
+## The most recently skipped player who has not had a turn since, or -1.
+func skipped_player() -> int:
+	for seat in _skipped:
+		return seat
+	return -1
+
+
+## Seats that have passed since the last play on the table.
+func declined_players() -> Array[int]:
+	var result: Array[int] = []
+	for seat in _declined:
+		result.append(seat)
+	result.sort()
+	return result
+
+
 ## True if the player was skipped and has not had a turn since.
 func is_skipped(player: int) -> bool:
 	return _skipped.has(player)
@@ -150,23 +166,8 @@ func pass_turn(player: int) -> MoveResult:
 
 
 ## One representative play for every rank and set size the player can legally make now.
-## (Which suits are used does not matter to the rules.)
 func legal_plays(player: int) -> Array[Play]:
-	var by_rank := {}
-	for card in hand_of(player):
-		if not by_rank.has(card.rank):
-			by_rank[card.rank] = [] as Array[Card]
-		by_rank[card.rank].append(card)
-	var ranks := by_rank.keys()
-	ranks.sort()
-	var result: Array[Play] = []
-	for rank: int in ranks:
-		var group: Array = by_rank[rank]
-		for size in range(Play.MIN_SIZE, mini(group.size(), Play.MAX_SIZE) + 1):
-			var candidate := Play.from_cards(group.slice(0, size))
-			if evaluate(candidate).legal:
-				result.append(candidate)
-	return result
+	return PlayRules.legal_plays(hand_of(player), pile)
 
 
 ## What `player` can see right now. Hand cards are shared objects, never edit them.

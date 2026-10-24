@@ -15,7 +15,6 @@ const MUSIC_NAME := "music"
 const MUSIC_DB := -17.0
 const SFX_DB := -5.0
 const POOL_SIZE := 12
-const SETTINGS_PATH := "user://settings.cfg"
 
 var music_enabled: bool = true
 var sfx_enabled: bool = true
@@ -26,6 +25,8 @@ var _streams: Dictionary = {}
 
 
 func _ready() -> void:
+	if "--server" in OS.get_cmdline_user_args():
+		return  # the online game server plays no sound, so it loads none
 	for sfx_name: String in SFX_NAMES:
 		_streams[sfx_name] = load(AUDIO_DIR + sfx_name + ".wav")
 	var music: AudioStreamWAV = load(AUDIO_DIR + MUSIC_NAME + ".wav")
@@ -46,6 +47,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if _music_player == null:
+		return
 	# Let go of the sounds so Godot does not report them as leaked at shutdown.
 	_music_player.stream = null
 	for player in _pool:
@@ -93,10 +96,12 @@ func set_sfx_enabled(value: bool) -> void:
 
 
 func is_music_playing() -> bool:
-	return _music_player.playing
+	return _music_player != null and _music_player.playing
 
 
 func _apply_music() -> void:
+	if _music_player == null:
+		return
 	if music_enabled and not _music_player.playing:
 		_music_player.play()
 	elif not music_enabled:
@@ -111,14 +116,10 @@ func _free_player() -> AudioStreamPlayer:
 
 
 func _load_settings() -> void:
-	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) == OK:
-		music_enabled = config.get_value("audio", "music", true)
-		sfx_enabled = config.get_value("audio", "sfx", true)
+	music_enabled = Settings.read("audio", "music", true)
+	sfx_enabled = Settings.read("audio", "sfx", true)
 
 
 func _save_settings() -> void:
-	var config := ConfigFile.new()
-	config.set_value("audio", "music", music_enabled)
-	config.set_value("audio", "sfx", sfx_enabled)
-	config.save(SETTINGS_PATH)
+	Settings.write("audio", "music", music_enabled)
+	Settings.write("audio", "sfx", sfx_enabled)
