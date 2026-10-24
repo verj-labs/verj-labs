@@ -31,6 +31,11 @@ A **Match** is a session containing multiple full Games.
 Example:
 - "We played a match of 12 games."
 
+**Match length and scoring (decided by Waqas, 2026-10-24):** a match has a fixed length chosen before it
+starts: **10 or 20 games**. After every game each player scores points for their place: 1st gets
+`players - 1` points, 2nd one fewer, and last gets 0. When the last game ends the player with the most
+points wins the match (ties: most game wins, then lowest seat number). See OPEN_QUESTIONS #13.
+
 ---
 
 ### 2.2 Game
@@ -286,12 +291,14 @@ After the Game ends, players exchange cards based on ranking.
 - second-last gives **one best card** to 2nd place
 
 ### 14.3 Definition of Best/Worst Cards for Exchange
-For exchange purposes, "best" means strongest strategic cards, where `2` is considered extremely valuable.
+For exchange purposes, "best" means the highest-ranked cards, but **a `2` is never exchanged**. The `2` is
+the only way the losing players can win a game back, so the best card anyone can be asked to give is an Ace.
+(Decided by Waqas, 2026-10-24; this replaces the earlier suggestion that 2 was the best exchange card.)
 
-Suggested ranking for exchange evaluation:
+Ranking for exchange evaluation:
 
 Worst → Best:
-`3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2`
+`3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A`  (2s stay in the hand)
 
 ---
 

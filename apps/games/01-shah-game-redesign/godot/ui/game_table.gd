@@ -4,6 +4,7 @@ extends Control
 ## animations in TableFx; this script wires them to the arcade-styled widgets.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
+const LOBBY_SCENE := "res://scenes/lobby_screen.tscn"
 const BOT_NAMES := ["YOU", "ACE", "DUKE", "MIMI", "ROCCO", "ZED", "LOLA", "KIKO"]
 const LOG_LINES := 2
 const RESET_NOTES := ["", "A 2 RESETS", "TWO 2S: RESET!", "THREE 2S: RESET!", "FOUR 2S: RESET!"]
@@ -33,8 +34,10 @@ var _play_button: ArcadeButton
 var _pass_button: ArcadeButton
 var _overlay: Control
 var _overlay_title: ShadowLabel
+var _overlay_subtitle: Label
 var _overlay_rows: VBoxContainer
 var _next_button: ArcadeButton
+var _match_over: bool = false
 var _connection_banner: Label
 
 var _log: Array[String] = []
@@ -66,6 +69,7 @@ func _ready() -> void:
 	controller.state_changed.connect(_refresh)
 	controller.move_made.connect(_on_move_made)
 	controller.game_finished.connect(_on_game_finished)
+	controller.returned_to_lobby.connect(func() -> void: get_tree().change_scene_to_file(LOBBY_SCENE))
 	controller.move_rejected.connect(_on_move_rejected)
 	controller.connection_changed.connect(_on_connection_changed)
 	_fx = TableFx.new()
@@ -217,12 +221,13 @@ func _build_overlay() -> void:
 	panel.add_child(column)
 	_overlay_title = ShadowLabel.new("GAME OVER", 6, Palette.RED, Palette.BG_DEEP)
 	column.add_child(_overlay_title)
-	column.add_child(UIKit.pixel_label("FINAL RANKING", 2, Palette.CYAN))
+	_overlay_subtitle = UIKit.pixel_label("", 2, Palette.CYAN)
+	column.add_child(_overlay_subtitle)
 	_overlay_rows = VBoxContainer.new()
 	_overlay_rows.add_theme_constant_override("separation", 8)
 	column.add_child(_overlay_rows)
 	_next_button = ArcadeButton.make("NEXT GAME", ArcadeButton.Kind.PRIMARY, 3)
-	_next_button.pressed.connect(func() -> void: controller.start_next_game())
+	_next_button.pressed.connect(_on_next_pressed)
 	column.add_child(_next_button)
 	var menu := ArcadeButton.make("MENU", ArcadeButton.Kind.SECONDARY, 3)
 	menu.pressed.connect(_leave_to_menu)
@@ -240,7 +245,8 @@ func _on_game_started() -> void:
 	_chain_seat = -1
 	_log.clear()
 	_refresh_log()
-	_game_label.text = "GAME %d" % controller.state.game_number
+	_match_over = false
+	_game_label.text = _game_title()
 	var transfers := controller.exchange_transfers
 	if transfers.is_empty():
 		return
@@ -265,37 +271,92 @@ func _run_exchange(transfers: Array[Dictionary]) -> void:
 
 func _on_game_finished(ranking: Array[int]) -> void:
 	var you_won := ranking[0] == _me
-	_overlay_title.set_text("YOU WIN!" if you_won else "GAME OVER")
-	_overlay_title.set_colors(Palette.LIME if you_won else Palette.RED, Palette.BG_DEEP)
+	_match_over = controller.match_over
+	var champion := controller.standings[0] if _match_over and not controller.standings.is_empty() else -1
+	if _match_over:
+		var you_champion := champion == _me
+		_overlay_title.set_text("CHAMPION!" if you_champion else "MATCH OVER")
+		_overlay_title.set_colors(Palette.LIME if you_champion else Palette.YELLOW, Palette.BG_DEEP)
+		_overlay_subtitle.text = "FINAL STANDINGS" if not you_champion else "YOU WON THE MATCH!"
+	else:
+		_overlay_title.set_text("YOU WIN!" if you_won else "GAME OVER")
+		_overlay_title.set_colors(Palette.LIME if you_won else Palette.RED, Palette.BG_DEEP)
+		_overlay_subtitle.text = "GAME %d OF %d" % [controller.state.game_number, controller.total_games]
 	for row in _overlay_rows.get_children():
 		_overlay_rows.remove_child(row)
 		row.queue_free()
-	for place in ranking.size():
-		_overlay_rows.add_child(_ranking_row(place, ranking[place]))
-	var can_continue := controller.can_start_next_game()
-	_next_button.disabled = not can_continue
-	_next_button.text = "NEXT GAME" if can_continue else "WAITING FOR HOST"
-	AudioDirector.play_sfx("win" if you_won else "game_over")
-	if you_won:
+	_overlay_rows.add_child(_result_row("", -1, "GAME" if not _match_over else "", "TOTAL", true))
+	var order: Array[int] = controller.standings if _match_over else ranking
+	for place in order.size():
+		var seat := order[place]
+		var earned := ""
+		if not _match_over:
+			earned = "+%d" % ShahMatch.points_for_place(place, ranking.size())
+		var total := str(controller.scores[seat]) if seat < controller.scores.size() else ""
+		_overlay_rows.add_child(_result_row(ORDINALS[place], seat, earned, total, false, place))
+	_set_next_button()
+	AudioDirector.play_sfx("win" if (you_won and not _match_over) or champion == _me else "game_over")
+	if (you_won and not _match_over) or champion == _me:
 		_celebrate()
 	_overlay.visible = true
 
 
-func _ranking_row(place: int, seat: int) -> Control:
+func _set_next_button() -> void:
+	var can_continue := controller.can_start_next_game()
+	_next_button.disabled = not can_continue
+	if not _match_over:
+		_next_button.text = "NEXT GAME" if can_continue else "WAITING FOR HOST"
+	elif controller is TableController:
+		_next_button.text = "PLAY AGAIN"
+	else:
+		_next_button.text = "BACK TO LOBBY" if can_continue else "WAITING FOR HOST"
+
+
+func _on_next_pressed() -> void:
+	if not _match_over:
+		controller.start_next_game()
+	elif controller is TableController:
+		get_tree().reload_current_scene()
+	else:
+		controller.return_to_lobby()
+
+
+func _game_title() -> String:
+	var state := controller.state
+	if state.total_games > 0:
+		return "GAME %d/%d" % [state.game_number, state.total_games]
+	return "GAME %d" % state.game_number
+
+
+## One line of the results table. `header` rows only show the column titles.
+func _result_row(ordinal: String, seat: int, earned: String, total: String, header: bool, place: int = 0) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 10)
 	var place_color: Color = PLACE_COLORS[place] if place < PLACE_COLORS.size() else Palette.DIM
-	var ordinal := UIKit.pixel_label(ORDINALS[place], 3, place_color)
-	ordinal.custom_minimum_size = Vector2(80, 0)
-	row.add_child(ordinal)
+	var text_scale := 2 if header else 3
+	var ordinal_label := UIKit.pixel_label(ordinal, 3, place_color)
+	ordinal_label.custom_minimum_size = Vector2(56, 0)
+	row.add_child(ordinal_label)
 	var chip := ColorRect.new()
-	chip.color = Palette.seat_color(seat)
-	chip.custom_minimum_size = Vector2(22, 22)
+	chip.color = Palette.seat_color(seat) if seat >= 0 else Color.TRANSPARENT
+	chip.custom_minimum_size = Vector2(20, 20)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(chip)
-	var player_name := UIKit.pixel_label(_name(seat), 3, Palette.CREAM if seat != _me else Palette.CYAN)
-	player_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	row.add_child(player_name)
+	var player_name := _name(seat) if seat >= 0 else ""
+	var name_scale := 3 if PixelFont.text_width(player_name, 3) <= 150 else 2
+	var name_label := UIKit.pixel_label(player_name, name_scale, Palette.CYAN if seat == _me else Palette.CREAM)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	row.add_child(name_label)
+	var earned_label := UIKit.pixel_label(earned, text_scale, Palette.LIME if not header else Palette.DIM)
+	earned_label.custom_minimum_size = Vector2(60, 0)
+	earned_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(earned_label)
+	var total_label := UIKit.pixel_label(total, text_scale, Palette.YELLOW if not header else Palette.DIM)
+	total_label.custom_minimum_size = Vector2(72, 0)
+	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(total_label)
 	return row
 
 

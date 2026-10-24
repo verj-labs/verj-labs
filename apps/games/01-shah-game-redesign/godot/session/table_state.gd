@@ -5,6 +5,8 @@ extends RefCounted
 ## nothing else, so the same screen works for a local game and for an online one.
 
 var game_number: int = 0
+## How many games the match lasts (0 when unknown).
+var total_games: int = 0
 var player_count: int = 0
 ## Your seat, or -1 when nobody at this device is playing (all-bot demos).
 var my_seat: int = -1
@@ -21,9 +23,13 @@ var skipped: int = -1
 var declined: Array[int] = []
 
 
-static func from_game(game: Game, seat: int, p_names: Array[String], p_kinds: Array[String], p_game_number: int) -> TableState:
+static func from_game(
+	game: Game, seat: int, p_names: Array[String], p_kinds: Array[String], p_game_number: int,
+	p_total_games: int = 0
+) -> TableState:
 	var state := TableState.new()
 	state.game_number = p_game_number
+	state.total_games = p_total_games
 	state.player_count = game.player_count
 	state.my_seat = seat
 	state.names = p_names.duplicate()
@@ -78,6 +84,7 @@ func to_dict() -> Dictionary:
 		hand_codes.append(card.to_code())
 	return {
 		"game_number": game_number,
+		"total_games": total_games,
 		"player_count": player_count,
 		"my_seat": my_seat,
 		"names": names,
@@ -106,6 +113,7 @@ static func from_dict(data: Variant) -> TableState:
 			return null
 	var state := TableState.new()
 	state.game_number = int(d["game_number"])
+	state.total_games = int(d.get("total_games", 0))
 	state.player_count = int(d["player_count"])
 	state.my_seat = int(d["my_seat"])
 	if state.player_count < 3 or state.player_count > 8:

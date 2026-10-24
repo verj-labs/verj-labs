@@ -60,6 +60,10 @@ func can_start_next_game() -> bool:
 	return client.is_host()
 
 
+func return_to_lobby() -> void:
+	client.back_to_lobby()
+
+
 func leave() -> void:
 	client.detach_table()
 	client.leave_room()
@@ -89,7 +93,12 @@ func _handle(message: Dictionary) -> void:
 
 
 func _on_room(room: Dictionary) -> void:
+	if _game_over and room.get("phase") == "lobby":
+		returned_to_lobby.emit()
+		return
 	var options: Dictionary = room.get("options", {})
+	if state == null and Protocol.is_games(options.get("games")):
+		total_games = int(options["games"])  # before the first game; the game itself says it after
 	var speed: String = options.get("speed", "normal")
 	if Protocol.is_speed(speed):
 		think_time = Protocol.THINK_SECONDS[speed]
@@ -102,6 +111,8 @@ func _on_game_start(message: Dictionary) -> void:
 		return
 	state = fresh
 	human_seat = fresh.my_seat
+	if fresh.total_games > 0:
+		total_games = fresh.total_games
 	_game_over = false
 	_my_turn = false
 	_last_seq = -1
@@ -157,6 +168,10 @@ func _on_game_over(message: Dictionary) -> void:
 	var ranking: Array[int] = []
 	for seat in message.get("ranking", []):
 		ranking.append(int(seat))
+	scores = _ints_from(message.get("scores", []))
+	standings = _ints_from(message.get("standings", []))
+	match_over = bool(message.get("match_over", false))
+	total_games = int(message.get("total_games", total_games))
 	game_finished.emit(ranking)
 
 
@@ -166,6 +181,13 @@ func _on_server_error(code: String, text: String) -> void:
 		move_rejected.emit(text)
 	elif code == Protocol.E_NOT_YOUR_TURN:
 		move_rejected.emit(code)
+
+
+func _ints_from(raw: Array) -> Array[int]:
+	var values: Array[int] = []
+	for item in raw:
+		values.append(int(item))
+	return values
 
 
 func _cards_from(codes: Array) -> Array[Card]:

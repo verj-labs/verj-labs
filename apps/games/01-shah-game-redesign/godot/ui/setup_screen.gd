@@ -8,12 +8,13 @@ var _count_label: ShadowLabel
 var _count_note: Label
 var _difficulty_buttons: Dictionary = {}
 var _speed_buttons: Dictionary = {}
+var _games_buttons: Dictionary = {}
 var _speed_note: Label
 
 
 func _ready() -> void:
 	var column := UIKit.screen_column(self, 1.0, true)
-	column.add_theme_constant_override("separation", 16)
+	column.add_theme_constant_override("separation", 12)
 	column.add_child(ShadowLabel.new("NEW GAME", 7, Palette.YELLOW, Palette.PINK))
 
 	var players := _section("PLAYERS", column)
@@ -26,6 +27,11 @@ func _ready() -> void:
 		func(value: int) -> String: return BotFactory.difficulty_name(value),
 		func(value: int) -> void: SessionConfig.difficulty = value))
 
+	var length := _section("MATCH LENGTH", column)
+	length.add_child(_build_chip_row(_games_buttons, ShahMatch.GAME_OPTIONS,
+		func(value: int) -> String: return "%d GAMES" % value,
+		func(value: int) -> void: SessionConfig.match_games = value))
+
 	var speed := _section("GAME SPEED", column)
 	speed.add_child(_build_chip_row(_speed_buttons,
 		[SessionConfig.Speed.SLOW, SessionConfig.Speed.NORMAL, SessionConfig.Speed.FAST],
@@ -34,13 +40,13 @@ func _ready() -> void:
 	_speed_note = UIKit.make_label("", 22, Palette.DIM)
 	speed.add_child(_speed_note)
 
-	column.add_child(UIKit.spacer())
+	var footer: Control = column.get_meta("footer")
 	var start := ArcadeButton.make("START", ArcadeButton.Kind.PRIMARY, 4)
 	start.pressed.connect(func() -> void: get_tree().change_scene_to_file(TABLE_SCENE))
-	column.add_child(start)
+	footer.add_child(start)
 	var back := ArcadeButton.make("BACK")
 	back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
-	column.add_child(back)
+	footer.add_child(back)
 
 	add_child(CrtOverlay.new())
 	_refresh()
@@ -103,10 +109,12 @@ func _change_players(delta: int) -> void:
 func _refresh() -> void:
 	_count_label.set_text(str(SessionConfig.player_count))
 	_count_note.text = "You + %d bots" % (SessionConfig.player_count - 1)
-	_speed_note.text = "Bots pause %.1fs per move. You get %d seconds per turn." % [
+	_speed_note.text = "Bots pause %.1fs. You get %ds per turn." % [
 		SessionConfig.think_seconds(), int(SessionConfig.turn_seconds())
 	]
 	for value: int in _difficulty_buttons:
 		(_difficulty_buttons[value] as ArcadeButton).set_selected(value == SessionConfig.difficulty)
+	for value: int in _games_buttons:
+		(_games_buttons[value] as ArcadeButton).set_selected(value == SessionConfig.match_games)
 	for value: int in _speed_buttons:
 		(_speed_buttons[value] as ArcadeButton).set_selected(value == SessionConfig.speed)

@@ -9,6 +9,7 @@ var _code_label: ShadowLabel
 var _rows: VBoxContainer
 var _difficulty_buttons: Dictionary = {}
 var _speed_buttons: Dictionary = {}
+var _games_buttons: Dictionary = {}
 var _add_bot: ArcadeButton
 var _start: ArcadeButton
 var _note: Label
@@ -33,27 +34,32 @@ func _ready() -> void:
 	var skill_row := HBoxContainer.new()
 	skill_row.add_theme_constant_override("separation", 10)
 	for difficulty in ["easy", "medium"]:
-		skill_row.add_child(_option_chip(_difficulty_buttons, difficulty, func() -> void: _send_options(difficulty, Online.room["options"]["speed"])))
+		skill_row.add_child(_option_chip(_difficulty_buttons, difficulty, func() -> void: _send_options({"difficulty": difficulty})))
 	column.add_child(skill_row)
 	var speed_row := HBoxContainer.new()
 	speed_row.add_theme_constant_override("separation", 10)
 	for speed in ["slow", "normal", "fast"]:
-		speed_row.add_child(_option_chip(_speed_buttons, speed, func() -> void: _send_options(Online.room["options"]["difficulty"], speed)))
+		speed_row.add_child(_option_chip(_speed_buttons, speed, func() -> void: _send_options({"speed": speed})))
 	column.add_child(speed_row)
+	var games_row := HBoxContainer.new()
+	games_row.add_theme_constant_override("separation", 10)
+	for games in ShahMatch.GAME_OPTIONS:
+		games_row.add_child(_option_chip(_games_buttons, str(games), func() -> void: _send_options({"games": games}), "%d GAMES" % games))
+	column.add_child(games_row)
 
 	_note = UIKit.make_label("", 22, Palette.DIM)
 	column.add_child(_note)
-	column.add_child(UIKit.spacer())
 
+	var footer: Control = column.get_meta("footer")
 	_add_bot = ArcadeButton.make("ADD BOT", ArcadeButton.Kind.SECONDARY, 3)
 	_add_bot.pressed.connect(func() -> void: Online.add_bot())
-	column.add_child(_add_bot)
+	footer.add_child(_add_bot)
 	_start = ArcadeButton.make("START GAME", ArcadeButton.Kind.PRIMARY, 4)
 	_start.pressed.connect(func() -> void: Online.start_game())
-	column.add_child(_start)
+	footer.add_child(_start)
 	var leave := ArcadeButton.make("LEAVE ROOM")
 	leave.pressed.connect(func() -> void: Online.leave_room())
-	column.add_child(leave)
+	footer.add_child(leave)
 
 	_banner = UIKit.pixel_label("RECONNECTING...", 3, Palette.ORANGE)
 	_banner.visible = false
@@ -80,16 +86,22 @@ func _exit_tree() -> void:
 			pair[0].disconnect(pair[1])
 
 
-func _option_chip(store: Dictionary, value: String, on_press: Callable) -> ArcadeButton:
-	var chip := ArcadeButton.make(value.to_upper(), ArcadeButton.Kind.SECONDARY, 3)
+func _option_chip(store: Dictionary, value: String, on_press: Callable, label: String = "") -> ArcadeButton:
+	var chip := ArcadeButton.make((label if label != "" else value).to_upper(), ArcadeButton.Kind.SECONDARY, 3)
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chip.pressed.connect(on_press)
 	store[value] = chip
 	return chip
 
 
-func _send_options(difficulty: String, speed: String) -> void:
-	Online.set_options(difficulty, speed)
+## Sends the room options with `changes` (any of difficulty, speed, games) applied.
+func _send_options(changes: Dictionary) -> void:
+	var current: Dictionary = Online.room["options"]
+	Online.set_options(
+		changes.get("difficulty", current["difficulty"]),
+		changes.get("speed", current["speed"]),
+		changes.get("games", current.get("games", ShahMatch.DEFAULT_GAMES))
+	)
 
 
 func _refresh(room: Dictionary) -> void:
@@ -107,6 +119,8 @@ func _refresh(room: Dictionary) -> void:
 		_style_chip(_difficulty_buttons[value], value == room["options"]["difficulty"], host)
 	for value: String in _speed_buttons:
 		_style_chip(_speed_buttons[value], value == room["options"]["speed"], host)
+	for value: String in _games_buttons:
+		_style_chip(_games_buttons[value], int(value) == int(room["options"].get("games", ShahMatch.DEFAULT_GAMES)), host)
 	_note.add_theme_color_override("font_color", Palette.DIM)
 	_add_bot.disabled = not host or filled >= Room.MAX_SEATS
 	_start.disabled = not host or filled < Room.MIN_PLAYERS

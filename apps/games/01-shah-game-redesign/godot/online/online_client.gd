@@ -116,8 +116,8 @@ func leave_room() -> void:
 	_send({"type": "leave_room"})
 
 
-func set_options(difficulty: String, speed: String) -> void:
-	_send({"type": "set_options", "difficulty": difficulty, "speed": speed})
+func set_options(difficulty: String, speed: String, games: int = ShahMatch.DEFAULT_GAMES) -> void:
+	_send({"type": "set_options", "difficulty": difficulty, "speed": speed, "games": games})
 
 
 func add_bot() -> void:

@@ -183,6 +183,38 @@ func test_the_table_source_announces_my_turn_with_a_countdown() -> void:
 	assert_float(source.turn_seconds).is_equal(20.0)
 
 
+func test_the_last_game_ends_the_match_and_the_host_returns_everyone_to_the_lobby() -> void:
+	var a := await _signed_in("ANN")
+	var b := await _signed_in("BEN")
+	await _make_room(a, [b], 1)
+	a.start_game()
+	assert_bool(await _until(func() -> bool: return a._pending_game.size() > 0 and b._pending_game.size() > 0)).is_true()
+	_game.room_for_code(a.room["code"]).runner.match_session.max_games = 1
+	var source_a := RemoteTableSource.new(a)
+	var source_b := RemoteTableSource.new(b)
+	for source in [source_a, source_b]:
+		add_child(source)
+		auto_free(source)
+		source.start_next_game()
+	var back := [0, 0]
+	source_a.returned_to_lobby.connect(func() -> void: back[0] += 1)
+	source_b.returned_to_lobby.connect(func() -> void: back[1] += 1)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6
+	var done := await _until(func() -> bool:
+		_autoplay(source_a, rng)
+		_autoplay(source_b, rng)
+		return source_a.match_over and source_b.match_over
+	, 30000)
+	assert_bool(done).is_true()
+	assert_int(source_a.scores.size()).is_equal(3)
+	assert_int(source_a.standings.size()).is_equal(3)
+	assert_int(source_a.total_games).is_equal(1)
+	assert_bool(source_b.can_start_next_game()).is_false()
+	source_a.return_to_lobby()
+	assert_bool(await _until(func() -> bool: return back[0] == 1 and back[1] == 1)).is_true()
+
+
 func test_non_hosts_cannot_start_the_next_game() -> void:
 	var a := await _signed_in("ANN")
 	var b := await _signed_in("BEN")

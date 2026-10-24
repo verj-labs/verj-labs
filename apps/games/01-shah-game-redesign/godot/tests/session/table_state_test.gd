@@ -87,3 +87,13 @@ func test_skipped_and_declined_come_through() -> void:
 	var state := TableState.from_game(game, 0, names, kinds, 1)
 	assert_bool(state.is_skipped(2)).is_true()
 	assert_bool(state.has_declined(0)).is_true()
+
+
+func test_remembers_how_long_the_match_is() -> void:
+	var game := Game.with_hands(TestUtil.hands(["3H 4H 5H", "6H 7H 8H 9H", "10H JH"]), 0)
+	var names: Array[String] = ["A", "B", "C"]
+	var kinds: Array[String] = ["human", "bot", "bot"]
+	var state := TableState.from_game(game, 0, names, kinds, 3, 20)
+	var copy := TableState.from_dict(JSON.parse_string(JSON.stringify(state.to_dict())))
+	assert_int(copy.total_games).is_equal(20)
+	assert_int(copy.game_number).is_equal(3)

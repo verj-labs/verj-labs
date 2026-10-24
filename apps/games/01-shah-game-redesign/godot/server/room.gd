@@ -17,7 +17,7 @@ const PHASE_NAMES := {Phase.LOBBY: "lobby", Phase.PLAYING: "playing", Phase.GAME
 var code: String
 var phase: Phase = Phase.LOBBY
 var host_seat: int = 0
-var options: Dictionary = {"difficulty": "medium", "speed": "normal"}
+var options: Dictionary = {"difficulty": "medium", "speed": "normal", "games": ShahMatch.DEFAULT_GAMES}
 ## Test knobs: override the pacing derived from `options`.
 var think_override: float = -1.0
 var turn_override: float = -1.0
@@ -85,7 +85,7 @@ func session_reconnected(session: Session) -> void:
 			session.send(_update_message(session, {"type": "sync"}))
 		Phase.GAME_OVER:
 			session.send(_update_message(session, {"type": "sync"}))
-			session.send({"type": "game_over", "ranking": runner.game.ranking()})
+			session.send(_game_over_message())
 	_broadcast_room()
 
 
@@ -146,10 +146,11 @@ func _set_options(session: Session, message: Dictionary) -> void:
 		return
 	var difficulty = message.get("difficulty", options["difficulty"])
 	var speed = message.get("speed", options["speed"])
-	if Protocol.difficulty_value(difficulty) < 0 or not Protocol.is_speed(speed):
+	var games = message.get("games", options["games"])
+	if Protocol.difficulty_value(difficulty) < 0 or not Protocol.is_speed(speed) or not Protocol.is_games(games):
 		session.send(Protocol.error(Protocol.E_BAD_MESSAGE, "bad options"))
 		return
-	options = {"difficulty": difficulty, "speed": speed}
+	options = {"difficulty": difficulty, "speed": speed, "games": int(games)}
 	_broadcast_room()
 
 
@@ -203,7 +204,7 @@ func _start_game(session: Session) -> void:
 			humans.append(seat)
 	host_seat = session.seat
 	runner = GameRunner.new()
-	runner.setup(_entries.size(), Protocol.difficulty_value(options["difficulty"]), _rng, humans)
+	runner.setup(_entries.size(), Protocol.difficulty_value(options["difficulty"]), _rng, humans, options["games"])
 	runner.think_time = think_override if think_override >= 0.0 else Protocol.THINK_SECONDS[options["speed"]]
 	runner.turn_seconds = turn_override if turn_override >= 0.0 else Protocol.TURN_SECONDS[options["speed"]]
 	runner.game_started.connect(_on_game_started)
@@ -218,6 +219,9 @@ func _start_game(session: Session) -> void:
 
 func _next_game(session: Session) -> void:
 	if not _require_host(session) or not _require_phase(session, Phase.GAME_OVER):
+		return
+	if runner.match_over():
+		session.send(Protocol.error(Protocol.E_BAD_MESSAGE, "the match is over"))
 		return
 	phase = Phase.PLAYING
 	_broadcast_room()
@@ -312,8 +316,20 @@ func _on_game_finished(ranking: Array[int]) -> void:
 	for entry in _entries:
 		var session: Session = entry["session"]
 		if session != null:
-			session.send({"type": "game_over", "ranking": ranking})
+			session.send(_game_over_message())
 	_broadcast_room()
+
+
+func _game_over_message() -> Dictionary:
+	return {
+		"type": "game_over",
+		"ranking": runner.game.ranking(),
+		"scores": runner.match_session.scores(),
+		"standings": runner.match_session.standings(),
+		"match_over": runner.match_over(),
+		"game_number": runner.games_played(),
+		"total_games": runner.total_games(),
+	}
 
 
 func _send_update(event: Dictionary) -> void:
@@ -337,7 +353,7 @@ func _state_dict(seat: int) -> Dictionary:
 	for index in _entries.size():
 		names.append(_entries[index]["name"])
 		kinds.append("human" if runner.is_human(index) else "bot")
-	return TableState.from_game(runner.game, seat, names, kinds, runner.games_played()).to_dict()
+	return TableState.from_game(runner.game, seat, names, kinds, runner.games_played(), runner.total_games()).to_dict()
 
 
 ## The exchange as `seat` may see it: card identities only if they gave or received them.

@@ -172,3 +172,27 @@ func test_bots_pause_before_moving() -> void:
 	await get_tree().create_timer(0.6).timeout
 	# ...but does after its thinking time.
 	assert_int(controller.game.hand_of(1).size()).is_less(3)
+
+
+func test_the_match_ends_after_its_last_game_with_scores_and_standings() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var controller := TableController.new()
+	add_child(controller)
+	auto_free(controller)
+	controller.think_time = 0.0
+	controller.setup(4, Bot.Difficulty.MEDIUM, rng, -1, 2)
+	var finished := []
+	controller.game_finished.connect(func(_ranking: Array[int]) -> void:
+		finished.append([controller.match_over, controller.scores.duplicate(), controller.standings.duplicate()])
+	)
+	controller.start_next_game()
+	await _wait_for_game_over(controller)
+	assert_bool(finished[0][0]).is_false()
+	controller.start_next_game()
+	await _wait_for_game_over(controller)
+	assert_int(finished.size()).is_equal(2)
+	assert_bool(finished[1][0]).is_true()
+	assert_int(finished[1][1].size()).is_equal(4)
+	assert_int(finished[1][2].size()).is_equal(4)
+	assert_int(controller.state.total_games).is_equal(2)

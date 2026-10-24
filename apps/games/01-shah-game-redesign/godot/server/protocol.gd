@@ -88,6 +88,11 @@ static func is_speed(name: Variant) -> bool:
 	return name is String and THINK_SECONDS.has(name)
 
 
+## Match length in games: one of ShahMatch.GAME_OPTIONS (10 or 20). JSON numbers arrive as floats.
+static func is_games(value: Variant) -> bool:
+	return (value is int or value is float) and ShahMatch.GAME_OPTIONS.has(int(value))
+
+
 static func effect_name(effect: int) -> String:
 	match effect:
 		PlayResult.Effect.SKIP:

@@ -19,12 +19,16 @@ var game: Game:
 		runner.game = value
 
 
-func setup(player_count: int, difficulty: int, rng: RandomNumberGenerator, p_human_seat: int = HUMAN_SEAT) -> void:
+func setup(
+	player_count: int, difficulty: int, rng: RandomNumberGenerator, p_human_seat: int = HUMAN_SEAT,
+	max_games: int = ShahMatch.DEFAULT_GAMES
+) -> void:
 	human_seat = p_human_seat
+	total_games = max_games
 	var humans: Array[int] = []
 	if human_seat >= 0:
 		humans.append(human_seat)
-	runner.setup(player_count, difficulty, rng, humans)
+	runner.setup(player_count, difficulty, rng, humans, max_games)
 	runner.game_started.connect(_on_runner_game_started)
 	runner.state_changed.connect(func() -> void:
 		_sync_from_runner()
@@ -36,10 +40,16 @@ func setup(player_count: int, difficulty: int, rng: RandomNumberGenerator, p_hum
 	)
 	runner.turn_started.connect(func(_seat: int) -> void: human_turn_started.emit())
 	runner.timed_out.connect(func(_seat: int) -> void: timed_out.emit())
-	runner.game_finished.connect(func(ranking: Array[int]) -> void: game_finished.emit(ranking))
+	runner.game_finished.connect(func(ranking: Array[int]) -> void:
+		scores = runner.match_session.scores()
+		standings = runner.match_session.standings()
+		match_over = runner.match_over()
+		game_finished.emit(ranking)
+	)
 
 
 func start_next_game() -> void:
+	match_over = false
 	_push_settings()
 	runner.start_next_game()
 
@@ -99,4 +109,4 @@ func _sync_from_runner() -> void:
 	for seat in runner.game.player_count:
 		seat_names.append(names[seat] if seat < names.size() else "P%d" % (seat + 1))
 		kinds.append("human" if runner.is_human(seat) else "bot")
-	state = TableState.from_game(runner.game, human_seat, seat_names, kinds, runner.games_played())
+	state = TableState.from_game(runner.game, human_seat, seat_names, kinds, runner.games_played(), runner.total_games())

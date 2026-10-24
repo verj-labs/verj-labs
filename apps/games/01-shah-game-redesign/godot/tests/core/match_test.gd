@@ -70,3 +70,60 @@ func _codes(cards: Array) -> Array[String]:
 	for card: Card in cards:
 		result.append(card.to_code())
 	return result
+
+
+# --- match length and scoring ---------------------------------------------------------
+
+func _play_whole_match(match_session: ShahMatch, rng: RandomNumberGenerator) -> void:
+	while not match_session.is_over():
+		var errors: Array[String] = []
+		TestUtil.play_random_game(match_session.start_next_game(), rng, errors)
+		assert_array(errors).is_empty()
+
+
+func test_a_match_is_ten_games_unless_told_otherwise() -> void:
+	assert_int(ShahMatch.new(4, _rng(1)).max_games).is_equal(10)
+	assert_array(ShahMatch.GAME_OPTIONS).is_equal([10, 20])
+
+
+func test_a_match_is_over_only_after_its_last_game_is_played_out() -> void:
+	var rng := _rng(40)
+	var match_session := ShahMatch.new(4, rng, 3)
+	for game_number in 3:
+		assert_bool(match_session.is_over()).is_false()
+		var errors: Array[String] = []
+		var game := match_session.start_next_game()
+		assert_bool(match_session.is_over()).is_false()  # last game started but not finished
+		TestUtil.play_random_game(game, rng, errors)
+	assert_bool(match_session.is_over()).is_true()
+	assert_int(match_session.games_played).is_equal(3)
+
+
+func test_places_earn_points_from_players_minus_one_down_to_zero() -> void:
+	assert_int(ShahMatch.points_for_place(0, 5)).is_equal(4)
+	assert_int(ShahMatch.points_for_place(2, 5)).is_equal(2)
+	assert_int(ShahMatch.points_for_place(4, 5)).is_equal(0)
+
+
+func test_scores_add_up_every_game() -> void:
+	var rng := _rng(41)
+	for players in [3, 5, 8]:
+		var match_session := ShahMatch.new(players, rng, 4)
+		_play_whole_match(match_session, rng)
+		var total := 0
+		for points in match_session.scores():
+			total += points
+		# Every game hands out (n-1) + (n-2) + ... + 0 points.
+		assert_int(total).is_equal(4 * players * (players - 1) / 2)
+		assert_int(match_session.wins().reduce(func(sum: int, wins: int) -> int: return sum + wins, 0)).is_equal(4)
+
+
+func test_standings_put_the_best_first_and_break_ties_by_wins() -> void:
+	var rng := _rng(42)
+	var match_session := ShahMatch.new(3, rng, 2)
+	_play_whole_match(match_session, rng)
+	var standings := match_session.standings()
+	var scores := match_session.scores()
+	assert_int(standings.size()).is_equal(3)
+	for i in range(1, standings.size()):
+		assert_bool(scores[standings[i - 1]] >= scores[standings[i]]).is_true()

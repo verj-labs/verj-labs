@@ -43,8 +43,11 @@ var _extra: float = 0.0
 var _finish_reported: bool = false
 
 
-func setup(player_count: int, difficulty: int, rng: RandomNumberGenerator, human_seats: Array[int]) -> void:
-	match_session = ShahMatch.new(player_count, rng)
+func setup(
+	player_count: int, difficulty: int, rng: RandomNumberGenerator, human_seats: Array[int],
+	max_games: int = ShahMatch.DEFAULT_GAMES
+) -> void:
+	match_session = ShahMatch.new(player_count, rng, max_games)
 	_humans.clear()
 	for seat in human_seats:
 		_humans[seat] = true
@@ -59,6 +62,15 @@ func is_human(seat: int) -> bool:
 
 func games_played() -> int:
 	return match_session.games_played
+
+
+func total_games() -> int:
+	return match_session.max_games
+
+
+## True once the last game of the match is finished.
+func match_over() -> bool:
+	return match_session.is_over()
 
 
 ## Hands the seat to a bot (a player left or dropped). Safe at any time.
@@ -169,6 +181,7 @@ func _after_move(seat: int, play: Play, result: MoveResult) -> void:
 	if game.is_over():
 		if not _finish_reported:
 			_finish_reported = true
+			match_session.record_game()
 			game_finished.emit(game.ranking())
 		return
 	_cooldown = _delay_before(game.current_player)

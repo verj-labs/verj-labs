@@ -486,6 +486,64 @@ func test_back_to_lobby_returns_everyone_to_the_lobby() -> void:
 	assert_str(clients[1].last("room")["phase"]).is_equal("lobby")
 
 
+func _play_out_game(server: GameServer, clients: Array[FakeClient], rng: RandomNumberGenerator, overs_wanted: int) -> void:
+	var steps := 0
+	while clients[0].of_type("game_over").size() < overs_wanted and steps < 20000:
+		steps += 1
+		server.tick(0.1)
+		for client in clients:
+			client.act_randomly(rng)
+
+
+func test_match_length_is_a_room_option_of_ten_or_twenty_games() -> void:
+	var server := _server()
+	var host := FakeClient.connect_to(server, "H")
+	host.say({"type": "create_room"})
+	assert_int(host.last("room")["options"]["games"]).is_equal(10)
+	host.say({"type": "set_options", "games": 20})
+	assert_int(host.last("room")["options"]["games"]).is_equal(20)
+	host.say({"type": "set_options", "games": 15})
+	host.say({"type": "set_options", "games": "lots"})
+	assert_array(host.error_codes()).is_equal([Protocol.E_BAD_MESSAGE, Protocol.E_BAD_MESSAGE])
+	assert_int(host.last("room")["options"]["games"]).is_equal(20)
+
+
+func test_game_over_carries_the_match_scores_and_the_game_count() -> void:
+	var server := _server()
+	var clients := _game(server)
+	assert_int(clients[0].last("game_start")["state"]["total_games"]).is_equal(10)
+	_play_out_game(server, clients, _rng(21), 1)
+	var over := clients[1].last("game_over")
+	assert_int(over["game_number"]).is_equal(1)
+	assert_int(over["total_games"]).is_equal(10)
+	assert_bool(over["match_over"]).is_false()
+	assert_array(over["scores"]).has_size(3)
+	assert_array(over["standings"]).has_size(3)
+	# Winner of game one has the most points (3 players: 2, 1, 0).
+	assert_int(over["scores"][over["ranking"][0]]).is_equal(2)
+	assert_int(over["scores"][over["ranking"][2]]).is_equal(0)
+
+
+func test_after_the_last_game_the_match_is_over_and_only_a_return_to_the_lobby_is_allowed() -> void:
+	var server := _server()
+	var clients := _game(server)
+	var room := server.room_for_code(clients[0].room_code())
+	room.runner.match_session.max_games = 2
+	var rng := _rng(22)
+	_play_out_game(server, clients, rng, 1)
+	assert_bool(clients[0].last("game_over")["match_over"]).is_false()
+	clients[0].say({"type": "next_game"})
+	_play_out_game(server, clients, rng, 2)
+	var over := clients[2].last("game_over")
+	assert_bool(over["match_over"]).is_true()
+	assert_int(over["game_number"]).is_equal(2)
+	clients[0].clear()
+	clients[0].say({"type": "next_game"})
+	assert_array(clients[0].error_codes()).is_equal([Protocol.E_BAD_MESSAGE])
+	clients[0].say({"type": "back_to_lobby"})
+	assert_str(clients[1].last("room")["phase"]).is_equal("lobby")
+
+
 # --- time, drops and reconnects ------------------------------------------------------
 
 func test_running_out_of_time_makes_a_move_for_you() -> void:

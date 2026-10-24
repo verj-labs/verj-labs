@@ -4,8 +4,9 @@ extends RefCounted
 ##
 ## - 1st place gives their 2 worst cards to last place; last place gives their 2 best to 1st.
 ## - With 4+ players, 2nd gives 1 worst to second-last; second-last gives 1 best to 2nd.
-## "Best" = highest strength (3 < ... < A < 2). Ties between equal ranks are broken by suit so
-## the result is always the same.
+## "Best" = highest rank (3 < ... < A). A 2 is never exchanged: it is the only way a loser can
+## win a game back, so the best card anyone can be asked to give is an Ace. Ties between equal
+## ranks are broken by suit so the result is always the same.
 
 const TOP_PAIR_CARDS := 2
 const SECOND_PAIR_CARDS := 1
@@ -35,20 +36,27 @@ static func _swap(
 	transfers.append({"from": low, "to": high, "cards": from_low})
 
 
-## Removes and returns the `amount` best (or worst) cards from `hand`.
+## Removes and returns the `amount` best (or worst) cards from `hand`, never a 2.
 static func _take(hand: Array, amount: int, best: bool) -> Array[Card]:
 	var sorted: Array[Card] = []
-	sorted.assign(hand)
+	var twos: Array[Card] = []
+	for card: Card in hand:
+		if card.is_two():
+			twos.append(card)
+		else:
+			sorted.append(card)
+	assert(sorted.size() >= amount, "a hand always has more non-2 cards than an exchange takes")
 	sorted.sort_custom(_weaker_first)
 	var taken: Array[Card] = []
 	for i in amount:
 		taken.append(sorted.pop_back() if best else sorted.pop_front())
 	hand.clear()
 	hand.append_array(sorted)
+	hand.append_array(twos)
 	return taken
 
 
 static func _weaker_first(a: Card, b: Card) -> bool:
-	if a.strength() != b.strength():
-		return a.strength() < b.strength()
+	if a.rank != b.rank:
+		return a.rank < b.rank
 	return a.suit < b.suit

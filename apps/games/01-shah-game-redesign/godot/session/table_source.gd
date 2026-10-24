@@ -13,6 +13,8 @@ signal human_turn_started
 ## You ran out of time and the move that follows is made for you.
 signal timed_out
 signal game_finished(ranking: Array[int])
+## Online only: the host took everyone back to the room lobby after the match.
+signal returned_to_lobby
 ## The server refused a move you sent (online only; a local game answers immediately).
 signal move_rejected(reason: String)
 ## Online only: the connection dropped (false) or came back (true).
@@ -32,6 +34,13 @@ var time_left: float = 0.0
 var exchange_transfers: Array[Dictionary] = []
 ## Your hand before the exchange.
 var dealt_hand: Array[Card] = []
+## Match score per seat after the latest game, seats best first, and whether that was the last game.
+## Valid when game_finished fires.
+var scores: Array[int] = []
+var standings: Array[int] = []
+var match_over: bool = false
+## How many games the match lasts.
+var total_games: int = ShahMatch.DEFAULT_GAMES
 
 
 func start_next_game() -> void:
@@ -54,6 +63,12 @@ func is_human_turn() -> bool:
 ## Whether you may start the next game (online, only the host can).
 func can_start_next_game() -> bool:
 	return true
+
+
+## After the last game of the match: online, the host takes the room back to its lobby.
+## (Single player starts a fresh match from the screen instead.)
+func return_to_lobby() -> void:
+	pass
 
 
 ## Leaves the match (online: leaves the room). Single player has nothing to do.

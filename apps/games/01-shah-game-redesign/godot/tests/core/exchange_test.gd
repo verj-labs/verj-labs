@@ -14,19 +14,19 @@ func test_first_and_last_swap_two_cards_four_players() -> void:
 	# Ranking: seat 2 won, seat 0 second, seat 3 second-last, seat 1 last.
 	var hands := TestUtil.hands([
 		"4H 9H JH",  # seat 0 (2nd)
-		"3H 5H AH 2S",  # seat 1 (last): best two are 2S and AH
+		"3H 5H AH KS",  # seat 1 (last): best two are AH and KS
 		"3S 4S 10H KH",  # seat 2 (1st): worst two are 3S and 4S
 		"5S 6S QH",  # seat 3 (second-last)
 	])
 	Exchange.apply(hands, [2, 0, 3, 1] as Array[int])
-	assert_array(_codes(hands[2])).contains_exactly(["10H", "2S", "AH", "KH"])
+	assert_array(_codes(hands[2])).contains_exactly(["10H", "AH", "KH", "KS"])
 	assert_array(_codes(hands[1])).contains_exactly(["3H", "3S", "4S", "5H"])
 
 
 func test_second_and_second_last_swap_one_card() -> void:
 	var hands := TestUtil.hands([
 		"4H 9H JH",  # seat 0 (2nd): gives worst (4H)
-		"3H 5H AH 2S",
+		"3H 5H AH KS",
 		"3S 4S 10H KH",
 		"5S 6S QH",  # seat 3 (second-last): gives best (QH)
 	])
@@ -45,12 +45,32 @@ func test_three_players_only_swap_first_and_last() -> void:
 	assert_array(_codes(hands[1])).contains_exactly(["3H", "4H", "8H", "9H"])
 
 
-func test_two_is_the_best_card_for_exchange() -> void:
-	var hands := TestUtil.hands(["3H 4H 5H", "6H 2D 7H AS", "8H 9H 10H", "JH QH KH"])
+func test_a_two_is_never_exchanged() -> void:
+	var hands := TestUtil.hands(["3H 4H 5H", "6H 2D 7H AS 2C", "8H 9H 10H", "JH QH KH"])
 	Exchange.apply(hands, [0, 2, 3, 1] as Array[int])
-	# seat 1 (last) gave 2D and AS to seat 0 (first).
-	assert_bool(_codes(hands[0]).has("2D")).is_true()
-	assert_bool(_codes(hands[0]).has("AS")).is_true()
+	# seat 1 (last) gives its two best cards that are not 2s: AS and 7H. Both 2s stay.
+	assert_array(_codes(hands[0])).contains_exactly(["5H", "7H", "AS"])
+	assert_array(_codes(hands[1])).contains_exactly(["2C", "2D", "3H", "4H", "6H"])
+
+
+func test_random_exchanges_never_move_a_two() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	for players in [3, 4, 5, 6, 7, 8]:
+		for round in 25:
+			var dealt := Dealer.deal(players, rng)
+			var before: Array = dealt["hands"].map(func(hand: Array) -> Array: return hand.duplicate())
+			var ranking: Array[int] = []
+			for seat in players:
+				ranking.append(seat)
+			var transfers := Exchange.apply(dealt["hands"], ranking)
+			for transfer in transfers:
+				for card: Card in transfer["cards"]:
+					assert_bool(card.is_two()).is_false()
+			for seat in players:
+				var twos_before: int = before[seat].filter(func(card: Card) -> bool: return card.is_two()).size()
+				var twos_after: int = dealt["hands"][seat].filter(func(card: Card) -> bool: return card.is_two()).size()
+				assert_int(twos_after).is_equal(twos_before)
 
 
 func test_suit_breaks_ties_so_the_result_is_stable() -> void:

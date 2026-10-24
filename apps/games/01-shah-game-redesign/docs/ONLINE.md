@@ -63,12 +63,12 @@ Every message is an object with a string `type`. Unknown types or malformed fiel
 | `create_room` | | any, not in a room |
 | `join_room` | `code` (4 letters) | any, not in a room, room in lobby |
 | `leave_room` | | in a room |
-| `set_options` | `difficulty` (`easy`/`medium`), `speed` (`slow`/`normal`/`fast`) | host, lobby |
+| `set_options` | `difficulty` (`easy`/`medium`), `speed` (`slow`/`normal`/`fast`), `games` (10 or 20, the match length); any subset | host, lobby |
 | `add_bot` | | host, lobby, free seat |
 | `remove_seat` | `seat` (int) | host, lobby (kicks a human or removes a bot) |
 | `start_game` | | host, lobby, 3-8 seats filled |
-| `next_game` | | host, after `game_over` |
-| `back_to_lobby` | | host, after `game_over` |
+| `next_game` | | host, after `game_over` (refused with `bad_message` once the match's last game is over) |
+| `back_to_lobby` | | host, after `game_over`; the way out after the last game of a match |
 | `play` | `cards` (array of 1-4 card codes like `"7H"`, `"10S"`) | your turn |
 | `pass` | | your turn, pile not empty |
 | `ping` | | any |
@@ -81,7 +81,7 @@ Every message is an object with a string `type`. Unknown types or malformed fiel
 | `room` | `code`, `phase` (`lobby`/`playing`/`game_over`), `host_seat`, `you_seat`, `options`, `seats` (array of `{seat, kind: empty/human/bot, name, connected}`) |
 | `game_start` | `game_number`, `state`, `dealt_hand` (your cards before the exchange), `transfers` |
 | `update` | `seq` (int, increases by 1), `event`, `state`, `turn` |
-| `game_over` | `ranking` (array of seats, 1st first) |
+| `game_over` | `ranking` (array of seats, 1st first), `scores` (match points per seat), `standings` (seats, best first), `match_over` (bool), `game_number`, `total_games` |
 | `left` | `reason` (`left`, `kicked`, `room_closed`). You are no longer in a room. |
 | `error` | `code`, `message` |
 | `pong` | |
@@ -89,7 +89,7 @@ Every message is an object with a string `type`. Unknown types or malformed fiel
 ### `state` (always personal to the receiver)
 
 ```
-{ game_number, player_count, my_seat, names[], kinds[], hand_sizes[], my_hand[],
+{ game_number, total_games, player_count, my_seat, names[], kinds[], hand_sizes[], my_hand[],
   pile: null | [codes], pile_owner (-1 if none), current_player (-1 when over),
   direction (1 clockwise / -1 reverse), finished[], skipped (-1 or seat), declined[] }
 ```
