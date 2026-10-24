@@ -9,6 +9,7 @@ config_version=5
 config/name="Shah Exchange"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 run/main_scene="res://scenes/main_menu.tscn"
+config/icon="res://icon.svg"
 
 [autoload]
 
@@ -17,8 +18,8 @@ Online="*res://online/online_client.gd"
 
 [display]
 
-window/size/viewport_width=720
-window/size/viewport_height=1280
+window/size/viewport_width=540
+window/size/viewport_height=960
 window/size/window_width_override=405
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
@@ -28,6 +29,7 @@ window/handheld/orientation=1
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
+textures/vram_compression/import_etc2_astc=true
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

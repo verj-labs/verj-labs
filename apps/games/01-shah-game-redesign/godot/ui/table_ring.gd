@@ -5,13 +5,15 @@ extends Control
 ## direction of play, the arrow leaving the current player lights up, and a bobbing pointer
 ## marks whose turn it is.
 
-const SEAT_SIZE := Vector2(128, 104)
-const ARROW_SIZE := 10.0
+## The oval is never taller than this multiple of its width, so a tall phone does not stretch it.
+const MAX_ASPECT := 1.2
+const ARROW_SIZE := 12.0
 const RING_SEGMENTS := 72
 const FELT_SCALE := 0.8
-const POINTER_SIZE := 13.0
+const POINTER_SIZE := 16.0
 const BOB := 5.0
 
+var seat_size: Vector2 = SeatView.NORMAL_SIZE
 var pile_view: PileView
 var _seat_views: Array[SeatView] = []
 var _player_count: int = 0
@@ -29,9 +31,10 @@ func is_built() -> bool:
 func setup(player_count: int, names: Array, my_seat: int = 0) -> void:
 	_player_count = player_count
 	_my_seat = maxi(my_seat, 0)
+	seat_size = SeatView.size_for(player_count)
 	for seat in player_count:
-		var view := SeatView.new()
-		view.size = SEAT_SIZE
+		var view := SeatView.new(player_count > 6)
+		view.size = seat_size
 		view.set_seat(seat, names[seat])
 		add_child(view)
 		_seat_views.append(view)
@@ -69,7 +72,9 @@ func _notification(what: int) -> void:
 
 
 func _radii() -> Vector2:
-	return Vector2(maxf((size.x - SEAT_SIZE.x) / 2.0, 1.0), maxf((size.y - SEAT_SIZE.y) / 2.0, 1.0))
+	var radius_x := maxf((size.x - seat_size.x) / 2.0, 1.0)
+	var radius_y := maxf((size.y - seat_size.y) / 2.0, 1.0)
+	return Vector2(radius_x, minf(radius_y, radius_x * MAX_ASPECT))
 
 
 ## Point on an oval for angle `t` (0 = bottom, growing clockwise on screen).
@@ -87,7 +92,7 @@ func _layout() -> void:
 	if _player_count == 0:
 		return
 	for seat in _player_count:
-		_seat_views[seat].position = _oval_point(TAU * _slot(seat) / _player_count) - SEAT_SIZE / 2.0
+		_seat_views[seat].position = _oval_point(TAU * _slot(seat) / _player_count) - seat_size / 2.0
 	pile_view.position = size / 2.0 - pile_view.size / 2.0
 	queue_redraw()
 
@@ -153,7 +158,7 @@ func _arrow_is_active(segment_after_seat: int) -> bool:
 func _draw_pointer() -> void:
 	var seat_middle := _oval_point(TAU * _slot(_current) / _player_count)
 	var toward_centre := (size / 2.0 - seat_middle).normalized()
-	var half := SEAT_SIZE / 2.0
+	var half := seat_size / 2.0
 	var reach := minf(half.x / maxf(absf(toward_centre.x), 0.001), half.y / maxf(absf(toward_centre.y), 0.001))
 	var base := seat_middle + toward_centre * (reach + 20.0 + sin(_time * 7.0) * BOB)
 	var tip := base - toward_centre * POINTER_SIZE

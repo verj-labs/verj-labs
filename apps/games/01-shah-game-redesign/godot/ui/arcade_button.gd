@@ -10,6 +10,11 @@ const KIND_COLORS := {
 	Kind.DANGER: [Palette.RED, Palette.PINK, Palette.CREAM],
 }
 
+## Tall enough for a thumb (about 58 pt on a phone).
+const MIN_HEIGHT := 80.0
+## Smaller pixel text than this is unreadable on a phone.
+const MIN_PIXEL_SCALE := 3
+
 var _kind: Kind = Kind.SECONDARY
 var _pixel_scale: int = 3
 
@@ -29,6 +34,7 @@ func _init() -> void:
 
 func set_kind(kind: Kind, pixel_scale: int = 3) -> void:
 	_kind = kind
+	pixel_scale = maxi(pixel_scale, MIN_PIXEL_SCALE)
 	_pixel_scale = pixel_scale
 	var colors: Array = KIND_COLORS[kind]
 	var fill: Color = colors[0]
@@ -43,7 +49,7 @@ func set_kind(kind: Kind, pixel_scale: int = 3) -> void:
 	for color_name in ["font_hover_color", "font_pressed_color", "font_focus_color"]:
 		add_theme_color_override(color_name, ink)
 	add_theme_color_override("font_disabled_color", Palette.DIM.darkened(0.3))
-	custom_minimum_size = Vector2(custom_minimum_size.x, 20 + PixelFont.size_for(pixel_scale) + 20)
+	custom_minimum_size = Vector2(custom_minimum_size.x, maxf(MIN_HEIGHT, 28.0 + PixelFont.size_for(pixel_scale)))
 
 
 ## Restyles in place (used for selected/unselected chips).

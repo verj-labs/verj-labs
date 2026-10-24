@@ -27,6 +27,18 @@ func set_text(text: String) -> void:
 	_resize()
 
 
+## Changes the pixel scale (for text that must shrink to fit).
+func set_pixel_scale(pixel_scale: int) -> void:
+	if pixel_scale == _pixel_scale:
+		return
+	_pixel_scale = pixel_scale
+	_offset = float(maxi(1, pixel_scale / 2))
+	_back.position = Vector2(_offset, _offset)
+	PixelFont.apply(_front, pixel_scale, _front.get_theme_color("font_color"))
+	PixelFont.apply(_back, pixel_scale, _back.get_theme_color("font_color"))
+	_resize()
+
+
 func set_colors(color: Color, shadow: Color) -> void:
 	_front.add_theme_color_override("font_color", color)
 	_back.add_theme_color_override("font_color", shadow)

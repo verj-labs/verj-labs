@@ -10,7 +10,7 @@ var _icon: PixelIcon
 var _cross: PixelIcon
 
 
-static func make(kind: Kind, button_size: float = 64.0) -> AudioToggle:
+static func make(kind: Kind, button_size: float = 72.0) -> AudioToggle:
 	var toggle := AudioToggle.new()
 	toggle._kind = kind
 	toggle.custom_minimum_size = Vector2.ONE * button_size

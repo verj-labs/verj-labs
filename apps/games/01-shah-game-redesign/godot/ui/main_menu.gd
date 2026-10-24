@@ -19,9 +19,9 @@ func _ready() -> void:
 	column.add_child(_build_audio_row())
 	column.add_child(UIKit.spacer(0.5))
 
-	column.add_child(ShadowLabel.new("SHAH", 14, Palette.PINK, Palette.LINE))
+	column.add_child(ShadowLabel.new("SHAH", 13, Palette.PINK, Palette.LINE))
 	column.add_child(ShadowLabel.new("EXCHANGE", 9, Palette.YELLOW, Palette.PINK))
-	column.add_child(UIKit.pixel_label("THE CARD GAME THAT ENDS FRIENDSHIPS", 2, Palette.CYAN))
+	column.add_child(UIKit.pixel_label("THE CARD GAME THAT ENDS\nFRIENDSHIPS", 3, Palette.CYAN))
 
 	column.add_child(UIKit.spacer(0.4))
 	column.add_child(_build_card_showcase())
@@ -34,17 +34,17 @@ func _ready() -> void:
 	var start := ArcadeButton.make("START GAME", ArcadeButton.Kind.PRIMARY, 4)
 	start.pressed.connect(func() -> void: get_tree().change_scene_to_file(SETUP_SCENE))
 	column.add_child(start)
-	var online := ArcadeButton.make("PLAY ONLINE", ArcadeButton.Kind.SECONDARY, 3)
+	var online := ArcadeButton.make("PLAY ONLINE", ArcadeButton.Kind.SECONDARY, 4)
 	online.pressed.connect(func() -> void: get_tree().change_scene_to_file(ONLINE_SCENE))
 	column.add_child(online)
-	var how_to := ArcadeButton.make("HOW TO PLAY")
+	var how_to := ArcadeButton.make("HOW TO PLAY", ArcadeButton.Kind.SECONDARY, 3)
 	how_to.pressed.connect(_show_rules)
 	column.add_child(how_to)
 	if not OS.has_feature("mobile"):
 		var quit := ArcadeButton.make("QUIT")
 		quit.pressed.connect(func() -> void: get_tree().quit())
 		column.add_child(quit)
-	column.add_child(UIKit.pixel_label("V0.2  ARCADE EDITION", 1, Palette.DIM))
+	column.add_child(UIKit.pixel_label("V0.2  ARCADE EDITION", 2, Palette.DIM))
 
 	add_child(CrtOverlay.new())
 
@@ -63,6 +63,7 @@ func _build_card_showcase() -> Control:
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(0, 190)
 	var size := Vector2(104, 148)
+	var views: Array[CardView] = []
 	var tilt := [-0.22, 0.0, 0.22]
 	var lift := [14.0, 0.0, 14.0]
 	for i in SHOWCASE.size():
@@ -70,12 +71,17 @@ func _build_card_showcase() -> Control:
 		view.tappable = false
 		view.pivot_offset = size / 2.0
 		view.rotation = tilt[i]
-		view.position = Vector2(320.0 - size.x / 2.0 + (i - 1) * 130.0, lift[i] + 6.0)
+		view.position.y = lift[i] + 6.0
+		views.append(view)
 		stage.add_child(view)
 		var bob := create_tween().set_loops()
 		var rest := view.position.y
 		bob.tween_property(view, "position:y", rest - 10.0, 0.9 + i * 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		bob.tween_property(view, "position:y", rest, 0.9 + i * 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	stage.resized.connect(func() -> void:
+		for i in views.size():
+			views[i].position.x = stage.size.x / 2.0 - size.x / 2.0 + (i - 1) * 124.0
+	)
 	return stage
 
 

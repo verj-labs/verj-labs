@@ -5,7 +5,7 @@ extends Control
 
 signal tapped(card_view: CardView)
 
-const CARD_SIZE := Vector2(76, 108)
+const CARD_SIZE := Vector2(84, 120)
 const FACE := Color("#FFF6DC")
 const RED := Color("#E0194A")
 const BLACK := Color("#120A2E")

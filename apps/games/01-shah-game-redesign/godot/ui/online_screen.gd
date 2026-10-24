@@ -12,8 +12,8 @@ var _pending: Callable = Callable()
 
 
 func _ready() -> void:
-	var column := UIKit.screen_column(self)
-	column.add_theme_constant_override("separation", 18)
+	var column := UIKit.screen_column(self, 1.0, true)
+	column.add_theme_constant_override("separation", 14)
 	column.add_child(ShadowLabel.new("PLAY ONLINE", 6, Palette.CYAN, Palette.PINK))
 
 	var who := _section("YOUR NAME", column)
@@ -32,20 +32,20 @@ func _ready() -> void:
 	_code_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	join_row.add_child(_code_input)
 	var join_button := ArcadeButton.make("JOIN", ArcadeButton.Kind.SECONDARY, 3)
-	join_button.custom_minimum_size.x = 200
+	join_button.custom_minimum_size.x = 170
 	join_button.pressed.connect(func() -> void: _go(func() -> void: Online.join_room(_code_input.text)))
 	join_row.add_child(join_button)
 	join.add_child(join_row)
 
 	_status = UIKit.make_label("", 22, Palette.DIM)
-	_status.custom_minimum_size = Vector2(0, 56)
+	_status.custom_minimum_size = Vector2(0, 52)
 	column.add_child(_status)
 
 	column.add_child(UIKit.spacer())
-	column.add_child(UIKit.pixel_label("SERVER", 1, Palette.DIM))
+	column.add_child(UIKit.pixel_label("SERVER", 2, Palette.DIM))
 	_server_input = ArcadeInput.make("ws://host:8080", 120, false)
 	_server_input.text = Online.url
-	_server_input.custom_minimum_size.y = 52
+	_server_input.custom_minimum_size.y = 64
 	column.add_child(_server_input)
 	var back := ArcadeButton.make("BACK")
 	back.pressed.connect(func() -> void:
@@ -80,7 +80,7 @@ func _section(title: String, parent: Control) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	panel.add_child(box)
-	box.add_child(UIKit.pixel_label(title, 2, Palette.CYAN))
+	box.add_child(UIKit.pixel_label(title, 3, Palette.CYAN))
 	return box
 
 

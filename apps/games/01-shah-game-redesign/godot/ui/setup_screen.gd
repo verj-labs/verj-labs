@@ -12,13 +12,13 @@ var _speed_note: Label
 
 
 func _ready() -> void:
-	var column := UIKit.screen_column(self)
-	column.add_theme_constant_override("separation", 22)
+	var column := UIKit.screen_column(self, 1.0, true)
+	column.add_theme_constant_override("separation", 16)
 	column.add_child(ShadowLabel.new("NEW GAME", 7, Palette.YELLOW, Palette.PINK))
 
 	var players := _section("PLAYERS", column)
 	players.add_child(_build_player_stepper())
-	_count_note = UIKit.make_label("", 20, Palette.DIM)
+	_count_note = UIKit.make_label("", 22, Palette.DIM)
 	players.add_child(_count_note)
 
 	var skill := _section("BOT SKILL", column)
@@ -31,7 +31,7 @@ func _ready() -> void:
 		[SessionConfig.Speed.SLOW, SessionConfig.Speed.NORMAL, SessionConfig.Speed.FAST],
 		func(value: int) -> String: return SessionConfig.speed_name(value),
 		func(value: int) -> void: SessionConfig.speed = value))
-	_speed_note = UIKit.make_label("", 20, Palette.DIM)
+	_speed_note = UIKit.make_label("", 22, Palette.DIM)
 	speed.add_child(_speed_note)
 
 	column.add_child(UIKit.spacer())
@@ -54,7 +54,7 @@ func _section(title: String, parent: Control) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	panel.add_child(box)
-	box.add_child(UIKit.pixel_label(title, 2, Palette.CYAN))
+	box.add_child(UIKit.pixel_label(title, 3, Palette.CYAN))
 	return box
 
 
@@ -62,14 +62,14 @@ func _build_player_stepper() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	var minus := ArcadeButton.make("<", ArcadeButton.Kind.SECONDARY, 5)
-	minus.custom_minimum_size.x = 120
+	minus.custom_minimum_size.x = 110
 	minus.pressed.connect(func() -> void: _change_players(-1))
 	_count_label = ShadowLabel.new("4", 9, Palette.CYAN, Palette.BG_DEEP)
 	var middle := CenterContainer.new()
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	middle.add_child(_count_label)
 	var plus := ArcadeButton.make(">", ArcadeButton.Kind.SECONDARY, 5)
-	plus.custom_minimum_size.x = 120
+	plus.custom_minimum_size.x = 110
 	plus.pressed.connect(func() -> void: _change_players(1))
 	row.add_child(minus)
 	row.add_child(middle)
@@ -82,7 +82,7 @@ func _build_chip_row(store: Dictionary, values: Array, label_for: Callable, on_p
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	for value: int in values:
-		var chip := ArcadeButton.make(label_for.call(value).to_upper(), ArcadeButton.Kind.SECONDARY, 2)
+		var chip := ArcadeButton.make(label_for.call(value).to_upper(), ArcadeButton.Kind.SECONDARY, 3)
 		chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		chip.pressed.connect(func() -> void:
 			on_pick.call(value)

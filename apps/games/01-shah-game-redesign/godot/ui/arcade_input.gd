@@ -9,7 +9,7 @@ static func make(placeholder: String, max_chars: int, pixel: bool = true, upperc
 	input.placeholder_text = placeholder
 	input.max_length = max_chars
 	input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	input.custom_minimum_size = Vector2(0, 72)
+	input.custom_minimum_size = Vector2(0, 80)
 	input.add_theme_stylebox_override("normal", Arcade.compact_panel(Palette.BG_DEEP, Palette.LINE))
 	input.add_theme_stylebox_override("focus", Arcade.compact_panel(Palette.BG_DEEP, Palette.YELLOW))
 	input.add_theme_stylebox_override("read_only", Arcade.compact_panel(Palette.BG_DEEP, Palette.LINE))

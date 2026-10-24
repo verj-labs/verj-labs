@@ -18,7 +18,7 @@ then a backend designed around what the game actually needs.
 - [ ] Deploy to Railway and test with friends
 - [ ] Accounts and leaderboards (Supabase)
 - [ ] Hard bot, settings, match scoreboard
-- [ ] Android / iOS export
+- [x] Android / iOS export, phone-sized UI with notch/safe-area handling (see "Phone builds")
 - [ ] Multiplayer backend
 
 ## Run it
@@ -50,6 +50,24 @@ waits for you, even with nothing to play (press PASS; it turns yellow). You have
 per turn on Normal (10 on Fast, 60 on Slow): when time runs out you pass, or, if you must lead, your lowest set is played for you.
 Bots pause before each move, and the last play stays on screen for a moment when a round ends. When a game ends, NEXT GAME deals again, applies the card
 exchange and the winner starts.
+
+## Phone builds
+
+The layout is 540 units wide (see `ui/ui_kit.gd`): buttons are at least 80 units tall, the smallest
+pixel text is scale 3, and `ui/safe_margin.gd` keeps screens clear of the notch / Dynamic Island and
+home bar. Needs the Godot export templates (Editor > Manage Export Templates, or the `.tpz` from the
+Godot release page), plus Xcode for iOS and the Android SDK + JDK 17 for Android.
+
+```bash
+cd godot
+godot --headless --export-debug "Android" builds/android/ShahExchange.apk   # shareable, debug-signed APK
+godot --headless --export-debug "iOS" builds/ios/ShahExchange.ipa           # writes an Xcode project
+open builds/ios/ShahExchange.xcodeproj                                       # pick your team, run on the phone
+```
+
+Delete `godot/builds/ios` before re-exporting iOS. To preview a phone layout without a device:
+`godot --path godot --resolution 450x975 -s ../tools/screenshot.gd -- res://scenes/game_table.tscn out.png players=4 wait=3 --fake-notch`.
+The official 4.7.2 iOS template has no arm64 simulator library, so test iOS on a real device.
 
 ## Look and sound
 

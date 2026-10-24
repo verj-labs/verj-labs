@@ -1,6 +1,10 @@
 class_name UIKit
 extends RefCounted
 ## Small helpers so every screen builds labels, buttons and layouts the same way.
+## The layout is 540 units wide (about 0.73 pt per unit on a 393 pt phone), so a 44 pt touch
+## target is roughly 60 units and the smallest readable pixel text is scale 3.
+
+const SCREEN_PADDING := 28
 
 
 ## A normal (clean, readable) text label.
@@ -39,16 +43,22 @@ static func spacer(expand_ratio: float = 1.0) -> Control:
 	return node
 
 
-## Adds the backdrop and CRT overlay to `root` and returns a padded column for content.
-static func screen_column(root: Control, background_intensity: float = 1.0) -> VBoxContainer:
+## Adds the backdrop and CRT overlay to `root` and returns a padded column for content that
+## stays clear of the notch and home bar. `scrollable` lets a tall screen scroll on a short phone.
+static func screen_column(root: Control, background_intensity: float = 1.0, scrollable: bool = false) -> VBoxContainer:
 	root.add_child(ArcadeBackground.new(background_intensity))
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 40)
+	var margin := SafeMargin.new(SCREEN_PADDING)
 	root.add_child(margin)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 20)
-	margin.add_child(column)
+	column.add_theme_constant_override("separation", 16)
+	if scrollable:
+		var scroll := ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		margin.add_child(scroll)
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.add_child(column)
+	else:
+		margin.add_child(column)
 	root.add_child(CrtOverlay.new())
 	return column

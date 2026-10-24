@@ -4,7 +4,11 @@ extends PanelContainer
 ## when it is their turn so the turn is hard to miss.
 
 const BLINK_SECONDS := 0.3
+const NORMAL_SIZE := Vector2(136, 108)
+## Seven or eight players: narrower badges so neighbours do not overlap on a phone-width table.
+const DENSE_SIZE := Vector2(118, 96)
 
+var _dense: bool = false
 var _accent: Color = Palette.CYAN
 var _name_label: Label
 var _count_label: Label
@@ -14,14 +18,20 @@ var _fill: Color = Palette.PANEL
 var _border: Color = Palette.LINE
 
 
-func _init() -> void:
-	custom_minimum_size = Vector2(128, 104)
+static func size_for(player_count: int) -> Vector2:
+	return DENSE_SIZE if player_count > 6 else NORMAL_SIZE
+
+
+func _init(p_dense: bool = false) -> void:
+	_dense = p_dense
+	custom_minimum_size = DENSE_SIZE if _dense else NORMAL_SIZE
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 2)
+	column.add_theme_constant_override("separation", 0 if _dense else 2)
 	add_child(column)
 	_name_label = UIKit.pixel_label("", 2, Palette.CREAM)
-	_count_label = UIKit.pixel_label("", 4, Palette.YELLOW)
-	_status_label = UIKit.make_label("", 15, Palette.DIM, false)
+	_count_label = UIKit.pixel_label("", 4 if _dense else 5, Palette.YELLOW)
+	_status_label = UIKit.make_label("", 15 if _dense else 18, Palette.DIM, false)
+	_status_label.clip_text = true
 	column.add_child(_name_label)
 	column.add_child(_count_label)
 	column.add_child(_status_label)
@@ -30,7 +40,9 @@ func _init() -> void:
 func set_seat(seat: int, display_name: String) -> void:
 	_accent = Palette.seat_color(seat)
 	_name_label.text = display_name
-	_name_label.add_theme_color_override("font_color", _accent)
+	var room := custom_minimum_size.x - 4 * Arcade.UNIT
+	var name_scale := 3 if PixelFont.text_width(display_name, 3) <= room and not _dense else 2
+	PixelFont.apply(_name_label, name_scale, _accent)
 
 
 ## `mode` is "turn", "last_chance", "skipped", "out" or "idle".

@@ -8,7 +8,7 @@ signal selection_changed
 
 const ROW_MAX := 9
 const ROW_OVERLAP := 0.72  ## Fraction of card height between row tops.
-const LIFT := 18.0  ## How far a selected card pops up.
+const LIFT := 24.0  ## How far a selected card pops up.
 const MAX_ROWS := 2
 
 var interactive: bool = true:

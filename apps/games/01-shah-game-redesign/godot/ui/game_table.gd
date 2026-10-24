@@ -5,11 +5,13 @@ extends Control
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const BOT_NAMES := ["YOU", "ACE", "DUKE", "MIMI", "ROCCO", "ZED", "LOLA", "KIKO"]
-const LOG_LINES := 3
+const LOG_LINES := 2
 const RESET_NOTES := ["", "A 2 RESETS", "TWO 2S: RESET!", "THREE 2S: RESET!", "FOUR 2S: RESET!"]
 const ORDINALS := ["1ST", "2ND", "3RD", "4TH", "5TH", "6TH", "7TH", "8TH"]
 const PLACE_COLORS := [Palette.YELLOW, Palette.CREAM, Palette.ORANGE]
 const SHAKE_SECONDS := 0.28
+const HEADER_HEIGHT := 64.0
+const ACTION_HEIGHT := 96.0
 
 var controller: TableSource
 ## Your seat (seat 0 in single player).
@@ -106,10 +108,7 @@ func _build_layout() -> void:
 	add_child(_world)
 	_world.add_child(ArcadeBackground.new(0.7))
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 22)
+	var margin := SafeMargin.new(16)
 	_world.add_child(margin)
 
 	var column := VBoxContainer.new()
@@ -119,15 +118,15 @@ func _build_layout() -> void:
 
 	_ring = TableRing.new()
 	_ring.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_ring.custom_minimum_size = Vector2(0, 380)
+	_ring.custom_minimum_size = Vector2(0, 300)
 	column.add_child(_ring)
 
-	_log_label = UIKit.make_label("", 18, Palette.DIM)
-	_log_label.custom_minimum_size = Vector2(0, 74)
+	_log_label = UIKit.make_label("", 20, Palette.DIM)
+	_log_label.custom_minimum_size = Vector2(0, 56)
 	_log_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	column.add_child(_log_label)
-	_hint = UIKit.pixel_label("", 2, Palette.CYAN, true)
-	_hint.custom_minimum_size = Vector2(0, 30)
+	_hint = UIKit.pixel_label("", 3, Palette.CYAN, true)
+	_hint.custom_minimum_size = Vector2(0, 26)
 	column.add_child(_hint)
 	column.add_child(_build_timer_row())
 
@@ -147,22 +146,24 @@ func _build_layout() -> void:
 
 func _build_header() -> Control:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 60)
+	row.custom_minimum_size = Vector2(0, HEADER_HEIGHT)
 	row.add_theme_constant_override("separation", 10)
-	var menu := ArcadeButton.make("MENU", ArcadeButton.Kind.SECONDARY, 2)
+	var menu := ArcadeButton.make("MENU", ArcadeButton.Kind.SECONDARY, 3)
 	menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	menu.custom_minimum_size.y = 56
+	menu.custom_minimum_size.y = HEADER_HEIGHT
 	menu.pressed.connect(_leave_to_menu)
 	row.add_child(menu)
+	var titles := VBoxContainer.new()
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	titles.alignment = BoxContainer.ALIGNMENT_CENTER
+	titles.add_theme_constant_override("separation", 2)
 	_game_label = UIKit.pixel_label("", 3, Palette.CREAM)
-	_game_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_game_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_game_label)
 	_direction_label = UIKit.pixel_label("", 2, Palette.CYAN)
-	_direction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_direction_label)
-	row.add_child(AudioToggle.make(AudioToggle.Kind.MUSIC, 56.0))
-	row.add_child(AudioToggle.make(AudioToggle.Kind.SFX, 56.0))
+	titles.add_child(_game_label)
+	titles.add_child(_direction_label)
+	row.add_child(titles)
+	row.add_child(AudioToggle.make(AudioToggle.Kind.MUSIC, HEADER_HEIGHT))
+	row.add_child(AudioToggle.make(AudioToggle.Kind.SFX, HEADER_HEIGHT))
 	return row
 
 
@@ -181,10 +182,12 @@ func _build_timer_row() -> Control:
 func _build_buttons() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	_pass_button = ArcadeButton.make("PASS", ArcadeButton.Kind.SECONDARY, 3)
+	_pass_button = ArcadeButton.make("PASS", ArcadeButton.Kind.SECONDARY, 4)
+	_pass_button.custom_minimum_size.y = ACTION_HEIGHT
 	_pass_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_pass_button.pressed.connect(func() -> void: controller.submit_pass())
-	_play_button = ArcadeButton.make("PLAY", ArcadeButton.Kind.PRIMARY, 3)
+	_play_button = ArcadeButton.make("PLAY", ArcadeButton.Kind.PRIMARY, 5)
+	_play_button.custom_minimum_size.y = ACTION_HEIGHT
 	_play_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_play_button.size_flags_stretch_ratio = 2.0
 	_play_button.pressed.connect(_on_play_pressed)
@@ -206,7 +209,7 @@ func _build_overlay() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(620, 0)
+	panel.custom_minimum_size = Vector2(470, 0)
 	panel.add_theme_stylebox_override("panel", Arcade.panel(Palette.PANEL, Palette.YELLOW, true, true))
 	center.add_child(panel)
 	var column := VBoxContainer.new()
@@ -283,7 +286,7 @@ func _ranking_row(place: int, seat: int) -> Control:
 	row.add_theme_constant_override("separation", 14)
 	var place_color: Color = PLACE_COLORS[place] if place < PLACE_COLORS.size() else Palette.DIM
 	var ordinal := UIKit.pixel_label(ORDINALS[place], 3, place_color)
-	ordinal.custom_minimum_size = Vector2(90, 0)
+	ordinal.custom_minimum_size = Vector2(80, 0)
 	row.add_child(ordinal)
 	var chip := ColorRect.new()
 	chip.color = Palette.seat_color(seat)
@@ -353,8 +356,11 @@ func _on_move_rejected(reason: String) -> void:
 func _on_connection_changed(connected: bool) -> void:
 	if _connection_banner == null:
 		_connection_banner = UIKit.pixel_label("RECONNECTING...", 3, Palette.ORANGE)
-		_connection_banner.position = Vector2(150, 90)
 		_top.add_child(_connection_banner)
+		_connection_banner.position = Vector2(
+			(size.x - PixelFont.text_width(_connection_banner.text, 3)) / 2.0,
+			SafeMargin.insets(get_viewport()).y + HEADER_HEIGHT + 24.0
+		)
 	_connection_banner.visible = not connected
 
 
@@ -449,7 +455,8 @@ func _refresh_buttons() -> void:
 	var my_turn := controller.is_human_turn() and not _exchange_active
 	var nothing_playable := my_turn and state.pile != null and state.legal_plays().is_empty()
 	_pass_button.disabled = not (my_turn and state.pile != null)
-	_pass_button.set_kind(ArcadeButton.Kind.PRIMARY if nothing_playable else ArcadeButton.Kind.SECONDARY, 3)
+	_pass_button.set_kind(ArcadeButton.Kind.PRIMARY if nothing_playable else ArcadeButton.Kind.SECONDARY, 4)
+	_pass_button.custom_minimum_size.y = ACTION_HEIGHT
 	var chosen := _hand.selected_cards()
 	var verdict := _check_selection(chosen)
 	_play_button.disabled = not (my_turn and verdict == "")
@@ -463,15 +470,15 @@ func _hint_text(state: TableState, my_turn: bool, nothing_playable: bool, chosen
 	if state.is_over():
 		return ""
 	if state.is_finished(_me):
-		return "YOU'RE OUT! WATCHING THE REST..."
+		return "YOU'RE OUT! WATCHING..."
 	if not my_turn:
 		return "%s IS THINKING..." % _name(state.current_player)
 	if nothing_playable:
-		return "NOTHING TO PLAY: PRESS PASS"
+		return "NOTHING TO PLAY: PASS"
 	if chosen.is_empty():
 		if state.is_skipped(_me):
-			return "SKIPPED! LAST CHANCE: PLAY OR PASS"
-		return "YOUR TURN: LEAD ANYTHING" if state.pile == null else "YOUR TURN: BEAT THE PILE OR PASS"
+			return "SKIPPED! PLAY OR PASS"
+		return "YOUR TURN: LEAD!" if state.pile == null else "YOUR TURN: BEAT OR PASS"
 	return verdict.to_upper() if verdict != "" else "READY TO PLAY!"
 
 
@@ -486,11 +493,11 @@ func _check_selection(chosen: Array[Card]) -> String:
 func _explain(reason: String) -> String:
 	match reason:
 		PlayResult.REASON_SIZE_MISMATCH:
-			return "Play the same number of cards as the pile"
+			return "Play as many cards as the pile"
 		PlayResult.REASON_RANK_TOO_LOW:
-			return "Too low: match or beat the pile"
+			return "Too low for the pile"
 		PlayResult.REASON_INVALID_RESET:
-			return "A 2 resets: 1x2 for single or double, 2x2 for triple, 3x2 for quad"
+			return "Reset needs 1 two (single or double), 2 (triple), 3 (quad)"
 		_:
 			return "Can't play that"
 

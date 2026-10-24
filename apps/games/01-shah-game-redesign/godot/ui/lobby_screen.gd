@@ -16,12 +16,12 @@ var _banner: Label
 
 
 func _ready() -> void:
-	var column := UIKit.screen_column(self)
-	column.add_theme_constant_override("separation", 14)
+	var column := UIKit.screen_column(self, 1.0, true)
+	column.add_theme_constant_override("separation", 12)
 	column.add_child(UIKit.pixel_label("ROOM CODE", 2, Palette.CYAN))
 	_code_label = ShadowLabel.new("----", 11, Palette.YELLOW, Palette.PINK)
 	column.add_child(_code_label)
-	column.add_child(UIKit.make_label("Friends join with this code", 20, Palette.DIM))
+	column.add_child(UIKit.make_label("Friends join with this code", 22, Palette.DIM))
 
 	var seats_panel := PanelContainer.new()
 	seats_panel.add_theme_stylebox_override("panel", Arcade.panel(Palette.PANEL, Palette.LINE, true, true))
@@ -30,15 +30,18 @@ func _ready() -> void:
 	_rows.add_theme_constant_override("separation", 6)
 	seats_panel.add_child(_rows)
 
-	var options := HBoxContainer.new()
-	options.add_theme_constant_override("separation", 10)
+	var skill_row := HBoxContainer.new()
+	skill_row.add_theme_constant_override("separation", 10)
 	for difficulty in ["easy", "medium"]:
-		options.add_child(_option_chip(_difficulty_buttons, difficulty, func() -> void: _send_options(difficulty, Online.room["options"]["speed"])))
+		skill_row.add_child(_option_chip(_difficulty_buttons, difficulty, func() -> void: _send_options(difficulty, Online.room["options"]["speed"])))
+	column.add_child(skill_row)
+	var speed_row := HBoxContainer.new()
+	speed_row.add_theme_constant_override("separation", 10)
 	for speed in ["slow", "normal", "fast"]:
-		options.add_child(_option_chip(_speed_buttons, speed, func() -> void: _send_options(Online.room["options"]["difficulty"], speed)))
-	column.add_child(options)
+		speed_row.add_child(_option_chip(_speed_buttons, speed, func() -> void: _send_options(Online.room["options"]["difficulty"], speed)))
+	column.add_child(speed_row)
 
-	_note = UIKit.make_label("", 20, Palette.DIM)
+	_note = UIKit.make_label("", 22, Palette.DIM)
 	column.add_child(_note)
 	column.add_child(UIKit.spacer())
 
@@ -52,10 +55,10 @@ func _ready() -> void:
 	leave.pressed.connect(func() -> void: Online.leave_room())
 	column.add_child(leave)
 
-	_banner = UIKit.pixel_label("RECONNECTING...", 2, Palette.ORANGE)
+	_banner = UIKit.pixel_label("RECONNECTING...", 3, Palette.ORANGE)
 	_banner.visible = false
 	_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_banner.position = Vector2(180, 8)
+	_banner.position = Vector2(100, 6 + SafeMargin.insets(get_viewport()).y)
 	add_child(_banner)
 	add_child(CrtOverlay.new())
 
@@ -78,7 +81,7 @@ func _exit_tree() -> void:
 
 
 func _option_chip(store: Dictionary, value: String, on_press: Callable) -> ArcadeButton:
-	var chip := ArcadeButton.make(value.to_upper(), ArcadeButton.Kind.SECONDARY, 2)
+	var chip := ArcadeButton.make(value.to_upper(), ArcadeButton.Kind.SECONDARY, 3)
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chip.pressed.connect(on_press)
 	store[value] = chip
@@ -121,10 +124,10 @@ func _style_chip(chip: ArcadeButton, selected: bool, host: bool) -> void:
 func _seat_row(seat: Dictionary, room: Dictionary, host: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
-	row.custom_minimum_size = Vector2(0, 44)
+	row.custom_minimum_size = Vector2(0, 52)
 	var chip := ColorRect.new()
 	chip.color = Palette.seat_color(seat["seat"]) if seat["kind"] != "empty" else Palette.LINE.darkened(0.3)
-	chip.custom_minimum_size = Vector2(20, 20)
+	chip.custom_minimum_size = Vector2(22, 22)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(chip)
 	var label_text: String = seat["name"] if seat["kind"] != "empty" else "---"
@@ -141,10 +144,10 @@ func _seat_row(seat: Dictionary, room: Dictionary, host: bool) -> Control:
 	if seat["kind"] == "human" and not seat["connected"]:
 		tag = "AWAY"
 		tag_color = Palette.ORANGE
-	row.add_child(UIKit.pixel_label(tag, 2, tag_color))
+	row.add_child(UIKit.pixel_label(tag, 2 if tag.length() > 6 else 3, tag_color))
 	if host and seat["kind"] != "empty" and seat["seat"] != room["you_seat"]:
-		var kick := ArcadeButton.make("X", ArcadeButton.Kind.DANGER, 2)
-		kick.custom_minimum_size = Vector2(56, 44)
+		var kick := ArcadeButton.make("X", ArcadeButton.Kind.DANGER, 3)
+		kick.custom_minimum_size = Vector2(64, 52)
 		kick.pressed.connect(func() -> void: Online.remove_seat(seat["seat"]))
 		row.add_child(kick)
 	return row
