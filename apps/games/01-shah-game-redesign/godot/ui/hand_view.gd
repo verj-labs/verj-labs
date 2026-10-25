@@ -21,8 +21,14 @@ var _views: Array[CardView] = []
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(0, LIFT + CardView.CARD_SIZE.y * (1.0 + ROW_OVERLAP) + 6)
+	custom_minimum_size = Vector2(0, _height_for(MAX_ROWS))
 	clip_contents = false
+
+
+## Room needed for `rows` rows of cards plus the lift of a selected card. A hand that fits in
+## one row asks for less, which gives the table above it more space on short screens.
+func _height_for(rows: int) -> float:
+	return LIFT + CardView.CARD_SIZE.y * (1.0 + ROW_OVERLAP * (rows - 1)) + 6
 
 
 ## `hidden` cards are laid out but invisible (until reveal()): used while a card is flying in.
@@ -48,6 +54,7 @@ func set_cards(cards: Array[Card], hidden: Array[Card] = []) -> void:
 		view.tapped.connect(_on_card_tapped)
 		add_child(view)
 		_views.append(view)
+	custom_minimum_size.y = _height_for(clampi(ceili(float(_views.size()) / ROW_MAX), 1, MAX_ROWS))
 	_layout()
 	selection_changed.emit()
 

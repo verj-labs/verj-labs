@@ -6,7 +6,6 @@ const MENU_SCENE := "res://scenes/main_menu.tscn"
 
 var _name_input: ArcadeInput
 var _code_input: ArcadeInput
-var _server_input: ArcadeInput
 var _status: Label
 var _pending: Callable = Callable()
 
@@ -41,18 +40,12 @@ func _ready() -> void:
 	_status.custom_minimum_size = Vector2(0, 52)
 	column.add_child(_status)
 
-	column.add_child(UIKit.spacer())
-	column.add_child(UIKit.pixel_label("SERVER", 2, Palette.DIM))
-	_server_input = ArcadeInput.make("ws://host:8080", 120, false)
-	_server_input.text = Online.url
-	_server_input.custom_minimum_size.y = 64
-	column.add_child(_server_input)
 	var back := ArcadeButton.make("BACK")
 	back.pressed.connect(func() -> void:
 		Online.disconnect_now()
 		get_tree().change_scene_to_file(MENU_SCENE)
 	)
-	column.add_child(back)
+	(column.get_meta("footer") as Control).add_child(back)
 	add_child(CrtOverlay.new())
 
 	Online.welcomed.connect(_on_welcomed)
@@ -90,17 +83,13 @@ func _go(action: Callable) -> void:
 	if clean.is_empty():
 		_show("Name: 1-12 letters, numbers or spaces.", Palette.RED)
 		return
-	var address := _server_input.text.strip_edges()
-	if not (address.begins_with("ws://") or address.begins_with("wss://")):
-		_show("Server address must start with ws:// or wss://", Palette.RED)
-		return
 	_pending = action
-	if Online.is_online() and Online.player_name == clean and Online.url == address:
+	if Online.is_online() and Online.player_name == clean:
 		_run_pending()
 	else:
 		if Online.state != OnlineClient.State.OFFLINE:
 			Online.disconnect_now()
-		Online.connect_to_server(address, clean)
+		Online.connect_to_server(Online.url, clean)
 
 
 func _on_welcomed(_name: String) -> void:

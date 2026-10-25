@@ -233,6 +233,57 @@ func test_non_hosts_cannot_start_the_next_game() -> void:
 	assert_bool(guest_source.can_start_next_game()).is_false()
 
 
+# --- stepping away and rejoining -----------------------------------------------------------
+
+func test_a_player_who_steps_away_from_a_running_game_can_rejoin_it() -> void:
+	var a := await _signed_in("ANN")
+	var b := await _signed_in("BEN")
+	await _make_room(a, [b], 1)
+	a.start_game()
+	assert_bool(await _until(func() -> bool: return a._pending_game.size() > 0 and b._pending_game.size() > 0)).is_true()
+	var first := RemoteTableSource.new(b)
+	add_child(first)
+	auto_free(first)
+	first.start_next_game()
+	assert_bool(b.can_rejoin()).is_false()
+	first.step_away()
+	assert_bool(b.is_online()).is_false()
+	assert_bool(b.in_room()).is_false()
+	assert_bool(b.can_rejoin()).is_true()
+	b.rejoin()
+	assert_bool(await _until(func() -> bool: return b.in_room() and b._pending_game.size() > 0)).is_true()
+	assert_str(b.room["phase"]).is_equal("playing")
+	var second := RemoteTableSource.new(b)
+	add_child(second)
+	auto_free(second)
+	second.start_next_game()
+	assert_object(second.state).is_not_null()
+	assert_int(second.state.my_hand.size()).is_greater(0)
+	assert_int(second.state.my_seat).is_equal(1)
+
+
+func test_leaving_for_good_or_being_kicked_clears_the_rejoin_offer() -> void:
+	var a := await _signed_in("ANN")
+	var b := await _signed_in("BEN")
+	await _make_room(a, [b], 0)
+	b._remember_rejoin(str(b.room["code"]))
+	assert_bool(b.can_rejoin()).is_true()
+	a.remove_seat(1)
+	assert_bool(await _until(func() -> bool: return not b.in_room())).is_true()
+	assert_bool(b.can_rejoin()).is_false()
+
+
+func test_the_rejoin_offer_expires() -> void:
+	var client := _client()
+	client.token = "abc"
+	client.player_name = "ANN"
+	client.rejoin_code = "ABCD"
+	client._rejoin_saved_at = int(Time.get_unix_time_from_system())
+	assert_bool(client.can_rejoin()).is_true()
+	client._rejoin_saved_at = int(Time.get_unix_time_from_system()) - OnlineClient.REJOIN_SECONDS - 1
+	assert_bool(client.can_rejoin()).is_false()
+
+
 # --- dropped connections ------------------------------------------------------------------
 
 func test_the_client_reconnects_by_itself_and_keeps_its_room() -> void:

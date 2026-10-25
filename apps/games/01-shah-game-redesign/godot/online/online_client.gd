@@ -18,7 +18,12 @@ signal connection_changed(connected: bool)
 
 enum State { OFFLINE, CONNECTING, WAITING_WELCOME, ONLINE }
 
-const DEFAULT_URL := "ws://127.0.0.1:8080"
+## The deployed game server (Railway). To play against a local server (./serve.sh) start the game
+## with SHAH_SERVER=ws://127.0.0.1:8080 ./run.sh.
+const DEFAULT_URL := "wss://verj-labs-production.up.railway.app"
+## How long after stepping away a player is offered REJOIN (the server keeps the seat for a while
+## and then lets a bot play it; the room closes a couple of minutes after everyone is gone).
+const REJOIN_SECONDS := 600
 const PING_SECONDS := 15.0
 const CONNECT_TIMEOUT := 10.0
 const RECONNECT_DELAYS := [1.0, 2.0, 4.0, 8.0]
@@ -31,8 +36,10 @@ var state: State = State.OFFLINE
 ## The latest room message, or {} when not in a room.
 var room: Dictionary = {}
 var table_attached: bool = false
-## Remember name, server and token between runs. Tests switch this off.
+## Remember name and token between runs. Tests switch this off.
 var persist: bool = true
+## Room the player stepped away from and may rejoin ("" = none). See park().
+var rejoin_code: String = ""
 
 var _ws: WebSocketPeer
 var _pending_game: Array[Dictionary] = []
@@ -42,14 +49,61 @@ var _reconnect_in: float = -1.0
 var _attempt: int = 0
 var _wanted_online: bool = false
 var _was_connected: bool = false
+var _rejoin_saved_at: int = 0
 
 
 func _ready() -> void:
 	if not persist:
 		return
-	url = Settings.read("online", "url", DEFAULT_URL)
+	# The address is never saved or shown to players. Developers can point the game at another
+	# server with the SHAH_SERVER environment variable or `-- --server=ws://host:8080`.
+	url = _developer_server_override()
 	player_name = Settings.read("online", "name", "")
 	token = Settings.read("online", "token", "")
+	rejoin_code = Settings.read("online", "rejoin_code", "")
+	_rejoin_saved_at = int(Settings.read("online", "rejoin_saved_at", 0))
+
+
+func _developer_server_override() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--server="):
+			return arg.get_slice("=", 1)
+	if OS.get_environment("SHAH_SERVER") != "":
+		return OS.get_environment("SHAH_SERVER")
+	return DEFAULT_URL
+
+
+## True when the player stepped away from a running game and can still get back in.
+func can_rejoin() -> bool:
+	if rejoin_code == "" or token == "" or player_name == "":
+		return false
+	return Time.get_unix_time_from_system() - _rejoin_saved_at < REJOIN_SECONDS
+
+
+## Steps away from the game without giving up the seat: the connection closes (a bot plays the
+## seat after a short grace period) and the main menu offers REJOIN until the game is over.
+func park() -> void:
+	if in_room():
+		_remember_rejoin(str(room.get("code", "")))
+	detach_table()
+	disconnect_now()
+
+
+## Reconnects with the saved session; the server puts the player back at their table.
+func rejoin() -> void:
+	connect_to_server(url, player_name)
+
+
+func forget_rejoin() -> void:
+	_remember_rejoin("")
+
+
+func _remember_rejoin(code: String) -> void:
+	rejoin_code = code
+	_rejoin_saved_at = int(Time.get_unix_time_from_system()) if code != "" else 0
+	if persist:
+		Settings.write("online", "rejoin_code", rejoin_code)
+		Settings.write("online", "rejoin_saved_at", _rejoin_saved_at)
 
 
 func is_online() -> bool:
@@ -69,7 +123,6 @@ func connect_to_server(p_url: String, p_name: String) -> void:
 	url = p_url
 	player_name = p_name
 	if persist:
-		Settings.write("online", "url", url)
 		Settings.write("online", "name", player_name)
 	_wanted_online = true
 	_attempt = 0
@@ -113,6 +166,7 @@ func join_room(code: String) -> void:
 
 
 func leave_room() -> void:
+	forget_rejoin()
 	_send({"type": "leave_room"})
 
 
@@ -257,6 +311,7 @@ func _handle(message: Dictionary) -> void:
 			room = message
 			room_changed.emit(room)
 		"left":
+			forget_rejoin()
 			room = {}
 			_pending_game.clear()
 			left_room.emit(str(message.get("reason", "left")))

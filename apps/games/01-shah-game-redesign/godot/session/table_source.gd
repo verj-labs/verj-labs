@@ -71,6 +71,12 @@ func return_to_lobby() -> void:
 	pass
 
 
+## Walks away from a running game. Online this keeps the seat (a bot plays it) so the player can
+## rejoin from the main menu; single player just drops the game.
+func step_away() -> void:
+	leave()
+
+
 ## Leaves the match (online: leaves the room). Single player has nothing to do.
 func leave() -> void:
 	pass

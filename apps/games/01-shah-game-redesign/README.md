@@ -65,7 +65,14 @@ godot --headless --export-debug "iOS" builds/ios/ShahExchange.ipa           # wr
 open builds/ios/ShahExchange.xcodeproj                                       # pick your team, run on the phone
 ```
 
-Delete `godot/builds/ios` before re-exporting iOS. To preview a phone layout without a device:
+Delete `godot/builds/ios` before re-exporting iOS. Store assets:
+
+```bash
+python3 tools/make_icon.py && godot --headless --path godot -s ../tools/render_icons.gd     # app icon (iOS + Android)
+godot --path godot --resolution 540x1170 -s ../tools/screenshots.gd -- --fake-notch          # store_assets/ screenshots
+```
+
+Production checklist: `docs/PRODUCTION_READINESS.md`. To preview a phone layout without a device:
 `godot --path godot --resolution 450x975 -s ../tools/screenshot.gd -- res://scenes/game_table.tscn out.png players=4 wait=3 --fake-notch`.
 The official 4.7.2 iOS template has no arm64 simulator library, so test iOS on a real device.
 

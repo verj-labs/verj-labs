@@ -51,15 +51,20 @@ func _ready() -> void:
 	column.add_child(_note)
 
 	var footer: Control = column.get_meta("footer")
-	_add_bot = ArcadeButton.make("ADD BOT", ArcadeButton.Kind.SECONDARY, 3)
-	_add_bot.pressed.connect(func() -> void: Online.add_bot())
-	footer.add_child(_add_bot)
 	_start = ArcadeButton.make("START GAME", ArcadeButton.Kind.PRIMARY, 4)
 	_start.pressed.connect(func() -> void: Online.start_game())
 	footer.add_child(_start)
-	var leave := ArcadeButton.make("LEAVE ROOM")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_add_bot = ArcadeButton.make("ADD BOT", ArcadeButton.Kind.SECONDARY, 3)
+	_add_bot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_add_bot.pressed.connect(func() -> void: Online.add_bot())
+	row.add_child(_add_bot)
+	var leave := ArcadeButton.make("LEAVE", ArcadeButton.Kind.SECONDARY, 3)
+	leave.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	leave.pressed.connect(func() -> void: Online.leave_room())
-	footer.add_child(leave)
+	row.add_child(leave)
+	footer.add_child(row)
 
 	_banner = UIKit.pixel_label("RECONNECTING...", 3, Palette.ORANGE)
 	_banner.visible = false
@@ -88,6 +93,8 @@ func _exit_tree() -> void:
 
 func _option_chip(store: Dictionary, value: String, on_press: Callable, label: String = "") -> ArcadeButton:
 	var chip := ArcadeButton.make((label if label != "" else value).to_upper(), ArcadeButton.Kind.SECONDARY, 3)
+	chip.min_height = 60.0  # three rows of chips: keep them compact so the player list has room
+	chip.set_kind(ArcadeButton.Kind.SECONDARY, 3)
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chip.pressed.connect(on_press)
 	store[value] = chip
@@ -138,7 +145,7 @@ func _style_chip(chip: ArcadeButton, selected: bool, host: bool) -> void:
 func _seat_row(seat: Dictionary, room: Dictionary, host: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
-	row.custom_minimum_size = Vector2(0, 52)
+	row.custom_minimum_size = Vector2(0, 46)
 	var chip := ColorRect.new()
 	chip.color = Palette.seat_color(seat["seat"]) if seat["kind"] != "empty" else Palette.LINE.darkened(0.3)
 	chip.custom_minimum_size = Vector2(22, 22)

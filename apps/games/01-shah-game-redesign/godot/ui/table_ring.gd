@@ -11,6 +11,8 @@ const ARROW_SIZE := 12.0
 const RING_SEGMENTS := 72
 const FELT_SCALE := 0.8
 const POINTER_SIZE := 16.0
+## Below this height the pile drops its caption line (see PileView.compact).
+const COMPACT_BELOW := 400.0
 const BOB := 5.0
 
 var seat_size: Vector2 = SeatView.NORMAL_SIZE
@@ -91,10 +93,21 @@ func _slot(seat: int) -> int:
 func _layout() -> void:
 	if _player_count == 0:
 		return
+	pile_view.compact = size.y < COMPACT_BELOW
 	for seat in _player_count:
 		_seat_views[seat].position = _oval_point(TAU * _slot(seat) / _player_count) - seat_size / 2.0
-	pile_view.position = size / 2.0 - pile_view.size / 2.0
+	pile_view.position = _pile_position()
 	queue_redraw()
+
+
+## The pile sits in the middle, but never under your own seat badge: on a short table it moves up.
+func _pile_position() -> Vector2:
+	var centred := size / 2.0 - pile_view.size / 2.0
+	var your_seat_top := size.y / 2.0 + _radii().y - seat_size.y / 2.0 - 4.0
+	var overflow := centred.y + pile_view.size.y - your_seat_top
+	if overflow > 0.0:
+		centred.y = maxf(centred.y - overflow, 0.0)
+	return centred
 
 
 func _draw() -> void:

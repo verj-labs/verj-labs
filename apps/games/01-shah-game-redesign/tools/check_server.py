@@ -1,17 +1,28 @@
 """Smoke test for a running Shah Exchange server, using only the Python standard library.
 
     python3 tools/check_server.py 8080            # local server on 127.0.0.1:8080
+    python3 tools/check_server.py wss://my-app.up.railway.app   # a deployed server (TLS)
 
 Does a real WebSocket handshake, creates a room with two bots, starts a game and plays a card.
 Written from RFC 6455 independently of the Godot code, so it also checks interoperability.
 """
-import base64, hashlib, json, os, socket, struct, sys, time
+import base64, hashlib, json, os, socket, ssl, struct, sys, time
 
-HOST, PORT = "127.0.0.1", int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+ARG = sys.argv[1] if len(sys.argv) > 1 else "8080"
+TLS = ARG.startswith("wss://")
+if ARG.startswith(("ws://", "wss://")):
+    HOST, PORT = ARG.split("://", 1)[1].rstrip("/"), 443 if TLS else 80
+    if ":" in HOST:
+        HOST, port_text = HOST.rsplit(":", 1)
+        PORT = int(port_text)
+else:
+    HOST, PORT = "127.0.0.1", int(ARG)
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 def connect():
-    s = socket.create_connection((HOST, PORT), timeout=5)
+    s = socket.create_connection((HOST, PORT), timeout=10)
+    if TLS:
+        s = ssl.create_default_context().wrap_socket(s, server_hostname=HOST)
     key = base64.b64encode(os.urandom(16)).decode()
     s.sendall(("GET / HTTP/1.1\r\nHost: %s:%d\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n" % (HOST, PORT, key)).encode())
@@ -58,6 +69,19 @@ def expect(s, buf, kind, limit=40):
         if m["type"] == "error": raise SystemExit("server error: %r" % m)
     raise SystemExit("never saw %s" % kind)
 
+ORDER = "3456789JQKA"  # plus 10 and 2, handled in strength()
+
+def strength(card):
+    rank = card[:-1]
+    return {"10": 7, "J": 8, "Q": 9, "K": 10, "A": 11, "2": 12}.get(rank, int(rank) - 3 if rank.isdigit() else 0)
+
+def beating_single(pile, hand):
+    """A single card that is a legal answer to a single-card pile (equal or higher, never a 2), or None."""
+    if len(pile) != 1 or strength(pile[0]) == 12:
+        return None
+    options = [c for c in hand if not c.startswith("2") and strength(c) >= strength(pile[0])]
+    return options[0] if options else None
+
 s, buf = connect()
 send(s, {"type": "hello", "version": 1, "name": "python"})
 welcome = expect(s, buf, "welcome"); print("welcome:", welcome["name"], welcome["token"][:8] + "...")
@@ -82,7 +106,11 @@ for _ in range(400):
             card = state["my_hand"][0]
             send(s, {"type": "play", "cards": [card]}); played = True; print("played", card)
         else:
-            send(s, {"type": "pass"}); print("passed on", state["pile"])
+            higher = beating_single(state["pile"], state["my_hand"])
+            if higher:
+                send(s, {"type": "play", "cards": [higher]}); played = True; print("played", higher, "on", state["pile"])
+            else:
+                send(s, {"type": "pass"}); print("passed on", state["pile"])
     ev = m["event"]
     if played and ev["type"] == "move" and ev["seat"] == state["my_seat"] and ev["cards"]:
         print("server confirmed my move:", ev["cards"], "effect", ev["effect"]); confirmed = True; break

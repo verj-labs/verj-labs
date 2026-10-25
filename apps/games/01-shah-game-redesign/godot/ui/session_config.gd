@@ -9,6 +9,8 @@ static var player_count: int = 4
 ## Set by the online lobby just before the table opens; the table takes it over (and clears it).
 static var online_source: TableSource = null
 static var difficulty: int = Bot.Difficulty.MEDIUM
+## Non-zero makes a single-player game deal the same cards every time (used for screenshots).
+static var rng_seed: int = 0
 ## How many games a single-player match lasts (one of ShahMatch.GAME_OPTIONS).
 static var match_games: int = ShahMatch.DEFAULT_GAMES
 

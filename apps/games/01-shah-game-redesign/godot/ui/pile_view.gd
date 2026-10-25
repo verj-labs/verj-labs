@@ -8,7 +8,20 @@ const TITLE_SCALE := 4
 ## Longer titles drop one pixel scale so they stay between the seats on a narrow table.
 const LONG_TITLE := 7
 const CARD_OVERLAP := 28.0
+const FULL_HEIGHT := 200.0
+const COMPACT_HEIGHT := 160.0
 const CARD_STEP := SMALL_CARD.x - CARD_OVERLAP  ## Card width minus the row's overlap.
+
+## Set by the table when it is short: the "<name> PLAYED" line is dropped so the pile stays clear
+## of the seat badges around it.
+var compact: bool = false:
+	set(value):
+		if value == compact:
+			return
+		compact = value
+		_subtitle.visible = not value
+		custom_minimum_size.y = COMPACT_HEIGHT if value else FULL_HEIGHT
+		size.y = custom_minimum_size.y
 
 var _title: ShadowLabel
 var _subtitle: Label
@@ -16,7 +29,7 @@ var _cards_row: HBoxContainer
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(290, 200)
+	custom_minimum_size = Vector2(290, FULL_HEIGHT)
 	alignment = BoxContainer.ALIGNMENT_CENTER
 	add_theme_constant_override("separation", 8)
 	_title = ShadowLabel.new("", 4, Palette.YELLOW, Palette.BG_DEEP)

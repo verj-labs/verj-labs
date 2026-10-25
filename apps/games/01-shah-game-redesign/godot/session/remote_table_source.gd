@@ -64,6 +64,10 @@ func return_to_lobby() -> void:
 	client.back_to_lobby()
 
 
+func step_away() -> void:
+	client.park()
+
+
 func leave() -> void:
 	client.detach_table()
 	client.leave_room()

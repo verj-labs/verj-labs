@@ -57,8 +57,7 @@ static func screen_column(root: Control, background_intensity: float = 1.0, scro
 		var outer := VBoxContainer.new()
 		outer.add_theme_constant_override("separation", 12)
 		margin.add_child(outer)
-		var scroll := ScrollContainer.new()
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		var scroll := TouchScroll.new()
 		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		outer.add_child(scroll)
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL

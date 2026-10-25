@@ -87,11 +87,14 @@ func _make_source() -> TableSource:
 		return online
 	var local := TableController.new()
 	var rng := RandomNumberGenerator.new()
-	rng.randomize()
+	if SessionConfig.rng_seed != 0:
+		rng.seed = SessionConfig.rng_seed
+	else:
+		rng.randomize()
 	var seat_names: Array[String] = []
 	seat_names.assign(BOT_NAMES.slice(0, SessionConfig.player_count))
 	local.names = seat_names
-	local.setup(SessionConfig.player_count, SessionConfig.difficulty, rng)
+	local.setup(SessionConfig.player_count, SessionConfig.difficulty, rng, TableController.HUMAN_SEAT, SessionConfig.match_games)
 	return local
 
 
@@ -236,7 +239,16 @@ func _build_overlay() -> void:
 
 # --- reacting to the game -----------------------------------------------------------
 
+## Online, your seat is only known once the server's first message arrives.
+func _sync_my_seat() -> void:
+	var state := controller.state
+	if state != null and state.my_seat >= 0 and state.my_seat != _me:
+		_me = state.my_seat
+		_fx.human_seat = _me
+
+
 func _on_game_started() -> void:
+	_sync_my_seat()
 	if not _ring.is_built():
 		_ring.setup(controller.state.player_count, controller.state.names, _me)
 	_overlay.visible = false
@@ -402,9 +414,21 @@ func _announce(seat: int, play: Play, result: MoveResult) -> void:
 		_hold(shown, "%s TOOK THE ROUND" % _name(result.round_won_by), controller.round_end_hold())
 
 
+## MENU: asks first while a game is running (it is easy to hit by mistake); between games it just leaves.
 func _leave_to_menu() -> void:
-	controller.leave()
-	get_tree().change_scene_to_file(MENU_SCENE)
+	if _overlay.visible:
+		controller.leave()
+		get_tree().change_scene_to_file(MENU_SCENE)
+		return
+	var online := not controller is TableController
+	var title := "LEAVE GAME?"
+	var body := "A bot takes your seat. You can REJOIN from the main menu." if online else "This game will be lost."
+	var confirm := ArcadeConfirm.new(title, body, "LEAVE" if online else "QUIT")
+	confirm.confirmed.connect(func() -> void:
+		controller.step_away()
+		get_tree().change_scene_to_file(MENU_SCENE)
+	)
+	_top.add_child(confirm)
 
 
 ## The server refused a move: forget the pending animation and say why.
@@ -458,8 +482,10 @@ func _refresh() -> void:
 	var state := controller.state
 	if state == null:
 		return
+	_sync_my_seat()
 	if not _ring.is_built():
 		_ring.setup(state.player_count, state.names, _me)
+	_game_label.text = _game_title()
 	_ring.set_turn(state.current_player, state.direction)
 	_direction_label.text = "CLOCKWISE" if state.direction == Direction.CLOCKWISE else "REVERSE"
 	if not _exchange_active:

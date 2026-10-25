@@ -2,9 +2,10 @@ class_name ArcadeButton
 extends Button
 ## A chunky arcade button with pixel text, a hard shadow, and a click sound.
 
-enum Kind { PRIMARY, SECONDARY, DANGER }
+enum Kind { PRIMARY, SECONDARY, DANGER, SUCCESS }
 
 const KIND_COLORS := {
+	Kind.SUCCESS: [Palette.LIME, Palette.CYAN, Palette.INK],
 	Kind.PRIMARY: [Palette.YELLOW, Palette.ORANGE, Palette.INK],
 	Kind.SECONDARY: [Palette.PANEL_LIGHT, Palette.CYAN, Palette.CREAM],
 	Kind.DANGER: [Palette.RED, Palette.PINK, Palette.CREAM],
@@ -14,6 +15,9 @@ const KIND_COLORS := {
 const MIN_HEIGHT := 80.0
 ## Smaller pixel text than this is unreadable on a phone.
 const MIN_PIXEL_SCALE := 3
+
+## Smaller buttons (option chips) can lower this; everything else keeps the thumb-sized default.
+var min_height: float = MIN_HEIGHT
 
 var _kind: Kind = Kind.SECONDARY
 var _pixel_scale: int = 3
@@ -49,7 +53,7 @@ func set_kind(kind: Kind, pixel_scale: int = 3) -> void:
 	for color_name in ["font_hover_color", "font_pressed_color", "font_focus_color"]:
 		add_theme_color_override(color_name, ink)
 	add_theme_color_override("font_disabled_color", Palette.DIM.darkened(0.3))
-	custom_minimum_size = Vector2(custom_minimum_size.x, maxf(MIN_HEIGHT, 28.0 + PixelFont.size_for(pixel_scale)))
+	custom_minimum_size = Vector2(custom_minimum_size.x, maxf(min_height, 28.0 + PixelFont.size_for(pixel_scale)))
 
 
 ## Restyles in place (used for selected/unselected chips).
