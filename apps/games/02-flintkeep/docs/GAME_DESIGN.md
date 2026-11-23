@@ -5,12 +5,26 @@ raiders, build a castle around it ring by ring during the run, and research perm
 between runs so the next one goes further.
 
 **Setting:** flintlock fantasy. Muskets, cannons and rifle nests alongside arcane spires, set
-at night in chunky pixel art with glowing shots and magic. We chose it because fantasy does
+at night, with glowing shots and magic. We chose it because fantasy does
 far better than sci-fi on the mobile top-grossing charts, and few mobile games use the
 gunpowder-and-magic mix.
 
 All numbers live in `godot/core/defs.gd` (runs) and `godot/core/research.gd` (research).
 This document explains the intent; the code is the source of truth for values.
+
+## Look and feel
+
+- Smooth vector art in a 3/4 top-down view, lit from the top left: round stone towers with
+  roofs and weapons on top, goblin raiders, and a stone Keep with a glowing arcane crystal.
+- Each ring's wall is one continuous stone ring with battlements. Hurt sections darken and
+  broken ones fall to rubble.
+- Empty build slots are stone foundations marked with a cross. They glow softly when you can
+  afford a tower. Tap one to choose what to build; tap a tower to upgrade or sell it.
+- Gradients are strongest at the source and fade outwards: the courtyard (darkest at the Keep,
+  fading into the grass past the outer wall), a selected tower's range, and each shot's tracer
+  (bright at the muzzle, fading towards the target).
+- Interface: rounded walnut panels with brass trim and parchment text. Cinzel for titles,
+  Barlow for numbers and everything you read while playing.
 
 ## The loop
 
@@ -128,4 +142,4 @@ changing numbers.
 - Daily missions, offline earnings, cards or perks, cosmetics.
 - Gems (premium currency), ads or IAP, leaderboards.
 - Settings (reset progress, sound toggles) and a short tutorial for the first run.
-- Proper app icons and store screenshots.
+- Store screenshots and adaptive Android icon layers.

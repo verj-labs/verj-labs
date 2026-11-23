@@ -2,8 +2,8 @@
 
 An endless fortress defense for Android and iOS, made in Godot 4.7. Hold the Keep against
 goblin raiders, build a castle around it ring by ring, and research permanent upgrades between
-runs. The art is pixel art in a flintlock fantasy style, painted in code: there are no image,
-font or sound files.
+runs. Flintlock fantasy at night: smooth vector art (SVG), Cinzel and Barlow fonts, and walnut
+and brass panels.
 
 Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 
@@ -19,9 +19,11 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] Coins and research with 2 timed labs that keep running while the game is closed
 - [x] Saving, best wave per tier, coins banked every wave
 - [x] Screens: menu, battle (HUD, field, upgrade panel, slot sheet, pause, summary), research
+- [x] Vector art for the Keep, 5 towers, build foundations, 6 enemies and icons; continuous ring
+      walls; gradients on the courtyard, tower range and shot tracers
 - [x] Tests (rules, research, saves, number formatting) and a balance check that plays whole runs
 - [ ] Sound and music
-- [ ] Tutorial, settings, app icons, store screenshots
+- [ ] Tutorial, settings, store screenshots
 - [ ] More content (see "Not built yet" in the design doc)
 
 ## Run it
@@ -65,15 +67,27 @@ godot --headless --export-debug "Android" builds/android/Flintkeep.apk
 godot --headless --export-debug "iOS" builds/ios/Flintkeep.ipa    # writes an Xcode project
 ```
 
+## Art and fonts
+
+- Sprites are SVG files in `godot/assets/art/`, written by `python3 tools/make_art.py`. Edit
+  the script and re-run it, or replace a file by hand: keep its canvas size and the point it
+  stands on (`FOOT` in `godot/ui/art.gd`, which also sets how wide each sprite is on the
+  battlefield). The game rasterises them at 3x with mipmaps, so they stay sharp at any zoom.
+- Walls, the ground, glows and effects are drawn in code (`game/wall_drawer.gd`,
+  `game/battle_view.gd`, `game/field_fx.gd`).
+- Fonts are in `godot/assets/fonts/`: Cinzel for headings, Barlow for everything else. Both are
+  under the SIL Open Font License, and the licence files are next to them.
+
 ## Layout
 
 ```
 docs/GAME_DESIGN.md  what the game is and why; numbers live in code
 godot/core/          rules: no nodes or drawing (Battle, research, profile, waves, AutoPlayer)
-godot/game/          the battlefield view: sprites, walls, shots, glow, particles
-godot/ui/            screens, panels, the pixel font, sprites painted in code, the Profile autoload
+godot/game/          the battlefield view: ground, walls, sprites, shots, glow, particles
+godot/ui/            screens, panels, fonts, the art loader, the Profile autoload
+godot/assets/        SVG art and fonts
 godot/tests/         tests (run by tools/run_tests.gd)
-tools/               test runner, balance report, flow check, screenshots
+tools/               art generator, test runner, balance report, flow check, screenshots
 ```
 
 Ground rules:

@@ -7,6 +7,7 @@ var _last_tier := 1
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	theme = Kit.theme()
 	show_menu()
 
 

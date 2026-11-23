@@ -1,16 +1,12 @@
 class_name BattleScreen
 extends Control
-## A run: the HUD on top, the battlefield in the middle (tap a slot to build there) and the
-## upgrade panel at the bottom. Coins are banked into the profile every wave, so closing the
-## app mid-run never loses them.
+## A run: the HUD on top, the battlefield in the middle (tap an empty foundation to build there,
+## or a tower to upgrade it) and the upgrade panel at the bottom. Coins are banked into the
+## profile every wave, so closing the app mid-run never loses them.
 
 signal finished(goto: String)  ## "menu", "research" or "again"
 
-## The field is drawn at 1/3 or 1/2 resolution for the pixel look. A small fortress is drawn
-## bigger (1/3) so it fills the screen; with 3+ rings it zooms out to 1/2.
-const ZOOM_CLOSE := 3
-const ZOOM_FAR := 2
-const PANEL_HEIGHT := 330.0
+const PANEL_HEIGHT := 340.0
 const SPEEDS := [1.0, 2.0, 3.0]
 
 var tier := 1
@@ -21,14 +17,13 @@ var _speed_index := 0
 var _banked := 0.0
 var _cash_label: Label
 var _coin_label: Label
-var _wave_label: Label
 var _speed_button: Button
 var _hp_meter: Meter
 var _wave_meter: Meter
 var _panel: BattlePanel
 var _banner: Label
 var _banner_time := 0.0
-var _field: SubViewportContainer
+var _field: Control
 var _overlay: Control
 
 
@@ -39,8 +34,7 @@ func _init(p_tier: int) -> void:
 
 func _ready() -> void:
 	battle = Battle.new(Profile.data.research.duplicate(), tier)
-	add_child(Kit.color_rect(Pal.BG))
-	get_child(0).set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(Kit.backdrop())
 	var margin := SafeMargin.new(0)
 	add_child(margin)
 	var column := Kit.vbox(0)
@@ -48,67 +42,60 @@ func _ready() -> void:
 	column.add_child(_build_hud())
 	column.add_child(_build_field())
 	column.add_child(_build_panel())
-	_banner = Kit.label("", 5, Pal.PARCHMENT, HORIZONTAL_ALIGNMENT_CENTER)
-	_banner.set_anchors_preset(Control.PRESET_CENTER)
-	_banner.add_theme_constant_override("outline_size", 0)
-	_banner.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
-	_banner.add_theme_constant_override("shadow_offset_x", 4)
-	_banner.add_theme_constant_override("shadow_offset_y", 4)
+	_banner = Kit.heading("", 44, Pal.PARCHMENT)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
-	_show_banner("WAVE 1", Pal.PARCHMENT)
+	_show_banner("Wave 1", Pal.PARCHMENT)
 	_update_hud()
 
 
 func _build_hud() -> Control:
-	var hud := Kit.panel_container(Pal.PANEL, Pal.LINE)
-	var v := Kit.vbox(6)
+	var hud := PanelContainer.new()
+	var box := Kit.panel(Pal.PANEL, Pal.LINE, 0, 0)
+	box.border_width_bottom = 2
+	box.border_color = Pal.BRASS_DIM
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	hud.add_theme_stylebox_override("panel", box)
+	var v := Kit.vbox(8)
 	hud.add_child(v)
 	var top := Kit.hbox(8)
 	v.add_child(top)
-	top.add_child(Kit.icon(Sprites.get_tex("cash"), 3))
-	_cash_label = Kit.label("", 4, Pal.CASH)
-	_cash_label.custom_minimum_size.x = 150
+	top.add_child(Kit.icon("cash", 34))
+	_cash_label = Kit.label("", 30, Pal.CASH, Fonts.bold())
+	_cash_label.custom_minimum_size.x = 140
 	top.add_child(_cash_label)
-	top.add_child(Kit.icon(Sprites.get_tex("coin"), 3))
-	_coin_label = Kit.label("", 3, Pal.GOLD)
+	top.add_child(Kit.icon("coin", 26))
+	_coin_label = Kit.label("", 22, Pal.GOLD, Fonts.bold())
 	_coin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_coin_label)
-	_speed_button = Kit.button("1X", Kit.Btn.SECONDARY, 3, 52)
-	_speed_button.custom_minimum_size.x = 72
+	_speed_button = Kit.button("1x", Kit.Btn.SECONDARY, 20, 48)
+	_speed_button.custom_minimum_size.x = 64
 	_speed_button.pressed.connect(_cycle_speed)
 	top.add_child(_speed_button)
-	var pause := Kit.button("II", Kit.Btn.SECONDARY, 3, 52)
-	pause.custom_minimum_size.x = 60
+	var pause := Kit.button("II", Kit.Btn.SECONDARY, 18, 48)
+	pause.custom_minimum_size.x = 56
 	pause.pressed.connect(_pause)
 	top.add_child(pause)
-	var bars := Kit.hbox(8)
+	var bars := Kit.hbox(10)
 	v.add_child(bars)
-	_hp_meter = Meter.new(Pal.RED, 30, 2)
+	bars.add_child(Kit.icon("heart", 26))
+	_hp_meter = Meter.new(Color("#d8453d"), 28, 16)
 	_hp_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hp_meter.size_flags_stretch_ratio = 1.6
+	_hp_meter.size_flags_stretch_ratio = 1.5
 	bars.add_child(_hp_meter)
-	var wave_box := Kit.vbox(2)
-	wave_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bars.add_child(wave_box)
-	_wave_meter = Meter.new(Color("#2a7f95"), 30, 2)
-	wave_box.add_child(_wave_meter)
+	_wave_meter = Meter.new(Color("#3f8fa6"), 28, 16)
+	_wave_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bars.add_child(_wave_meter)
 	return hud
 
 
 func _build_field() -> Control:
-	_field = SubViewportContainer.new()
-	_field.stretch = true
-	_field.stretch_shrink = ZOOM_CLOSE if battle.rings_unlocked <= 2 else ZOOM_FAR
+	_field = Control.new()
+	_field.clip_contents = true
 	_field.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_field.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var vp := SubViewport.new()
-	vp.disable_3d = true
-	vp.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
-	vp.snap_2d_transforms_to_pixel = true
-	_field.add_child(vp)
 	view = BattleView.new()
-	vp.add_child(view)
+	_field.add_child(view)
 	view.setup(battle)
 	view.event.connect(_on_battle_event)
 	_field.gui_input.connect(_on_field_input)
@@ -116,7 +103,13 @@ func _build_field() -> Control:
 
 
 func _build_panel() -> Control:
-	var box := Kit.panel_container(Pal.PANEL, Pal.LINE)
+	var box := PanelContainer.new()
+	var style := Kit.panel(Pal.PANEL, Pal.BRASS_DIM, 18, 0)
+	style.border_width_top = 2
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	style.content_margin_top = 12
+	box.add_theme_stylebox_override("panel", style)
 	box.custom_minimum_size.y = PANEL_HEIGHT
 	_panel = BattlePanel.new(battle)
 	_panel.close_slot.connect(_select_slot.bind(-1))
@@ -125,24 +118,25 @@ func _build_panel() -> Control:
 
 
 func _process(delta: float) -> void:
+	view.layout(_field.size)
 	_update_hud()
 	if _banner_time > 0.0:
 		_banner_time -= delta
 		_banner.modulate.a = clampf(_banner_time / 0.4, 0.0, 1.0)
-	_banner.position = Vector2((size.x - _banner.size.x) / 2.0, _field.global_position.y + 40.0)
+	_banner.size.x = size.x
+	_banner.position = Vector2(0, _field.global_position.y + 24.0)
 
 
 func _update_hud() -> void:
 	_cash_label.text = Num.cash(battle.cash)
 	_coin_label.text = Num.fmt(Profile.data.coins + battle.coins_earned - _banked)
-	_hp_meter.set_state(battle.keep_hp / battle.keep_max_hp(), "KEEP %s/%s" % [Num.fmt(battle.keep_hp), Num.fmt(battle.keep_max_hp())])
-	_wave_meter.set_state(battle.wave_elapsed() / Defs.WAVE_SECONDS, "WAVE %d" % battle.wave)
+	_hp_meter.set_state(battle.keep_hp / battle.keep_max_hp(), "%s / %s" % [Num.fmt(battle.keep_hp), Num.fmt(battle.keep_max_hp())])
+	_wave_meter.set_state(battle.wave_elapsed() / Defs.WAVE_SECONDS, "Wave %d" % battle.wave)
 
 
 func _on_field_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var field_pos: Vector2 = event.position / _field.stretch_shrink - view.position
-		_select_slot(view.slot_at(field_pos))
+		_select_slot(view.slot_at(view.to_field(event.position)))
 
 
 func _select_slot(index: int) -> void:
@@ -153,7 +147,7 @@ func _select_slot(index: int) -> void:
 func _cycle_speed() -> void:
 	_speed_index = (_speed_index + 1) % SPEEDS.size()
 	view.speed = SPEEDS[_speed_index]
-	_speed_button.text = "%dX" % int(SPEEDS[_speed_index])
+	_speed_button.text = "%dx" % int(SPEEDS[_speed_index])
 
 
 func _show_banner(text: String, color: Color, seconds: float = 1.6) -> void:
@@ -167,12 +161,12 @@ func _on_battle_event(e: Dictionary) -> void:
 		"wave":
 			_bank_coins()
 			if e["boss"]:
-				_show_banner("WAVE %d\nJUGGERNAUT!" % e["wave"], Pal.ORANGE, 2.4)
+				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
 			else:
-				_show_banner("WAVE %d" % e["wave"], Pal.PARCHMENT)
+				_show_banner("Wave %d" % e["wave"], Pal.PARCHMENT)
 		"interest":
 			if e["cash"] >= 1.0:
-				view.fx.float_text(Vector2(0, -34), "INTEREST +" + Num.cash(e["cash"]), Pal.CASH, 1.4)
+				view.fx.float_text(Vector2(0, -40), "Interest +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 7)
 		"game_over":
 			_end_run()
 
@@ -195,12 +189,12 @@ func _pause() -> void:
 		return
 	view.paused = true
 	var body := Kit.vbox(16)
-	body.add_child(Kit.label("PAUSED", 6, Pal.PARCHMENT, HORIZONTAL_ALIGNMENT_CENTER))
-	body.add_child(Kit.label("TIER %d  WAVE %d" % [tier, battle.wave], 3, Pal.DIM, HORIZONTAL_ALIGNMENT_CENTER))
-	var resume := Kit.button("RESUME", Kit.Btn.PRIMARY, 4, 80)
+	body.add_child(Kit.heading("Paused", 40))
+	body.add_child(Kit.label("Tier %d  ·  Wave %d" % [tier, battle.wave], 20, Pal.DIM, null, HORIZONTAL_ALIGNMENT_CENTER))
+	var resume := Kit.button("Resume", Kit.Btn.PRIMARY, 26, 72)
 	resume.pressed.connect(_resume)
 	body.add_child(resume)
-	var retreat := Kit.button("RETREAT (END RUN)", Kit.Btn.DANGER, 3, 72)
+	var retreat := Kit.button("Retreat and end the run", Kit.Btn.DANGER, 20, 60)
 	retreat.pressed.connect(_end_run)
 	body.add_child(retreat)
 	_open_overlay(body)
@@ -224,14 +218,18 @@ func _end_run() -> void:
 func _open_overlay(body: Control) -> void:
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var dim := Kit.color_rect(Color(0.02, 0.03, 0.06, 0.82))
+	var dim := Kit.color_rect(Color(0.02, 0.03, 0.05, 0.78))
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_overlay.add_child(dim)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
-	var card := Kit.panel_container(Pal.PANEL, Pal.GOLD)
+	var card := Kit.panel_container(Pal.PANEL, Pal.BRASS, 20)
+	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_left = 24
+	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_right = 24
+	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_top = 22
+	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = 22
 	card.custom_minimum_size.x = 460
 	center.add_child(card)
 	card.add_child(body)

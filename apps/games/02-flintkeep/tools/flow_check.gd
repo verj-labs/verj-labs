@@ -18,9 +18,8 @@ func _initialize() -> void:
 	var b: Battle = battle_screen.battle
 	_expect(b.cash >= 60.0, "start cash")
 	# tap the north slot through the real input path
-	var field: Control = battle_screen._field
-	var shrink: int = field.stretch_shrink
-	var slot_pos: Vector2 = (b.slots[0].pos + battle_screen.view.position) * shrink
+	var view: Node2D = battle_screen.view
+	var slot_pos: Vector2 = view.position + (b.slots[0].pos + Vector2(0, -4)) * view.zoom
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true

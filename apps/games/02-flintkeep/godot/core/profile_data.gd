@@ -59,7 +59,7 @@ func blocker(id: String) -> String:
 		return "IN LAB"
 	var needs: String = Research.ITEMS[id].get("needs", "")
 	if needs != "" and level(needs) < 1:
-		return "NEEDS " + Research.ITEMS[needs]["name"]
+		return "NEEDS " + needs
 	if free_lab() == -1:
 		return "LABS BUSY"
 	if coins < next_cost(id):

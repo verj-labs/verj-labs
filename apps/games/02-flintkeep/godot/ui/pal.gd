@@ -1,40 +1,40 @@
 class_name Pal
 extends RefCounted
-## Flintlock fantasy at night: ink-blue panels, parchment text, brass and gunpowder accents,
-## and an arcane glow (cyan / violet) for magic and highlights.
+## Night battlefield, dark-walnut panels with brass trim, parchment text. Accents: gold for
+## coins, green for cash, cyan for the Keep's arcane bolts, violet for magic.
 
-const BG := Color("#0a0d18")
-const PANEL := Color("#141a2c")
-const PANEL_LIGHT := Color("#1f2742")
-const LINE := Color("#3a4670")
-const SHADOW := Color("#05070d")
+const BG := Color("#10131a")
+const PANEL := Color("#2a2019")  ## dark walnut
+const PANEL_LIGHT := Color("#3a2c21")
+const PANEL_DEEP := Color("#1b1510")
+const LINE := Color("#5e4630")  ## wood edge
+const BRASS := Color("#d8a750")
+const BRASS_DIM := Color("#8c6a3a")
+const SHADOW := Color(0, 0, 0, 0.45)
 
-const PARCHMENT := Color("#f3e6c4")
-const DIM := Color("#8d96b8")
-const MUTED := Color("#5b6488")
+const PARCHMENT := Color("#f5ead3")
+const DIM := Color("#c4b293")
+const MUTED := Color("#7f6e58")
 
-const GOLD := Color("#ffc94a")  ## coins
-const CASH := Color("#7ee36b")  ## cash
-const RED := Color("#ff4d5e")
+const GOLD := Color("#ffcc4d")  ## coins
+const CASH := Color("#8fdc6a")  ## cash
+const CASH_DARK := Color("#2f6b2c")
+const RED := Color("#e5534b")
 const ORANGE := Color("#ff9a3c")
-const CYAN := Color("#5ef2ff")
-const ARCANE := Color("#b06bff")
-const STEEL := Color("#aab3c8")
-const INK := Color("#141021")  ## dark text on bright buttons
+const CYAN := Color("#6fe3ff")
+const ARCANE := Color("#b98cff")
+const INK := Color("#22180f")  ## dark text on bright buttons
 
-## Grass and earth of the battlefield.
-const GRASS_DARK := Color("#14251f")
-const GRASS := Color("#1b3328")
-const GRASS_LIGHT := Color("#25432f")
-const EARTH := Color("#3a2f25")
-const EARTH_LIGHT := Color("#4d3e2e")
+const GRASS_DARK := Color("#1a3324")
+const GRASS_LIGHT := Color("#3a6440")
+const EARTH := Color("#8a6a44")
 
-## Colour of each weapon's shots and its accent on the UI.
+## Colour of each weapon's shots and its name in the build list.
 const WEAPON_COLORS := {
-	"keep": Color("#5ef2ff"),
+	"keep": Color("#6fe3ff"),
 	"musket": Color("#ffe27a"),
 	"cannon": Color("#ff9a3c"),
 	"volley": Color("#fff2b0"),
 	"sniper": Color("#e8fbff"),
-	"arcane": Color("#c48bff"),
+	"arcane": Color("#c89bff"),
 }

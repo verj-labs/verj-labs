@@ -50,29 +50,29 @@ enum DamageType { PHYSICAL, MAGIC }
 ## focus: "near" shoots the enemy closest to the Keep, "strong" the one with the most health.
 const WEAPONS := {
 	"musket": {
-		"name": "Musket Tower", "short": "MUSKET", "cost": 25.0, "dmg": 5.0, "rate": 1.6, "range": 54.0,
+		"name": "Musket Tower", "short": "Musket Tower", "cost": 25.0, "dmg": 5.0, "rate": 1.6, "range": 54.0,
 		"target": Target.BOTH, "type": DamageType.PHYSICAL, "splash": 0.0, "chain": 0, "pierce": 0.0,
-		"focus": "near", "about": "GROUND + AIR. CHEAP.",
+		"focus": "near", "about": "Hits ground and air. Cheap and steady.",
 	},
 	"cannon": {
-		"name": "Cannon Battery", "short": "CANNON", "cost": 60.0, "dmg": 16.0, "rate": 0.5, "range": 62.0,
+		"name": "Cannon Battery", "short": "Cannon Battery", "cost": 60.0, "dmg": 16.0, "rate": 0.5, "range": 62.0,
 		"target": Target.GROUND, "type": DamageType.PHYSICAL, "splash": 16.0, "chain": 0, "pierce": 0.0,
-		"focus": "near", "about": "GROUND ONLY. SPLASH DAMAGE.",
+		"focus": "near", "about": "Ground only. Splash damage.",
 	},
 	"volley": {
-		"name": "Volley Gun", "short": "VOLLEY", "cost": 50.0, "dmg": 4.5, "rate": 3.2, "range": 60.0,
+		"name": "Volley Gun", "short": "Volley Gun", "cost": 50.0, "dmg": 4.5, "rate": 3.2, "range": 60.0,
 		"target": Target.AIR, "type": DamageType.PHYSICAL, "splash": 0.0, "chain": 0, "pierce": 0.0,
-		"focus": "near", "about": "AIR ONLY. SHREDS FLYERS.",
+		"focus": "near", "about": "Air only. Shreds flyers.",
 	},
 	"sniper": {
-		"name": "Rifle Nest", "short": "RIFLE", "cost": 90.0, "dmg": 38.0, "rate": 0.35, "range": 120.0,
+		"name": "Rifle Nest", "short": "Rifle Nest", "cost": 90.0, "dmg": 38.0, "rate": 0.35, "range": 120.0,
 		"target": Target.BOTH, "type": DamageType.PHYSICAL, "splash": 0.0, "chain": 0, "pierce": 0.6,
-		"focus": "strong", "about": "LONG RANGE. HITS THE BIGGEST.",
+		"focus": "strong", "about": "Long range. Picks off the biggest.",
 	},
 	"arcane": {
-		"name": "Arcane Spire", "short": "ARCANE", "cost": 120.0, "dmg": 9.0, "rate": 1.0, "range": 64.0,
+		"name": "Arcane Spire", "short": "Arcane Spire", "cost": 120.0, "dmg": 9.0, "rate": 1.0, "range": 64.0,
 		"target": Target.BOTH, "type": DamageType.MAGIC, "splash": 0.0, "chain": 2, "pierce": 0.0,
-		"focus": "near", "about": "MAGIC. CHAINS. NO ARMOUR.",
+		"focus": "near", "about": "Magic: ignores armour, chains.",
 	},
 }
 const WEAPON_ORDER := ["musket", "cannon", "volley", "sniper", "arcane"]
@@ -115,19 +115,19 @@ const KEEP := {"hp": 100.0, "regen": 0.005, "dmg": 6.0, "rate": 1.2, "range": 58
 ## (0 = no cap). How each step applies is in Battle (keep_stat / bounty_mult ...).
 
 const KEEP_UPGRADES := {
-	"damage": {"name": "DAMAGE", "base": 8.0, "growth": 1.32, "step": 0.22, "max": 0},
-	"rate": {"name": "FIRE RATE", "base": 10.0, "growth": 1.4, "step": 0.08, "max": 30},
-	"range": {"name": "RANGE", "base": 12.0, "growth": 1.55, "step": 3.0, "max": 12},
-	"health": {"name": "HEALTH", "base": 8.0, "growth": 1.3, "step": 0.2, "max": 0},
-	"regen": {"name": "REGEN", "base": 10.0, "growth": 1.35, "step": 0.25, "max": 0},
-	"armor": {"name": "ARMOUR", "base": 15.0, "growth": 1.45, "step": 0.03, "max": 20},
+	"damage": {"name": "Damage", "base": 8.0, "growth": 1.32, "step": 0.22, "max": 0},
+	"rate": {"name": "Fire rate", "base": 10.0, "growth": 1.4, "step": 0.08, "max": 30},
+	"range": {"name": "Range", "base": 12.0, "growth": 1.55, "step": 3.0, "max": 12},
+	"health": {"name": "Health", "base": 8.0, "growth": 1.3, "step": 0.2, "max": 0},
+	"regen": {"name": "Regeneration", "base": 10.0, "growth": 1.35, "step": 0.25, "max": 0},
+	"armor": {"name": "Armour", "base": 15.0, "growth": 1.45, "step": 0.03, "max": 20},
 }
 const KEEP_ORDER := ["damage", "rate", "range", "health", "regen", "armor"]
 
 const ECON_UPGRADES := {
-	"bounty": {"name": "CASH BOUNTY", "base": 15.0, "growth": 1.4, "step": 0.1, "max": 0},
-	"coin_bounty": {"name": "COIN BOUNTY", "base": 20.0, "growth": 1.45, "step": 0.08, "max": 0},
-	"interest": {"name": "INTEREST", "base": 25.0, "growth": 1.5, "step": 0.01, "max": 10},
+	"bounty": {"name": "Cash bounty", "base": 15.0, "growth": 1.4, "step": 0.1, "max": 0},
+	"coin_bounty": {"name": "Coin bounty", "base": 20.0, "growth": 1.45, "step": 0.08, "max": 0},
+	"interest": {"name": "Interest", "base": 25.0, "growth": 1.5, "step": 0.01, "max": 10},
 }
 const ECON_ORDER := ["bounty", "coin_bounty", "interest"]
 const INTEREST_CAP_PER_WAVE := 15.0  ## Interest pays at most this times the wave number.

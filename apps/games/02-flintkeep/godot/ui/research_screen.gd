@@ -5,6 +5,8 @@ extends Control
 
 signal back
 
+const GROUP_ICONS := {"Keep": "keep", "Economy": "coin", "Arsenal": "cannon", "Fortress": "slot"}
+
 var _coins_label: Label
 var _lab_meters: Array[Meter] = []
 var _rows: Array[UpgradeRow] = []
@@ -16,41 +18,49 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	var bg := Kit.color_rect(Pal.BG)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(Kit.backdrop())
 	var margin := SafeMargin.new(16)
 	add_child(margin)
 	var col := Kit.vbox(10)
 	margin.add_child(col)
 
 	var top := Kit.hbox(10)
-	var back_button := Kit.button("<", Kit.Btn.SECONDARY, 4, 64)
-	back_button.custom_minimum_size.x = 72
+	var back_button := Kit.button("‹", Kit.Btn.SECONDARY, 34, 56)
+	back_button.custom_minimum_size.x = 64
 	back_button.pressed.connect(func() -> void: back.emit())
 	top.add_child(back_button)
-	var title := Kit.label("RESEARCH", 5, Pal.PARCHMENT)
+	var title := Kit.heading("Research", 38, Pal.PARCHMENT, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
-	top.add_child(Kit.icon(Sprites.get_tex("coin"), 4))
-	_coins_label = Kit.label("", 4, Pal.GOLD)
-	top.add_child(_coins_label)
+	var pill := Kit.panel_container(Pal.PANEL_DEEP, Pal.LINE, 22)
+	var coins := Kit.hbox(8)
+	coins.add_child(Kit.icon("coin", 26))
+	_coins_label = Kit.label("", 22, Pal.GOLD, Fonts.bold())
+	coins.add_child(_coins_label)
+	pill.add_child(coins)
+	top.add_child(pill)
 	col.add_child(top)
 
+	var labs := Kit.panel_container(Pal.PANEL, Pal.LINE)
+	var lab_list := Kit.vbox(8)
+	labs.add_child(lab_list)
 	for i in Profile.data.labs.size():
-		var m := Meter.new(Pal.ARCANE, 40, 2)
-		col.add_child(m)
+		var m := Meter.new(Color("#7d52c9"), 34, 16)
+		lab_list.add_child(m)
 		_lab_meters.append(m)
+	col.add_child(labs)
 
 	var scroll := TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(scroll)
-	var list := Kit.vbox(6)
+	var list := Kit.vbox(8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 	for group in Research.GROUPS:
-		var header := Kit.label(group, 3, Pal.CYAN)
-		header.custom_minimum_size.y = 40
+		var header := Kit.hbox(10)
+		header.custom_minimum_size.y = 48
+		header.add_child(Kit.icon(GROUP_ICONS[group], 30))
+		header.add_child(Kit.heading(group, 26, Pal.GOLD, HORIZONTAL_ALIGNMENT_LEFT))
 		list.add_child(header)
 		for id in Research.ids_in(group):
 			var row := _row(id)
@@ -66,23 +76,27 @@ func _row(id: String) -> UpgradeRow:
 		var item: Dictionary = Research.ITEMS[id]
 		if int(item["max"]) == 1:
 			return item["name"]
-		return "%s LV%d" % [item["name"], data.level(id)]
+		return "%s  ·  Lv %d" % [item["name"], data.level(id)]
 	var detail := func() -> String:
 		var text := Research.describe(id, data.level(id))
 		if not data.is_maxed(id):
-			text += "  " + Num.duration(data.next_seconds(id))
+			text += "   ⏱ " + Num.duration(data.next_seconds(id)).to_lower()
 		return text
 	var price := func() -> float:
 		var block := data.blocker(id)
 		return -1.0 if block != "" and block != "NEED COINS" else data.next_cost(id)
 	var label := func() -> String:
-		var block := data.blocker(id)
-		if block in ["MAX", "IN LAB", "LABS BUSY"] or block.begins_with("NEEDS"):
-			return "MAX" if block == "MAX" else ("IN LAB" if block == "IN LAB" else ("BUSY" if block == "LABS BUSY" else "LOCKED"))
+		match data.blocker(id):
+			"MAX": return "Done"
+			"IN LAB": return "In lab"
+			"LABS BUSY": return "Busy"
+		if data.blocker(id).begins_with("NEEDS"):
+			return "Locked"
 		return Num.fmt(data.next_cost(id))
 	var action := {"label": label, "price": price, "run": Profile.start_research.bind(id), "kind": Kit.Btn.PRIMARY,
 		"wallet": func() -> float: return data.coins}
-	var row := UpgradeRow.make(title, detail, [action], Pal.PARCHMENT)
+	var icon := id if Defs.WEAPONS.has(id) else ""
+	var row := UpgradeRow.make(title, detail, [action], Pal.PARCHMENT, icon)
 	row.acted.connect(_refresh)
 	return row
 
@@ -102,10 +116,10 @@ func _refresh() -> void:
 		var lab: Dictionary = data.labs[i]
 		var id: String = lab["id"]
 		if id == "":
-			_lab_meters[i].set_state(0.0, "LAB %d: IDLE" % (i + 1))
+			_lab_meters[i].set_state(0.0, "Lab %d is idle" % (i + 1))
 			continue
 		var total := Research.seconds(id, data.level(id))
 		var left := data.seconds_left(i, now)
-		_lab_meters[i].set_state(1.0 - left / maxf(total, 1.0), "%s  %s" % [Research.ITEMS[id]["name"], Num.duration(left)])
+		_lab_meters[i].set_state(1.0 - left / maxf(total, 1.0), "%s  ·  %s" % [Research.ITEMS[id]["name"], Num.duration(left).to_lower()])
 	for r in _rows:
 		r.refresh()

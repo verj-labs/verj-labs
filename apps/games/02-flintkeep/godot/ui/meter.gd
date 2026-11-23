@@ -1,17 +1,17 @@
 class_name Meter
 extends Control
-## A chunky bar with pixel text on it (Keep health, wave timer, research progress).
+## A rounded bar with centred text (Keep health, wave timer, research progress). The fill has
+## a soft top highlight so it reads as a glass tube.
 
 var value := 1.0  ## 0..1
 var text := ""
 var fill := Pal.CASH
-var back := Pal.SHADOW
-var text_scale := 2
+var font_size := 17
 
 
-func _init(p_fill: Color = Pal.CASH, height: float = 28.0, p_text_scale: int = 2) -> void:
+func _init(p_fill: Color = Pal.CASH, height: float = 30.0, p_font_size: int = 17) -> void:
 	fill = p_fill
-	text_scale = p_text_scale
+	font_size = p_font_size
 	custom_minimum_size.y = height
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -27,17 +27,18 @@ func set_state(p_value: float, p_text: String = "") -> void:
 
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
-	draw_rect(r, Pal.LINE)
-	draw_rect(r.grow(-3), back)
+	var radius := int(size.y / 2.0)
+	draw_style_box(Kit.panel(Pal.PANEL_DEEP, Pal.LINE, radius, 2, false), r)
 	var inner := r.grow(-3)
-	var w := floorf(inner.size.x * value)
-	if w > 0.0:
-		draw_rect(Rect2(inner.position, Vector2(w, inner.size.y)), fill)
-		draw_rect(Rect2(inner.position, Vector2(w, 3)), fill.lightened(0.3))
+	var w := inner.size.x * value
+	if w >= 2.0:
+		var bar := Kit.panel(fill, fill.lightened(0.25), int(inner.size.y / 2.0), 0, false)
+		draw_style_box(bar, Rect2(inner.position, Vector2(maxf(w, inner.size.y), inner.size.y)))
+		var shine := Kit.panel(Color(1, 1, 1, 0.18), Color.TRANSPARENT, int(inner.size.y / 4.0), 0, false)
+		draw_style_box(shine, Rect2(inner.position + Vector2(4, 2), Vector2(maxf(w - 8, 2), inner.size.y * 0.35)))
 	if text != "":
-		var font := PixelFont.font()
-		var fs := PixelFont.size_for(text_scale)
-		var tw := PixelFont.text_width(text, text_scale)
-		var at := Vector2(floorf((size.x - tw) / 2.0), floorf((size.y + fs) / 2.0) - text_scale)
-		draw_string(font, at + Vector2(text_scale, text_scale), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.8))
-		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.PARCHMENT)
+		var font := Fonts.bold()
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var at := Vector2((size.x - tw) / 2.0, (size.y + font.get_ascent(font_size) - font.get_descent(font_size)) / 2.0)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0, 0, 0, 0.6))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Pal.PARCHMENT)

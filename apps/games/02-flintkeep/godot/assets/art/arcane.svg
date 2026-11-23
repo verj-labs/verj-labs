@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="100" viewBox="0 0 64 100"><defs>
+<linearGradient id="stone" x1="0" x2="1"><stop offset="0" stop-color="#c9c3b6"/><stop offset="0.45" stop-color="#9c968a"/><stop offset="1" stop-color="#5a554d"/></linearGradient>
+<linearGradient id="stoneDark" x1="0" x2="1"><stop offset="0" stop-color="#7c7a86"/><stop offset="0.5" stop-color="#55535f"/><stop offset="1" stop-color="#2f2e38"/></linearGradient>
+<linearGradient id="wood" x1="0" x2="1"><stop offset="0" stop-color="#b9824d"/><stop offset="0.5" stop-color="#8d5a30"/><stop offset="1" stop-color="#55331a"/></linearGradient>
+<linearGradient id="roofRed" x1="0" x2="1"><stop offset="0" stop-color="#e2574a"/><stop offset="0.55" stop-color="#b13a33"/><stop offset="1" stop-color="#6e1f22"/></linearGradient>
+<linearGradient id="roofBlue" x1="0" x2="1"><stop offset="0" stop-color="#5c8fe0"/><stop offset="0.55" stop-color="#355fae"/><stop offset="1" stop-color="#1d3566"/></linearGradient>
+<linearGradient id="roofGreen" x1="0" x2="1"><stop offset="0" stop-color="#6fae5a"/><stop offset="0.55" stop-color="#477d3a"/><stop offset="1" stop-color="#284a22"/></linearGradient>
+<linearGradient id="iron" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6b7180"/><stop offset="0.5" stop-color="#3a3e48"/><stop offset="1" stop-color="#1e2026"/></linearGradient>
+<linearGradient id="brass" x1="0" x2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="0.5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5f1c"/></linearGradient>
+<linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#b8b1a3"/><stop offset="1" stop-color="#7d776c"/></linearGradient>
+<radialGradient id="crystal" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#9ff4ff"/><stop offset="1" stop-color="#1fa8d6"/></radialGradient>
+<radialGradient id="violet" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#dcb8ff"/><stop offset="1" stop-color="#7b3fd1"/></radialGradient>
+<radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff0ff" stop-opacity="0.7"/><stop offset="1" stop-color="#7ff0ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="glowViolet"><stop offset="0" stop-color="#c89bff" stop-opacity="0.7"/><stop offset="1" stop-color="#c89bff" stop-opacity="0"/></radialGradient>
+<radialGradient id="shadow"><stop offset="0" stop-color="#000" stop-opacity="0.45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<linearGradient id="skin" x1="0" x2="1"><stop offset="0" stop-color="#9ccf5c"/><stop offset="1" stop-color="#4f8a2f"/></linearGradient>
+<linearGradient id="tunicRed" x1="0" x2="1"><stop offset="0" stop-color="#d9534a"/><stop offset="1" stop-color="#7d2522"/></linearGradient>
+<linearGradient id="tunicOrange" x1="0" x2="1"><stop offset="0" stop-color="#f29a42"/><stop offset="1" stop-color="#9a5418"/></linearGradient>
+<linearGradient id="plate" x1="0" x2="1"><stop offset="0" stop-color="#c3c8d2"/><stop offset="0.5" stop-color="#8a909c"/><stop offset="1" stop-color="#4a4e58"/></linearGradient>
+<linearGradient id="wyvern" x1="0" x2="1"><stop offset="0" stop-color="#9a6ad6"/><stop offset="1" stop-color="#4a2580"/></linearGradient>
+<linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset="0.5" stop-color="#ffc83d"/><stop offset="1" stop-color="#b77d12"/></linearGradient>
+</defs><ellipse cx="32" cy="95" rx="22" ry="5" fill="url(#shadow)"/><path d="M18 90 L23 40 L41 40 L46 90 A14 4 0 0 1 18 90 Z" fill="url(#stoneDark)"/><path d="M23.8 52 Q32 55 40.2 52" stroke="#000" stroke-opacity="0.25" fill="none"/><path d="M22.6 64 Q32 67 41.4 64" stroke="#000" stroke-opacity="0.25" fill="none"/><path d="M21.4 76 Q32 79 42.6 76" stroke="#000" stroke-opacity="0.25" fill="none"/><path d="M30 58 l3 -4 l3 4 l-3 4 Z" fill="#c89bff"/><path d="M34 70 l3 -4 l3 4 l-3 4 Z" fill="#c89bff"/><path d="M29 82 l3 -4 l3 4 l-3 4 Z" fill="#c89bff"/><ellipse cx="32" cy="40" rx="11" ry="3.5" fill="#3b2a5c" stroke="#c89bff" stroke-width="1"/><circle cx="32" cy="20" r="18" fill="url(#glowViolet)"/><polygon points="32,4 40,19 32,34 24,19" fill="url(#violet)" stroke="#4a1f86" stroke-width="1"/><polygon points="32,4 32,34 24,19" fill="#ffffff" opacity="0.25"/></svg>

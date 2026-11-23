@@ -1,0 +1,354 @@
+#!/usr/bin/env python3
+"""Writes the game's vector art (SVG) into godot/assets/art/.
+
+Every sprite is drawn in a 3/4 top-down view, lit from the top left, standing on its "foot"
+point at the bottom centre of the canvas (see FOOT in godot/ui/art.gd). Edit a function and
+re-run:  python3 tools/make_art.py
+An artist can also replace any SVG by hand; keep the canvas size and foot point.
+"""
+import math
+import os
+
+OUT = os.path.join(os.path.dirname(__file__), "..", "godot", "assets", "art")
+
+DEFS = """
+<linearGradient id="stone" x1="0" x2="1"><stop offset="0" stop-color="#c9c3b6"/><stop offset="0.45" stop-color="#9c968a"/><stop offset="1" stop-color="#5a554d"/></linearGradient>
+<linearGradient id="stoneDark" x1="0" x2="1"><stop offset="0" stop-color="#7c7a86"/><stop offset="0.5" stop-color="#55535f"/><stop offset="1" stop-color="#2f2e38"/></linearGradient>
+<linearGradient id="wood" x1="0" x2="1"><stop offset="0" stop-color="#b9824d"/><stop offset="0.5" stop-color="#8d5a30"/><stop offset="1" stop-color="#55331a"/></linearGradient>
+<linearGradient id="roofRed" x1="0" x2="1"><stop offset="0" stop-color="#e2574a"/><stop offset="0.55" stop-color="#b13a33"/><stop offset="1" stop-color="#6e1f22"/></linearGradient>
+<linearGradient id="roofBlue" x1="0" x2="1"><stop offset="0" stop-color="#5c8fe0"/><stop offset="0.55" stop-color="#355fae"/><stop offset="1" stop-color="#1d3566"/></linearGradient>
+<linearGradient id="roofGreen" x1="0" x2="1"><stop offset="0" stop-color="#6fae5a"/><stop offset="0.55" stop-color="#477d3a"/><stop offset="1" stop-color="#284a22"/></linearGradient>
+<linearGradient id="iron" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6b7180"/><stop offset="0.5" stop-color="#3a3e48"/><stop offset="1" stop-color="#1e2026"/></linearGradient>
+<linearGradient id="brass" x1="0" x2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="0.5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5f1c"/></linearGradient>
+<linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#b8b1a3"/><stop offset="1" stop-color="#7d776c"/></linearGradient>
+<radialGradient id="crystal" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#9ff4ff"/><stop offset="1" stop-color="#1fa8d6"/></radialGradient>
+<radialGradient id="violet" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#dcb8ff"/><stop offset="1" stop-color="#7b3fd1"/></radialGradient>
+<radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff0ff" stop-opacity="0.7"/><stop offset="1" stop-color="#7ff0ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="glowViolet"><stop offset="0" stop-color="#c89bff" stop-opacity="0.7"/><stop offset="1" stop-color="#c89bff" stop-opacity="0"/></radialGradient>
+<radialGradient id="shadow"><stop offset="0" stop-color="#000" stop-opacity="0.45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<linearGradient id="skin" x1="0" x2="1"><stop offset="0" stop-color="#9ccf5c"/><stop offset="1" stop-color="#4f8a2f"/></linearGradient>
+<linearGradient id="tunicRed" x1="0" x2="1"><stop offset="0" stop-color="#d9534a"/><stop offset="1" stop-color="#7d2522"/></linearGradient>
+<linearGradient id="tunicOrange" x1="0" x2="1"><stop offset="0" stop-color="#f29a42"/><stop offset="1" stop-color="#9a5418"/></linearGradient>
+<linearGradient id="plate" x1="0" x2="1"><stop offset="0" stop-color="#c3c8d2"/><stop offset="0.5" stop-color="#8a909c"/><stop offset="1" stop-color="#4a4e58"/></linearGradient>
+<linearGradient id="wyvern" x1="0" x2="1"><stop offset="0" stop-color="#9a6ad6"/><stop offset="1" stop-color="#4a2580"/></linearGradient>
+<linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset="0.5" stop-color="#ffc83d"/><stop offset="1" stop-color="#b77d12"/></linearGradient>
+"""
+
+
+def svg(w, h, body):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
+            f"<defs>{DEFS}</defs>{body}</svg>")
+
+
+def shadow(cx, cy, rx, ry):
+    return f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="url(#shadow)"/>'
+
+
+def cylinder(x0, x1, top, bottom, fill, ry=None):
+    """A round tower body seen from slightly above: straight sides, curved bottom edge."""
+    rx = (x1 - x0) / 2
+    ry = ry if ry is not None else rx * 0.28
+    return (f'<path d="M{x0} {top} L{x0} {bottom} A{rx} {ry} 0 0 0 {x1} {bottom} L{x1} {top} '
+            f'A{rx} {ry} 0 0 1 {x0} {top} Z" fill="{fill}"/>')
+
+
+def courses(x0, x1, ys, ry=None, color="#000", opacity=0.18):
+    """Curved mortar lines between stone courses, plus staggered joints."""
+    rx = (x1 - x0) / 2
+    ry = ry if ry is not None else rx * 0.28
+    out = []
+    for i, y in enumerate(ys):
+        out.append(f'<path d="M{x0} {y} A{rx} {ry} 0 0 0 {x1} {y}" stroke="{color}" stroke-opacity="{opacity}" stroke-width="1.2" fill="none"/>')
+    for i in range(len(ys) - 1):
+        for k in range(4):
+            t = (k + (0.5 if i % 2 else 0.0) + 0.5) / 4.5
+            ang = math.pi * t
+            x = (x0 + x1) / 2 - rx * math.cos(ang)
+            y = ys[i] + ry * math.sin(ang)
+            out.append(f'<line x1="{x:.1f}" y1="{y + 1:.1f}" x2="{x:.1f}" y2="{y + (ys[i+1]-ys[i]) - 1:.1f}" stroke="#000" stroke-opacity="{opacity}" stroke-width="1"/>')
+    return "".join(out)
+
+
+def merlons(cx, cy, rx, ry, count, w, h, fill, front=True):
+    out = []
+    for i in range(count):
+        a = math.pi * (i + 0.5) / count if front else math.pi + math.pi * (i + 0.5) / count
+        x = cx - rx * math.cos(a)
+        y = cy + ry * math.sin(a)
+        out.append(f'<rect x="{x - w / 2:.1f}" y="{y - h:.1f}" width="{w}" height="{h + 2}" rx="1" fill="{fill}" stroke="#2a2620" stroke-opacity="0.5" stroke-width="0.8"/>')
+    return "".join(out)
+
+
+# --- Buildings ----------------------------------------------------------------------------------
+
+def keep():
+    return svg(120, 150, keep_body())
+
+
+def keep_body():
+    b = shadow(60, 146, 54, 10)
+    b += cylinder(20, 100, 56, 138, "url(#stone)", 11)
+    b += courses(20, 100, [72, 88, 104, 120], 11)
+    # door and arrow slits
+    b += '<path d="M50 146 L50 124 A10 10 0 0 1 70 124 L70 146 Z" fill="#c9c3b6"/>'
+    b += '<path d="M52.5 146 L52.5 125 A7.5 7.5 0 0 1 67.5 125 L67.5 146 Z" fill="#4a2c18"/>'
+    b += '<line x1="60" y1="118" x2="60" y2="146" stroke="#2c1a0e" stroke-width="1"/>'
+    b += '<circle cx="64" cy="134" r="1.2" fill="#ffd36b"/>'
+    for x in (34, 86):
+        b += f'<rect x="{x - 2.5}" y="82" width="5" height="14" rx="2.5" fill="#1d1712"/>'
+        b += f'<rect x="{x - 1.2}" y="86" width="2.4" height="7" rx="1.2" fill="#ffb347"/>'
+    # brass band under the parapet
+    b += '<path d="M20 58 A40 11 0 0 0 100 58" stroke="url(#brass)" stroke-width="3" fill="none"/>'
+    # parapet: back merlons, floor, front face, front merlons
+    b += merlons(60, 42, 46, 12, 6, 8, 8, "#a8a294", front=False)
+    b += '<ellipse cx="60" cy="42" rx="48" ry="13" fill="url(#floor)"/>'
+    b += '<ellipse cx="60" cy="42" rx="38" ry="9" fill="#6d675d"/>'
+    b += cylinder(12, 108, 42, 54, "url(#stone)", 13)
+    b += '<path d="M12 42 A48 13 0 0 0 108 42" stroke="#e6e0d2" stroke-width="1.2" fill="none"/>'
+    # arcane crystal on its pedestal
+    b += '<circle cx="60" cy="18" r="20" fill="url(#glowCyan)"/>'
+    b += cylinder(53, 67, 30, 44, "url(#stoneDark)", 3)
+    b += '<polygon points="60,2 69,18 60,34 51,18" fill="url(#crystal)" stroke="#0e5f7d" stroke-width="1"/>'
+    b += '<polygon points="60,2 60,34 51,18" fill="#ffffff" opacity="0.25"/>'
+    b += merlons(60, 42, 46, 12, 7, 9, 10, "url(#stone)")
+    # banner
+    b += '<line x1="94" y1="6" x2="94" y2="46" stroke="#5b4a32" stroke-width="2"/>'
+    b += '<path d="M95 7 L115 10 L110 15 L115 20 L95 22 Z" fill="url(#roofBlue)"/>'
+    b += '<circle cx="102" cy="14.5" r="2.4" fill="#ffd36b"/>'
+    return b
+
+
+def tower_base(x0=16, x1=48, top=62, bottom=90):
+    return cylinder(x0, x1, top, bottom, "url(#stone)") + courses(x0, x1, [top + 9, top + 18], None)
+
+
+def musket():
+    b = shadow(32, 94, 26, 6)
+    b += tower_base()
+    b += cylinder(12, 52, 38, 63, "url(#wood)")
+    for x in (17, 22, 27, 37, 42, 47):
+        b += f'<line x1="{x}" y1="40" x2="{x}" y2="{63 + (5 - abs(x - 32) * 0.25):.1f}" stroke="#3a210f" stroke-opacity="0.45" stroke-width="1"/>'
+    b += '<rect x="22" y="42" width="20" height="13" rx="2" fill="#1e130b"/>'
+    b += '<rect x="28.5" y="43" width="7" height="4" rx="1" fill="#1b1b22"/>'  # shako
+    b += '<circle cx="32" cy="49" r="3" fill="#e9b98d"/>'
+    b += '<path d="M26 55 Q32 50 38 55 Z" fill="#2f5bb5"/>'
+    b += '<line x1="34" y1="51" x2="55" y2="46" stroke="#2a2a2e" stroke-width="2.2" stroke-linecap="round"/>'
+    b += '<line x1="34" y1="51" x2="42" y2="49.3" stroke="#7a4a22" stroke-width="2.6" stroke-linecap="round"/>'
+    b += '<path d="M7 39 L32 6 L57 39 A25 7 0 0 1 7 39 Z" fill="url(#roofRed)"/>'
+    b += '<path d="M7 39 A25 7 0 0 0 57 39" stroke="#4a1414" stroke-width="1.5" fill="none"/>'
+    b += '<line x1="32" y1="6" x2="32" y2="0" stroke="#5b4a32" stroke-width="1.5"/>'
+    b += '<path d="M32 0.5 L41 2.5 L32 5 Z" fill="#355fae"/>'
+    return svg(64, 100, b)
+
+
+def cannon():
+    b = shadow(32, 94, 30, 6)
+    b += cylinder(8, 56, 54, 88, "url(#stone)")
+    b += courses(8, 56, [64, 74, 82])
+    b += merlons(32, 52, 22, 6, 4, 7, 6, "#a8a294", front=False)
+    b += '<ellipse cx="32" cy="52" rx="24" ry="7" fill="url(#floor)"/>'
+    # gun carriage and barrel, aiming out over the wall
+    b += '<rect x="20" y="44" width="18" height="7" rx="2" fill="url(#wood)"/>'
+    b += '<g transform="rotate(-18 30 44)"><rect x="22" y="38" width="30" height="9" rx="4" fill="url(#iron)"/>'
+    b += '<rect x="48" y="37" width="5" height="11" rx="2" fill="#2a2d35"/>'
+    b += '<rect x="26" y="38" width="3" height="9" fill="url(#brass)"/></g>'
+    b += '<circle cx="23" cy="51" r="5" fill="#5a3a1e" stroke="#2c1a0e" stroke-width="1.2"/>'
+    b += '<circle cx="23" cy="51" r="1.5" fill="url(#brass)"/>'
+    b += merlons(32, 54, 22, 7, 5, 7, 7, "url(#stone)")
+    return svg(64, 100, b)
+
+
+def volley():
+    b = shadow(32, 94, 26, 6)
+    b += tower_base(14, 50, 56, 90)
+    b += cylinder(11, 53, 46, 58, "url(#wood)")
+    b += '<ellipse cx="32" cy="46" rx="21" ry="6" fill="#a8774a"/>'
+    b += '<g transform="rotate(35 32 40)">'
+    for i in range(5):
+        x = 22 + i * 4.4
+        b += (f'<rect x="{x:.1f}" y="14" width="4" height="28" rx="1.5" fill="url(#iron)"/>'
+              f'<rect x="{x - 0.3:.1f}" y="13" width="4.6" height="3" rx="1" fill="#22252c"/>')
+    b += '<rect x="20" y="22" width="25" height="3" fill="url(#brass)"/></g>'
+    b += '<rect x="18" y="38" width="24" height="7" rx="3" fill="url(#brass)"/>'
+    b += '<circle cx="21" cy="47" r="4" fill="#5a3a1e" stroke="#2c1a0e"/><circle cx="41" cy="47" r="4" fill="#5a3a1e" stroke="#2c1a0e"/>'
+    return svg(64, 100, b)
+
+
+def sniper():
+    b = shadow(32, 95, 20, 5)
+    b += cylinder(20, 44, 34, 90, "url(#stone)")
+    b += courses(20, 44, [44, 54, 64, 74, 82])
+    b += cylinder(16, 48, 24, 36, "url(#wood)")
+    b += '<rect x="22" y="26" width="20" height="9" rx="2" fill="#1e130b"/>'
+    b += '<circle cx="31" cy="30" r="2.6" fill="#e9b98d"/>'
+    b += '<path d="M27 26 L35 26 L33 23.5 L29 23.5 Z" fill="#1b1b22"/>'
+    b += '<line x1="33" y1="31" x2="62" y2="26" stroke="#2a2a2e" stroke-width="1.8" stroke-linecap="round"/>'
+    b += '<path d="M12 25 L32 2 L52 25 A20 6 0 0 1 12 25 Z" fill="url(#roofGreen)"/>'
+    b += '<path d="M12 25 A20 6 0 0 0 52 25" stroke="#1d3517" stroke-width="1.3" fill="none"/>'
+    return svg(64, 100, b)
+
+
+def arcane():
+    b = shadow(32, 95, 22, 5)
+    b += '<path d="M18 90 L23 40 L41 40 L46 90 A14 4 0 0 1 18 90 Z" fill="url(#stoneDark)"/>'
+    for y in (52, 64, 76):
+        b += f'<path d="M{20 + (90 - y) * 0.1:.1f} {y} Q32 {y + 3} {44 - (90 - y) * 0.1:.1f} {y}" stroke="#000" stroke-opacity="0.25" fill="none"/>'
+    for (x, y) in ((30, 58), (34, 70), (29, 82)):
+        b += f'<path d="M{x} {y} l3 -4 l3 4 l-3 4 Z" fill="#c89bff"/>'
+    b += '<ellipse cx="32" cy="40" rx="11" ry="3.5" fill="#3b2a5c" stroke="#c89bff" stroke-width="1"/>'
+    b += '<circle cx="32" cy="20" r="18" fill="url(#glowViolet)"/>'
+    b += '<polygon points="32,4 40,19 32,34 24,19" fill="url(#violet)" stroke="#4a1f86" stroke-width="1"/>'
+    b += '<polygon points="32,4 32,34 24,19" fill="#ffffff" opacity="0.25"/>'
+    return svg(64, 100, b)
+
+
+def slot():
+    b = '<ellipse cx="32" cy="23" rx="28" ry="12" fill="#3c3830"/>'
+    b += '<ellipse cx="32" cy="19" rx="28" ry="12" fill="url(#floor)"/>'
+    b += '<ellipse cx="32" cy="19" rx="20" ry="8" fill="none" stroke="#5f5a50" stroke-width="1.2"/>'
+    for a in range(0, 360, 45):
+        r = math.radians(a)
+        b += f'<line x1="{32 + 20 * math.cos(r):.1f}" y1="{19 + 8 * math.sin(r):.1f}" x2="{32 + 28 * math.cos(r):.1f}" y2="{19 + 12 * math.sin(r):.1f}" stroke="#5f5a50" stroke-width="1"/>'
+    b += '<path d="M28 19 L36 19 M32 15.5 L32 22.5" stroke="#f3e2b5" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>'
+    return svg(64, 36, b)
+
+
+# --- Enemies (goblin raiders) --------------------------------------------------------------------
+
+def goblin(tunic, weapon, helmet=True, w=40, h=48):
+    b = shadow(20, 45, 12, 3)
+    b += '<rect x="13" y="34" width="5" height="11" rx="2" fill="#3d5a24"/><rect x="22" y="34" width="5" height="11" rx="2" fill="#3d5a24"/>'
+    b += f'<path d="M11 22 Q20 17 29 22 L28 37 Q20 40 12 37 Z" fill="url(#{tunic})"/>'
+    b += '<rect x="12" y="32" width="16" height="3" fill="#4a2c18"/>'
+    b += '<path d="M6 10 L14 13 L13 17 Z" fill="#6fa83d"/><path d="M34 10 L26 13 L27 17 Z" fill="#4f8a2f"/>'
+    b += '<ellipse cx="20" cy="14" rx="8" ry="8" fill="url(#skin)"/>'
+    b += '<circle cx="17" cy="14" r="1.5" fill="#ffd23f"/><circle cx="23" cy="14" r="1.5" fill="#ffd23f"/>'
+    b += '<path d="M17 19 L23 19" stroke="#2c4a17" stroke-width="1"/>'
+    if helmet:
+        b += '<path d="M11.5 11 A8.5 7 0 0 1 28.5 11 Z" fill="url(#iron)"/>'
+    b += weapon
+    return svg(w, h, b)
+
+
+def footman():
+    axe = '<line x1="30" y1="16" x2="33" y2="38" stroke="#5a3a1e" stroke-width="2"/><path d="M29 14 Q38 12 37 22 L31 20 Z" fill="#b7bcc6" stroke="#4a4e58" stroke-width="0.8"/>'
+    return goblin("tunicRed", axe)
+
+
+def runner():
+    dagger = '<line x1="29" y1="26" x2="35" y2="18" stroke="#c3c8d2" stroke-width="2" stroke-linecap="round"/>'
+    hood = '<path d="M11 13 Q20 2 29 13 L27 9 Q20 4 13 9 Z" fill="#7a3f12"/>'
+    return goblin("tunicOrange", dagger + hood, helmet=False)
+
+
+def brute():
+    b = shadow(30, 61, 20, 4)
+    b += '<rect x="17" y="46" width="10" height="15" rx="3" fill="url(#iron)"/><rect x="33" y="46" width="10" height="15" rx="3" fill="url(#iron)"/>'
+    b += '<ellipse cx="9" cy="34" rx="6" ry="10" fill="url(#skin)"/><ellipse cx="51" cy="34" rx="6" ry="10" fill="url(#skin)"/>'
+    b += '<path d="M10 22 Q30 12 50 22 L48 50 Q30 56 12 50 Z" fill="url(#plate)" stroke="#3a3e48" stroke-width="1"/>'
+    b += '<path d="M30 18 L30 52" stroke="#e7ebf2" stroke-opacity="0.5" stroke-width="2"/>'
+    b += '<circle cx="18" cy="30" r="1.6" fill="#e7ebf2"/><circle cx="42" cy="30" r="1.6" fill="#e7ebf2"/>'
+    b += '<ellipse cx="30" cy="13" rx="9" ry="8" fill="url(#skin)"/>'
+    b += '<path d="M20 12 A10 8 0 0 1 40 12 L38 8 L30 3 L22 8 Z" fill="url(#iron)"/>'
+    b += '<path d="M21 8 L15 1 L23 6 Z M39 8 L45 1 L37 6 Z" fill="#e8dcc0"/>'
+    b += '<rect x="25" y="13" width="10" height="2" fill="#1e2026"/><circle cx="27" cy="14" r="1" fill="#ff5a3c"/><circle cx="33" cy="14" r="1" fill="#ff5a3c"/>'
+    b += '<line x1="54" y1="20" x2="52" y2="44" stroke="#5a3a1e" stroke-width="4" stroke-linecap="round"/><ellipse cx="54" cy="18" rx="4" ry="6" fill="#6b4524"/>'
+    return svg(60, 64, b)
+
+
+def balloon():
+    b = '<defs><clipPath id="env"><ellipse cx="24" cy="24" rx="20" ry="22"/></clipPath></defs>'
+    b += '<ellipse cx="24" cy="24" rx="20" ry="22" fill="#c8392f"/>'
+    b += '<g clip-path="url(#env)">'
+    for x in (8, 22, 36):
+        b += f'<rect x="{x - 3}" y="0" width="6" height="48" fill="#f1dca4"/>'
+    b += '<ellipse cx="16" cy="14" rx="9" ry="7" fill="#fff" opacity="0.25"/>'
+    b += '<rect x="0" y="0" width="48" height="48" fill="url(#shadow)" opacity="0.0"/></g>'
+    b += '<ellipse cx="24" cy="24" rx="20" ry="22" fill="none" stroke="#5e1a16" stroke-width="1.2"/>'
+    b += '<line x1="12" y1="42" x2="17" y2="56" stroke="#4a2c18"/><line x1="36" y1="42" x2="31" y2="56" stroke="#4a2c18"/>'
+    b += '<ellipse cx="24" cy="54" rx="6" ry="5" fill="url(#skin)"/><circle cx="22" cy="53" r="1" fill="#ffd23f"/><circle cx="26" cy="53" r="1" fill="#ffd23f"/>'
+    b += '<rect x="15" y="56" width="18" height="10" rx="2" fill="url(#wood)" stroke="#3a210f" stroke-width="0.8"/>'
+    b += '<circle cx="35" cy="64" r="3" fill="#1e2026"/><line x1="35" y1="61" x2="37" y2="58" stroke="#ffb347" stroke-width="1.2"/>'
+    return svg(48, 72, b)
+
+
+def wyvern(up):
+    b = ""
+    if up:
+        wing_l = '<path d="M26 22 Q14 2 2 6 Q10 14 8 22 Q16 20 26 26 Z" fill="url(#wyvern)" stroke="#2d1452" stroke-width="0.8"/>'
+        wing_r = '<path d="M38 22 Q50 2 62 6 Q54 14 56 22 Q48 20 38 26 Z" fill="url(#wyvern)" stroke="#2d1452" stroke-width="0.8"/>'
+    else:
+        wing_l = '<path d="M26 24 Q12 36 2 32 Q10 28 8 22 Q16 22 26 20 Z" fill="url(#wyvern)" stroke="#2d1452" stroke-width="0.8"/>'
+        wing_r = '<path d="M38 24 Q52 36 62 32 Q54 28 56 22 Q48 22 38 20 Z" fill="url(#wyvern)" stroke="#2d1452" stroke-width="0.8"/>'
+    b += wing_l + wing_r
+    b += '<path d="M32 30 Q34 40 40 42 Q34 42 30 34 Z" fill="#5a2f94"/>'
+    b += '<ellipse cx="32" cy="24" rx="7" ry="10" fill="url(#wyvern)"/>'
+    b += '<ellipse cx="32" cy="12" rx="5" ry="5" fill="#8a5ad0"/>'
+    b += '<path d="M28 9 L26 4 L30 8 Z M36 9 L38 4 L34 8 Z" fill="#e8dcc0"/>'
+    b += '<circle cx="30" cy="12" r="1.1" fill="#ffdd55"/><circle cx="34" cy="12" r="1.1" fill="#ffdd55"/>'
+    b += '<path d="M29 22 L35 22 M29.5 26 L34.5 26" stroke="#d8c2ff" stroke-opacity="0.6"/>'
+    return svg(64, 44, b)
+
+
+def juggernaut():
+    b = shadow(36, 77, 26, 5)
+    b += '<rect x="20" y="58" width="13" height="19" rx="3" fill="url(#iron)"/><rect x="39" y="58" width="13" height="19" rx="3" fill="url(#iron)"/>'
+    b += '<rect x="2" y="26" width="13" height="30" rx="6" fill="url(#iron)"/><rect x="57" y="26" width="13" height="30" rx="6" fill="url(#iron)"/>'
+    b += '<path d="M10 22 Q36 10 62 22 L58 62 Q36 70 14 62 Z" fill="url(#iron)" stroke="#111" stroke-width="1"/>'
+    b += '<path d="M12 24 Q36 14 60 24" stroke="#9aa1ae" stroke-width="2" fill="none"/>'
+    b += '<circle cx="36" cy="42" r="9" fill="#ff7a1a"/><circle cx="36" cy="42" r="5" fill="#ffe08a"/>'
+    b += '<circle cx="36" cy="42" r="14" fill="#ff7a1a" opacity="0.25"/>'
+    for (x, y) in ((18, 30), (54, 30), (20, 56), (52, 56)):
+        b += f'<circle cx="{x}" cy="{y}" r="1.6" fill="#c3c8d2"/>'
+    b += '<rect x="25" y="2" width="22" height="18" rx="5" fill="url(#iron)" stroke="#111"/>'
+    b += '<rect x="28" y="9" width="16" height="4" rx="2" fill="#2a0c08"/><circle cx="32" cy="11" r="1.6" fill="#ff4d2e"/><circle cx="40" cy="11" r="1.6" fill="#ff4d2e"/>'
+    return svg(72, 80, b)
+
+
+# --- Icons ----------------------------------------------------------------------------------------
+
+def coin():
+    b = '<circle cx="16" cy="16" r="15" fill="#8a5a10"/><circle cx="16" cy="15" r="14" fill="url(#gold)"/>'
+    b += '<circle cx="16" cy="15" r="10" fill="none" stroke="#b77d12" stroke-width="1.5"/>'
+    b += '<path d="M11 18 L11 12 L13.5 14.5 L16 10 L18.5 14.5 L21 12 L21 18 Z" fill="#b77d12"/>'
+    return svg(32, 32, b)
+
+
+def cash():
+    b = '<rect x="1" y="7" width="34" height="20" rx="3" fill="#2f6b2c"/><rect x="1" y="5" width="34" height="20" rx="3" fill="#6cc25a"/>'
+    b += '<rect x="4" y="8" width="28" height="14" rx="2" fill="none" stroke="#2f6b2c" stroke-width="1.2"/>'
+    b += '<circle cx="18" cy="15" r="5" fill="#2f6b2c"/><circle cx="18" cy="15" r="3" fill="#9ee08a"/>'
+    return svg(36, 30, b)
+
+
+def heart():
+    b = '<path d="M16 28 C4 19 2 12 6 7 C10 2 15 5 16 9 C17 5 22 2 26 7 C30 12 28 19 16 28 Z" fill="#e5534b" stroke="#7d2522" stroke-width="1.5"/>'
+    b += '<ellipse cx="10" cy="10" rx="3" ry="2" fill="#fff" opacity="0.4"/>'
+    return svg(32, 32, b)
+
+
+ART = {
+    "keep": keep, "musket": musket, "cannon": cannon, "volley": volley, "sniper": sniper, "arcane": arcane,
+    "slot": slot, "footman": footman, "runner": runner, "brute": brute, "balloon": balloon,
+    "wyvern": lambda: wyvern(True), "wyvern_b": lambda: wyvern(False), "juggernaut": juggernaut,
+    "coin": coin, "cash": cash, "heart": heart,
+}
+
+def app_icon():
+    """The launcher icon: the Keep on a night-blue tile with a cyan glow."""
+    b = '<radialGradient id="night" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="#2a3c5c"/><stop offset="1" stop-color="#0b0d12"/></radialGradient>'
+    b += '<rect width="256" height="256" fill="url(#night)"/>'
+    b += '<circle cx="128" cy="70" r="90" fill="url(#glowCyan)" opacity="0.6"/>'
+    b += '<ellipse cx="128" cy="236" rx="110" ry="22" fill="#8a6a44" opacity="0.55"/>'
+    b += f'<g transform="translate(38 22) scale(1.5)">{keep_body()}</g>'
+    return svg(256, 256, b)
+
+
+if __name__ == "__main__":
+    os.makedirs(OUT, exist_ok=True)
+    for name, fn in ART.items():
+        with open(os.path.join(OUT, name + ".svg"), "w") as f:
+            f.write(fn())
+    with open(os.path.join(OUT, "..", "..", "icon.svg"), "w") as f:
+        f.write(app_icon())
+    print("wrote %d sprites to %s, and godot/icon.svg" % (len(ART), os.path.normpath(OUT)))
