@@ -10,8 +10,8 @@ extends RefCounted
 const RING_RADII := [0.0, 32.0, 54.0, 75.0, 96.0]
 ## Build slots per ring (index 0 = the Keep). See docs/GAME_DESIGN.md for why it grows.
 const SLOT_COUNTS := [0, 4, 6, 8, 12]
-## A ring's wall sits this far outside its towers, so towers shoot over their own wall.
-const WALL_OFFSET := 8.0
+## Towers stand on their ring's wall; the wall sections are the arcs between them.
+const WALL_OFFSET := 0.0
 const MAX_RING := 4
 const KEEP_RADIUS := 11.0
 
@@ -20,6 +20,7 @@ const KEEP_RADIUS := 11.0
 const WAVE_SECONDS := 24.0  ## A new wave starts every 24 s whether or not the last one is dead.
 const SPAWN_SECONDS := 16.0  ## Each wave's enemies arrive over the first 16 s.
 const BOSS_EVERY := 10
+const SHAMAN_REACH := 26.0
 const HP_GROWTH := 1.115  ## Enemy health multiplier per wave.
 const DPS_GROWTH := 1.07
 const CASH_GROWTH := 1.075
@@ -87,17 +88,22 @@ const SELL_REFUND := 0.5
 
 ## hp, dps (damage per second to walls/Keep), speed (px/s), armour (share of physical damage
 ## blocked), ward (share of magic damage blocked), cash and coins per kill at wave 1.
+## Sappers have no dps: they blow up against the first wall (or the Keep) for `burst` damage.
+## Shamans heal raiders near them by `heal` of their max health per second.
 const ENEMIES := {
 	"footman": {"hp": 14.0, "dps": 3.0, "speed": 11.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.5, "size": 4.0},
 	"runner": {"hp": 8.0, "dps": 2.0, "speed": 19.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 2.0, "coins": 0.4, "size": 3.5},
 	"brute": {"hp": 46.0, "dps": 8.0, "speed": 7.0, "armor": 0.5, "ward": 0.0, "air": false, "cash": 5.0, "coins": 1.2, "size": 6.0},
 	"balloon": {"hp": 22.0, "dps": 5.0, "speed": 8.0, "armor": 0.0, "ward": 0.0, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
 	"wyvern": {"hp": 20.0, "dps": 5.0, "speed": 16.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
+	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 15.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
+	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 8.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
 	"juggernaut": {"hp": 300.0, "dps": 12.0, "speed": 4.5, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
 }
 ## [first wave it appears, spawn weight]
 const ENEMY_WAVES := {
-	"footman": [1, 1.0], "runner": [3, 0.5], "balloon": [5, 0.3], "brute": [6, 0.35], "wyvern": [12, 0.25],
+	"footman": [1, 1.0], "runner": [3, 0.5], "balloon": [5, 0.3], "brute": [6, 0.35], "sapper": [8, 0.2],
+	"wyvern": [12, 0.25], "shaman": [15, 0.12],
 }
 
 
@@ -134,7 +140,10 @@ const INTEREST_CAP_PER_WAVE := 15.0  ## Interest pays at most this times the wav
 
 # --- Walls -------------------------------------------------------------------------------------
 
-const WALL_BUILD_BASE := 30.0
+const WALL_BUILD_BASE := 30.0  ## A whole ring 1 wall; one section costs a share of this.
+const WALL_SECTION_SHARE := 0.3  ## Ring 1 has 4 sections: each costs 30% (a full ring 120%).
+const FORTIFIED_HP := 1.5  ## A ring with every section built has 50% tougher walls ...
+const FORTIFIED_DAMAGE := 0.15  ## ... and its towers deal 15% more damage.
 const WALL_RING_GROWTH := 1.8  ## Each ring further out costs this much more.
 const WALL_HP := 60.0  ## Per segment, ring 1, level 1.
 const WALL_HP_RING_GROWTH := 1.25

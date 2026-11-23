@@ -137,7 +137,7 @@ def tower_base(x0=16, x1=48, top=62, bottom=90):
     return cylinder(x0, x1, top, bottom, "url(#stone)") + courses(x0, x1, [top + 9, top + 18], None)
 
 
-def musket():
+def musket(raw=False):
     b = shadow(32, 94, 26, 6)
     b += tower_base()
     b += cylinder(12, 52, 38, 63, "url(#wood)")
@@ -154,10 +154,10 @@ def musket():
     b += gloss(20, 26, 4, 9, 35)
     b += '<line x1="32" y1="6" x2="32" y2="0" stroke="#5b4a32" stroke-width="1.5"/>'
     b += '<path d="M32 0.5 L41 2.5 L32 5 Z" fill="#355fae"/>'
-    return svg(64, 100, b)
+    return b if raw else svg(64, 100, b)
 
 
-def cannon():
+def cannon(raw=False):
     b = shadow(32, 94, 30, 6)
     b += cylinder(8, 56, 54, 88, "url(#stone)")
     b += courses(8, 56, [64, 74, 82])
@@ -171,10 +171,10 @@ def cannon():
     b += '<circle cx="23" cy="51" r="5" fill="#5a3a1e" stroke="#2c1a0e" stroke-width="1.2"/>'
     b += '<circle cx="23" cy="51" r="1.5" fill="url(#brass)"/>'
     b += merlons(32, 54, 22, 7, 5, 7, 7, "url(#stone)")
-    return svg(64, 100, b)
+    return b if raw else svg(64, 100, b)
 
 
-def volley():
+def volley(raw=False):
     b = shadow(32, 94, 26, 6)
     b += tower_base(14, 50, 56, 90)
     b += cylinder(11, 53, 46, 58, "url(#wood)")
@@ -187,10 +187,10 @@ def volley():
     b += '<rect x="20" y="22" width="25" height="3" fill="url(#brass)"/></g>'
     b += '<rect x="18" y="38" width="24" height="7" rx="3" fill="url(#brass)"/>'
     b += '<circle cx="21" cy="47" r="4" fill="#5a3a1e" stroke="#2c1a0e"/><circle cx="41" cy="47" r="4" fill="#5a3a1e" stroke="#2c1a0e"/>'
-    return svg(64, 100, b)
+    return b if raw else svg(64, 100, b)
 
 
-def sniper():
+def sniper(raw=False):
     b = shadow(32, 95, 20, 5)
     b += cylinder(20, 44, 34, 90, "url(#stone)")
     b += courses(20, 44, [44, 54, 64, 74, 82])
@@ -202,10 +202,10 @@ def sniper():
     b += '<path d="M12 25 L32 2 L52 25 A20 6 0 0 1 12 25 Z" fill="url(#roofGreen)"/>'
     b += '<path d="M12 25 A20 6 0 0 0 52 25" stroke="#1f6a2a" stroke-width="1.3" fill="none"/>'
     b += gloss(22, 16, 3, 7, 40)
-    return svg(64, 100, b)
+    return b if raw else svg(64, 100, b)
 
 
-def arcane():
+def arcane(raw=False):
     b = shadow(32, 95, 22, 5)
     b += '<path d="M18 90 L23 40 L41 40 L46 90 A14 4 0 0 1 18 90 Z" fill="url(#stoneDark)"/>'
     for y in (52, 64, 76):
@@ -217,25 +217,53 @@ def arcane():
     b += '<polygon points="32,4 40,19 32,34 24,19" fill="url(#violet)" stroke="#4a1f86" stroke-width="1"/>'
     b += '<polygon points="32,4 32,34 24,19" fill="#ffffff" opacity="0.35" stroke="none"/>'
     b += gloss(28.5, 14, 1.5, 4, 30, 0.8)
-    return svg(64, 100, b)
+    return b if raw else svg(64, 100, b)
 
 
 def slot():
-    b = '<ellipse cx="32" cy="23" rx="28" ry="12" fill="#3c3830"/>'
-    b += '<ellipse cx="32" cy="19" rx="28" ry="12" fill="url(#floor)"/>'
-    b += '<ellipse cx="32" cy="19" rx="20" ry="8" fill="none" stroke="#5f5a50" stroke-width="1.2"/>'
-    for a in range(0, 360, 45):
-        r = math.radians(a)
-        b += f'<line x1="{32 + 20 * math.cos(r):.1f}" y1="{19 + 8 * math.sin(r):.1f}" x2="{32 + 28 * math.cos(r):.1f}" y2="{19 + 12 * math.sin(r):.1f}" stroke="#5f5a50" stroke-width="1"/>'
-    b += '<path d="M28 19 L36 19 M32 15.5 L32 22.5" stroke="#f3e2b5" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>'
-    return svg(64, 36, b)
+    """A round stone pedestal standing as tall as the walls; towers are built on top of it."""
+    b = '<ellipse cx="32" cy="50" rx="27" ry="7" fill="url(#shadow)" stroke="none"/><!--art-->'
+    b += cylinder(6, 58, 16, 46, "url(#stone)", 8)
+    b += courses(6, 58, [28, 38], 8)
+    b += '<ellipse cx="32" cy="16" rx="26" ry="8" fill="url(#floor)"/>'
+    b += '<ellipse cx="32" cy="16" rx="18" ry="5.2" fill="none" stroke="#c9b48a" stroke-width="1.2"/>'
+    b += '<path d="M27 16 L37 16 M32 13 L32 19" stroke="#b08a4a" stroke-width="2.4" stroke-linecap="round"/>'
+    return svg(64, 52, b, 2.6)
+
+
+# --- Tower upgrade looks ---------------------------------------------------------------------------
+# Tier 2 (level 5+) adds a gold band and a banner; tier 3 (level 10+) adds a golden crown
+# finial and a gem. One new privilege per step, so each tier reads as an upgrade of the last.
+TIER_SPOTS = {  # band y, band half-width, crown point
+    "musket": (61, 17, (32, 6)), "cannon": (64, 24, (32, 40)), "volley": (59, 18, (32, 36)),
+    "sniper": (37, 12, (32, 2)), "arcane": (46, 10, (32, 3)),
+}
+
+
+def tiered(fn, name, tier):
+    """Wraps a tower drawing with the extra details of `tier` (1, 2 or 3)."""
+    body = fn(raw=True)
+    y, hw, (cx, cy) = TIER_SPOTS[name]
+    extra = ""
+    if tier >= 2:
+        extra += f'<path d="M{32 - hw} {y} A{hw} {hw * 0.28} 0 0 0 {32 + hw} {y}" fill="none" stroke="url(#brass)" stroke-width="3.2"/>'
+        extra += (f'<path d="M{27} {y + 3} L{37} {y + 3} L{37} {y + 14} L{32} {y + 11} L{27} {y + 14} Z" fill="url(#roofBlue)"/>'
+                  f'<circle cx="32" cy="{y + 7}" r="1.8" fill="#ffd23f"/>')
+    if tier >= 3:
+        extra += (f'<path d="M{cx - 5} {cy + 2} L{cx - 5} {cy - 4} L{cx - 2.5} {cy - 1} L{cx} {cy - 6} L{cx + 2.5} {cy - 1} L{cx + 5} {cy - 4} L{cx + 5} {cy + 2} Z" fill="url(#gold)"/>'
+                  f'<circle cx="32" cy="{y + 7}" r="2.6" fill="url(#crystal)"/>' + gloss(cx - 2, cy - 2, 1, 2, 30, 0.8))
+    return svg(64, 100, body + extra)
 
 
 # --- Enemies (goblin raiders) --------------------------------------------------------------------
 
-def goblin(tunic, weapon, helmet=True, w=40, h=48):
+def goblin(tunic, weapon, helmet=True, w=40, h=48, step=False, extra=""):
     b = shadow(20, 45, 12, 3)
-    b += '<rect x="13" y="34" width="5" height="11" rx="2" fill="#3d5a24"/><rect x="22" y="34" width="5" height="11" rx="2" fill="#3d5a24"/>'
+    if step:  # second walking frame: one leg forward, one back
+        b += '<rect x="11" y="33" width="5" height="11" rx="2" fill="#3d5a24" transform="rotate(18 13 34)"/><rect x="23" y="34" width="5" height="11" rx="2" fill="#3d5a24" transform="rotate(-14 25 35)"/>'
+    else:
+        b += '<rect x="13" y="34" width="5" height="11" rx="2" fill="#3d5a24"/><rect x="22" y="34" width="5" height="11" rx="2" fill="#3d5a24"/>'
+    b += extra
     b += f'<path d="M11 22 Q20 17 29 22 L28 37 Q20 40 12 37 Z" fill="url(#{tunic})"/>'
     b += '<rect x="12" y="32" width="16" height="3" fill="#4a2c18"/>'
     b += '<path d="M6 10 L14 13 L13 17 Z" fill="#6fa83d"/><path d="M34 10 L26 13 L27 17 Z" fill="#4f8a2f"/>'
@@ -248,20 +276,42 @@ def goblin(tunic, weapon, helmet=True, w=40, h=48):
     return svg(w, h, b)
 
 
-def footman():
+def footman(step=False):
     axe = '<line x1="30" y1="16" x2="33" y2="38" stroke="#5a3a1e" stroke-width="2"/><path d="M29 14 Q38 12 37 22 L31 20 Z" fill="#b7bcc6" stroke="#4a4e58" stroke-width="0.8"/>'
-    return goblin("tunicRed", axe)
+    return goblin("tunicRed", axe, step=step)
 
 
-def runner():
+def runner(step=False):
     dagger = '<line x1="29" y1="26" x2="35" y2="18" stroke="#c3c8d2" stroke-width="2" stroke-linecap="round"/>'
     hood = '<path d="M11 13 Q20 2 29 13 L27 9 Q20 4 13 9 Z" fill="#7a3f12"/>'
-    return goblin("tunicOrange", dagger + hood, helmet=False)
+    return goblin("tunicOrange", dagger + hood, helmet=False, step=step)
 
 
-def brute():
+def sapper(step=False):
+    """Carries a big bomb to the wall and blows himself up against it."""
+    bomb = ('<circle cx="9" cy="24" r="8" fill="url(#iron)"/>'
+            + gloss(6.5, 21, 2, 3, 30, 0.6)
+            + '<path d="M13 17 Q16 12 19 13" fill="none" stroke="#7a4a22" stroke-width="1.6"/>'
+            + '<circle cx="19.5" cy="12.5" r="2.2" fill="#ffd23f" stroke="none"/><circle cx="19.5" cy="12.5" r="1" fill="#ff6a00" stroke="none"/>')
+    goggles = '<rect x="13" y="11" width="14" height="4" rx="2" fill="#7a4a22"/><circle cx="17" cy="13" r="1.8" fill="#9ff4ff"/><circle cx="23" cy="13" r="1.8" fill="#9ff4ff"/>'
+    return goblin("wood", goggles, helmet=False, step=step, extra=bomb)
+
+
+def shaman(step=False):
+    """Heals the raiders around him."""
+    staff = ('<line x1="32" y1="8" x2="30" y2="42" stroke="#6b4524" stroke-width="2.2"/>'
+             '<circle cx="32" cy="7" r="4.5" fill="#7dff9a"/>' + gloss(30.5, 5.5, 1.2, 2, 30, 0.8))
+    robe = '<path d="M11 22 Q20 17 29 22 L31 42 Q20 45 9 42 Z" fill="url(#wyvern)"/>'
+    feathers = '<path d="M14 7 L11 -1 L16 5 Z M20 5 L20 -3 L22 5 Z M26 7 L29 -1 L24 5 Z" fill="#ffcf3a"/>'
+    return goblin("wyvern", staff + feathers, helmet=False, step=step, extra=robe)
+
+
+def brute(step=False):
     b = shadow(30, 61, 20, 4)
-    b += '<rect x="17" y="46" width="10" height="15" rx="3" fill="url(#iron)"/><rect x="33" y="46" width="10" height="15" rx="3" fill="url(#iron)"/>'
+    if step:
+        b += '<rect x="15" y="45" width="10" height="15" rx="3" fill="url(#iron)" transform="rotate(14 20 46)"/><rect x="35" y="46" width="10" height="15" rx="3" fill="url(#iron)" transform="rotate(-10 40 47)"/>'
+    else:
+        b += '<rect x="17" y="46" width="10" height="15" rx="3" fill="url(#iron)"/><rect x="33" y="46" width="10" height="15" rx="3" fill="url(#iron)"/>'
     b += '<ellipse cx="9" cy="34" rx="6" ry="10" fill="url(#skin)"/><ellipse cx="51" cy="34" rx="6" ry="10" fill="url(#skin)"/>'
     b += '<path d="M10 22 Q30 12 50 22 L48 50 Q30 56 12 50 Z" fill="url(#plate)" stroke="#3a3e48" stroke-width="1"/>'
     b += '<path d="M30 18 L30 52" stroke="#e7ebf2" stroke-opacity="0.5" stroke-width="2"/>'
@@ -323,6 +373,43 @@ def juggernaut():
     return svg(72, 80, b)
 
 
+# --- Meadow decorations ------------------------------------------------------------------------------
+
+def decor_bush():
+    b = '<ellipse cx="16" cy="22" rx="14" ry="3.5" fill="url(#shadow)" stroke="none"/><!--art-->'
+    b += '<circle cx="9" cy="15" r="6.5" fill="#3fae3c"/><circle cx="23" cy="15" r="6" fill="#2e9a35"/><circle cx="16" cy="11" r="8" fill="#56c84a"/>'
+    b += gloss(12.5, 7.5, 2.4, 1.6, -20, 0.5) + '<circle cx="19" cy="13" r="1.2" fill="#ff5a6a" stroke="none"/><circle cx="11" cy="16" r="1.1" fill="#ff5a6a" stroke="none"/>'
+    return svg(32, 26, b, 2.4)
+
+
+def decor_tuft():
+    b = '<path d="M6 16 Q4 8 1 4 Q7 8 8 14 Q9 5 11 1 Q12 9 11 15 Q14 7 18 5 Q14 11 13 16 Z" fill="#3fae3c"/>'
+    b += '<path d="M8 15 Q9 8 11 3" fill="none" stroke="#8fe06a" stroke-width="1" />'
+    return svg(20, 18, b, 2.0)
+
+
+def decor_flowers():
+    b = '<path d="M4 16 Q5 10 8 8 M12 16 Q12 9 14 6 M18 16 Q18 11 20 9" fill="none" stroke="#2e9a35" stroke-width="1.6"/>'
+    for (x, y, c) in ((8, 8, "#ffffff"), (14, 6, "#ffe066"), (20, 9, "#ff8ab3")):
+        b += ''.join(f'<circle cx="{x + 2.2 * math.cos(a)}" cy="{y + 2.2 * math.sin(a)}" r="1.9" fill="{c}"/>' for a in (0, 1.57, 3.14, 4.71))
+        b += f'<circle cx="{x}" cy="{y}" r="1.5" fill="#ffb020"/>'
+    return svg(24, 18, b, 1.8)
+
+
+def decor_rock():
+    b = '<ellipse cx="12" cy="17" rx="11" ry="3" fill="url(#shadow)" stroke="none"/><!--art-->'
+    b += '<path d="M3 15 Q2 8 8 5 Q14 2 19 7 Q23 11 21 15 Z" fill="url(#stone)"/>'
+    b += gloss(9, 7.5, 2.5, 1.4, -20, 0.6)
+    return svg(24, 20, b, 2.2)
+
+
+def decor_mushroom():
+    b = '<rect x="7" y="9" width="5" height="8" rx="2" fill="#fff4dc"/>'
+    b += '<path d="M2 10 Q3 2 9.5 2 Q16 2 17 10 Z" fill="#f2463c"/>'
+    b += '<circle cx="7" cy="6" r="1.4" fill="#fff" stroke="none"/><circle cx="12.5" cy="5" r="1.1" fill="#fff" stroke="none"/><circle cx="13.5" cy="8.2" r="0.9" fill="#fff" stroke="none"/>'
+    return svg(20, 19, b, 1.8)
+
+
 # --- Icons ----------------------------------------------------------------------------------------
 
 def coin():
@@ -348,7 +435,16 @@ def heart():
 
 ART = {
     "keep": keep, "musket": musket, "cannon": cannon, "volley": volley, "sniper": sniper, "arcane": arcane,
+    "musket_2": lambda: tiered(musket, "musket", 2), "musket_3": lambda: tiered(musket, "musket", 3),
+    "cannon_2": lambda: tiered(cannon, "cannon", 2), "cannon_3": lambda: tiered(cannon, "cannon", 3),
+    "volley_2": lambda: tiered(volley, "volley", 2), "volley_3": lambda: tiered(volley, "volley", 3),
+    "sniper_2": lambda: tiered(sniper, "sniper", 2), "sniper_3": lambda: tiered(sniper, "sniper", 3),
+    "arcane_2": lambda: tiered(arcane, "arcane", 2), "arcane_3": lambda: tiered(arcane, "arcane", 3),
     "slot": slot, "footman": footman, "runner": runner, "brute": brute, "balloon": balloon,
+    "footman_b": lambda: footman(True), "runner_b": lambda: runner(True), "brute_b": lambda: brute(True),
+    "sapper": sapper, "sapper_b": lambda: sapper(True), "shaman": shaman, "shaman_b": lambda: shaman(True),
+    "decor_bush": decor_bush, "decor_tuft": decor_tuft, "decor_flowers": decor_flowers,
+    "decor_rock": decor_rock, "decor_mushroom": decor_mushroom,
     "wyvern": lambda: wyvern(True), "wyvern_b": lambda: wyvern(False), "juggernaut": juggernaut,
     "coin": coin, "cash": cash, "heart": heart,
 }

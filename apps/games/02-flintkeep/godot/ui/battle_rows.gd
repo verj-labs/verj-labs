@@ -81,31 +81,63 @@ static func _econ_stat(b: Battle, id: String) -> String:
 static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 	var rows: Array[UpgradeRow] = []
 	for ring in range(1, Defs.MAX_RING + 1):
+		var count: int = Defs.SLOT_COUNTS[ring]
 		var title := "Ring %d wall" % ring
 		if ring > b.rings_unlocked:
 			rows.append(UpgradeRow.make(title, func() -> String: return "Research this ring first", [], Pal.TEXT_DIM))
 			continue
 		var wall := b.walls[ring]
-		var build_price := func() -> float: return -1.0 if wall.built else b.wall_build_cost(ring)
+		var title_fn := func() -> String:
+			return "Ring %d wall  ·  fortified!" % ring if wall.complete() else "Ring %d wall  ·  %d/%d" % [ring, wall.built_count(), count]
 		var reinforce_price := func() -> float: return b.wall_reinforce_cost(ring) if wall.built else -1.0
 		var repair_price := func() -> float:
 			return b.wall_repair_cost(ring) if wall.built and wall.missing_share() > 0.0 else -1.0
+		var main_price := func() -> float: return repair_price.call() if wall.complete() else b.wall_build_cost(ring)
 		var detail := func() -> String:
-			if not wall.built:
-				return "%d sections, %s HP each" % [Defs.SLOT_COUNTS[ring], Num.fmt(b.wall_max_hp(ring, 0))]
+			if not wall.complete():
+				return "Finish it: +50% wall HP, +15% tower damage"
 			return "Level %d  ·  %s HP  ·  %s intact" % [wall.level, Num.fmt(wall.max_hp), Num.pct(1.0 - wall.missing_share())]
 		var actions := [
-			_cash_action(b, func() -> String: return "Build " + Num.price(b.wall_build_cost(ring)) if not wall.built else "Fix " + (Num.price(repair_price.call()) if repair_price.call() >= 0.0 else "–"),
-				func() -> float: return build_price.call() if not wall.built else repair_price.call(),
-				func() -> bool: return b.build_wall(ring) if not wall.built else b.repair_wall(ring)),
+			_cash_action(b, func() -> String:
+				if wall.complete():
+					return "Fix " + (Num.price(repair_price.call()) if repair_price.call() >= 0.0 else "–")
+				return "All " + Num.price(b.wall_build_cost(ring)),
+				main_price,
+				func() -> bool: return b.repair_wall(ring) if wall.complete() else b.build_wall(ring)),
 			_cash_action(b, func() -> String: return "+HP " + Num.price(reinforce_price.call()) if wall.built else "+HP",
 				reinforce_price, b.reinforce_wall.bind(ring), Kit.Btn.SECONDARY),
 		]
-		rows.append(UpgradeRow.make(title, detail, actions))
+		rows.append(UpgradeRow.make(title_fn, detail, actions))
+	return rows
+
+
+## Rows for one wall section, after tapping its arc on the battlefield.
+static func section_rows(b: Battle, ring: int, seg: int, rebuild: Callable) -> Array[UpgradeRow]:
+	var wall := b.walls[ring]
+	var rows: Array[UpgradeRow] = []
+	if not wall.sections[seg]:
+		var run := func() -> bool:
+			var ok := b.build_section(ring, seg)
+			if ok:
+				rebuild.call_deferred()
+			return ok
+		var price := func() -> float: return b.section_cost(ring)
+		rows.append(UpgradeRow.make("Build this section", func() -> String:
+			return "%s HP  ·  stops ground enemies" % Num.fmt(b.wall_max_hp(ring, wall.level, false)),
+			[_cash_action(b, _price_label("", price), price, run)]))
+	else:
+		rows.append(UpgradeRow.make("Section health", func() -> String:
+			return "%s / %s HP" % [Num.fmt(wall.segments[seg]), Num.fmt(wall.max_hp)], []))
+	rows.append_array(wall_rows(b).slice(ring - 1, ring))
 	return rows
 
 
 # --- A build slot -------------------------------------------------------------------------------
+
+static func section_title(ring: int, seg: int) -> String:
+	var octant := posmod(int(roundf(Battle.section_angle(ring, seg) / (TAU / 8.0))), 8)
+	return "Wall: ring %d, %s" % [ring, COMPASS[octant]]
+
 
 static func slot_title(b: Battle, index: int) -> String:
 	var slot: Entities.Slot = b.slots[index]

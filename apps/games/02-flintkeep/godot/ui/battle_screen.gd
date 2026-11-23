@@ -155,12 +155,27 @@ func _update_hud() -> void:
 
 func _on_field_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_select_slot(view.slot_at(view.to_field(event.position)))
+		var slot := view.slot_at(event.position)
+		if slot >= 0:
+			_select_slot(slot)
+			return
+		var section := view.section_at(event.position)
+		if section.x > 0:
+			_select_section(section)
+		else:
+			_select_slot(-1)
 
 
 func _select_slot(index: int) -> void:
 	view.selected_slot = index
+	view.selected_section = Vector2i(-1, -1)
 	_panel.show_slot(index)
+
+
+func _select_section(section: Vector2i) -> void:
+	view.selected_slot = -1
+	view.selected_section = section
+	_panel.show_section(section.x, section.y)
 
 
 func _cycle_speed() -> void:

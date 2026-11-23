@@ -6,7 +6,7 @@ extends PanelContainer
 const STEPS := [
 	{"text": "Tap the glowing foundation to build your first tower!", "until": "tower"},
 	{"text": "Nice! Enemies come in waves. Each kill pays cash.", "seconds": 5.0},
-	{"text": "Open the Walls tab and build a wall. It holds back ground enemies.", "until": "wall"},
+	{"text": "Tap the gap between two towers to build a wall section. Walls stop ground enemies.", "until": "wall"},
 	{"text": "Tap a tower to upgrade it. The Keep tab makes your Keep stronger.", "seconds": 7.0},
 	{"text": "Coins you earn are kept forever. Spend them in Research after the run!", "seconds": 7.0},
 ]

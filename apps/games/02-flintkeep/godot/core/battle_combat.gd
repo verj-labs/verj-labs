@@ -16,6 +16,7 @@ const SHOT_ORIGIN_KEEP := Vector2(0.0, -10.0)
 # --- Movement -------------------------------------------------------------------------------
 
 static func move_enemies(b: Battle, dt: float) -> void:
+	_heal(b, dt)
 	for e in b.enemies:
 		e.age += dt
 		e.hit_flash = maxf(e.hit_flash - dt, 0.0)
@@ -29,10 +30,10 @@ static func move_enemies(b: Battle, dt: float) -> void:
 			for ring in range(b.rings_unlocked, 0, -1):
 				var wall := b.walls[ring]
 				var radius := b.wall_radius(ring)
-				if not wall.built or e.dist < radius:
+				if e.dist < radius - 0.5:
 					continue
 				var seg := Battle.wall_segment(ring, e.angle)
-				if wall.segments[seg] > 0.0:
+				if wall.sections[seg] and wall.segments[seg] > 0.0:
 					stop_at = radius + e.size * 0.5 + CONTACT_GAP
 					target = ring
 					segment = seg
@@ -45,8 +46,24 @@ static func move_enemies(b: Battle, dt: float) -> void:
 			_attack(b, e, target, segment, dt)
 
 
+## Shamans mend the raiders around them (not themselves).
+static func _heal(b: Battle, dt: float) -> void:
+	for s in b.enemies:
+		if s.heal <= 0.0 or not s.alive():
+			continue
+		for e in b.enemies:
+			if e != s and e.alive() and e.hp < e.max_hp and e.pos().distance_to(s.pos()) <= Defs.SHAMAN_REACH:
+				e.hp = minf(e.hp + e.max_hp * s.heal * dt, e.max_hp)
+
+
 static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> void:
 	var damage := e.dps * dt
+	if e.burst > 0.0:  # a sapper: one big blast, then he is gone (and pays nothing)
+		damage = e.burst
+		e.hp = 0.0
+		e.cash = 0.0
+		e.coins = 0.0
+		b._event({"type": "blast", "at": e.pos(), "radius": 10.0})
 	if ring == 0:
 		b.keep_hp -= damage * (1.0 - b.keep_armor())
 		return
@@ -62,7 +79,7 @@ static func fire(b: Battle, dt: float) -> void:
 	_fire_keep(b, dt)
 	for slot in b.slots:
 		if slot.tower != null and slot.ring <= b.rings_unlocked:
-			_fire_tower(b, slot.tower, slot.pos, slot.index, dt)
+			_fire_tower(b, slot, dt)
 
 
 static func _fire_keep(b: Battle, dt: float) -> void:
@@ -80,7 +97,9 @@ static func _fire_keep(b: Battle, dt: float) -> void:
 	b._event({"type": "shot", "weapon": "keep", "from": SHOT_ORIGIN_KEEP, "to": target.pos()})
 
 
-static func _fire_tower(b: Battle, tower: Tower, from: Vector2, slot: int, dt: float) -> void:
+static func _fire_tower(b: Battle, s: Entities.Slot, dt: float) -> void:
+	var tower := s.tower
+	var from := s.pos
 	tower.fired += dt
 	tower.cooldown -= dt
 	if tower.cooldown > 0.0:
@@ -92,10 +111,10 @@ static func _fire_tower(b: Battle, tower: Tower, from: Vector2, slot: int, dt: f
 		return
 	tower.cooldown += 1.0 / b.tower_rate(tower)
 	tower.fired = 0.0
-	var damage := b.tower_damage(tower)
+	var damage := b.slot_damage(s)
 	var to := target.pos()
 	hit(target, damage, def["type"], def["pierce"])
-	b._event({"type": "shot", "weapon": tower.weapon, "from": from, "to": to, "slot": slot})
+	b._event({"type": "shot", "weapon": tower.weapon, "from": from, "to": to, "slot": s.index})
 	if def["splash"] > 0.0:
 		_splash(b, target, to, def, damage * SPLASH_SHARE)
 	if def["chain"] > 0:

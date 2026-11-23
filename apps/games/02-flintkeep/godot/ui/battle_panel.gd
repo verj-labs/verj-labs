@@ -10,6 +10,7 @@ const TABS := ["Keep", "Walls", "Economy"]
 var battle: Battle
 var _tab := "Keep"
 var _slot := -1
+var _section := Vector2i(-1, -1)  ## (ring, segment) of a selected wall section
 var _slot_built := false
 var _tab_buttons := {}
 var _tabs_row: HBoxContainer
@@ -52,12 +53,20 @@ func _init(p_battle: Battle) -> void:
 
 func show_slot(index: int) -> void:
 	_slot = index
+	_section = Vector2i(-1, -1)
+	_rebuild()
+
+
+func show_section(ring: int, seg: int) -> void:
+	_slot = -1
+	_section = Vector2i(ring, seg)
 	_rebuild()
 
 
 func _set_tab(t: String) -> void:
 	_tab = t
 	_slot = -1
+	_section = Vector2i(-1, -1)
 	close_slot.emit()
 	_rebuild()
 
@@ -81,8 +90,9 @@ func _rebuild() -> void:
 	for c in _list.get_children():
 		c.queue_free()
 	_rows.clear()
-	_tabs_row.visible = _slot < 0
-	_header.visible = _slot >= 0
+	var focused := _slot >= 0 or _section.x > 0
+	_tabs_row.visible = not focused
+	_header.visible = focused
 	for t in TABS:
 		Kit.style_button(_tab_buttons[t], Kit.Btn.TAB_ON if t == _tab else Kit.Btn.TAB, 22)
 	var rows: Array[UpgradeRow] = []
@@ -90,6 +100,9 @@ func _rebuild() -> void:
 	if _slot >= 0:
 		rows = BattleRows.slot_rows(battle, _slot, _rebuild)
 		_header_label.text = BattleRows.slot_title(battle, _slot)
+	elif _section.x > 0:
+		rows = BattleRows.section_rows(battle, _section.x, _section.y, _rebuild)
+		_header_label.text = BattleRows.section_title(_section.x, _section.y)
 	else:
 		match _tab:
 			"Keep": rows = BattleRows.keep_rows(battle)

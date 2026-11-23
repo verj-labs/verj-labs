@@ -204,3 +204,83 @@ func test_walls_repair_and_reinforce() -> void:
 	check(not b.repair_wall(1), "nothing left to repair")
 	b.reinforce_wall(1)
 	check(b.walls[1].max_hp > hp, "reinforced walls are tougher")
+
+
+func test_wall_sections_sit_between_towers() -> void:
+	# Ring 1 towers are N, E, S, W; section 0 runs from the north tower to the east one.
+	var north := -PI / 2.0
+	eq(Battle.wall_segment(1, north + 0.1), 0, "just east of north is section 0")
+	eq(Battle.wall_segment(1, north - 0.1), 3, "just west of north is the last section")
+	near(Battle.section_angle(1, 0), north + PI / 4.0, 0.001, "section 0 is centred on the north-east")
+
+
+func test_sections_are_bought_one_at_a_time() -> void:
+	var b := _battle()
+	b.cash = 1000.0
+	var price := b.section_cost(1)
+	check(b.build_section(1, 0), "built")
+	near(b.cash, 1000.0 - price)
+	check(not b.build_section(1, 0), "already built")
+	check(not b.build_section(2, 0), "ring 2 is locked")
+	eq(b.walls[1].built_count(), 1)
+	check(not b.walls[1].complete(), "one of four is not fortified")
+	near(b.wall_build_cost(1), price * 3.0, 0.01, "finishing costs the three missing sections")
+
+
+func test_an_enemy_only_stops_at_a_built_section() -> void:
+	var b := _battle()
+	b.cash = 1000.0
+	b.keep_levels["damage"] = -100
+	b.build_section(1, 0)  # north-east arc only
+	var blocked := b.spawn("footman", Battle.section_angle(1, 0))
+	var free := b.spawn("footman", Battle.section_angle(1, 2))
+	blocked.hp = 1e9
+	free.hp = 1e9
+	_run(b, 19.5)  # both have arrived; later the wave's raiders break the section
+	eq(blocked.attacking, 1, "stopped by the wall")
+	eq(free.attacking, 0, "walked through the gap to the Keep")
+
+
+func test_completing_a_ring_fortifies_it() -> void:
+	var b := _battle()
+	b.cash = 10000.0
+	b.build(0, "musket")
+	var plain_damage := b.slot_damage(b.slots[0])
+	for seg in 3:
+		b.build_section(1, seg)
+	var hp_before := b.walls[1].max_hp
+	b.build_section(1, 3)
+	check(b.walls[1].complete(), "fortified")
+	near(b.walls[1].max_hp, hp_before * Defs.FORTIFIED_HP, 0.01, "tougher walls")
+	near(b.slot_damage(b.slots[0]), plain_damage * (1.0 + Defs.FORTIFIED_DAMAGE), 0.001, "towers hit harder")
+	near(b.walls[1].segments[0], b.walls[1].max_hp, 0.01, "existing sections grow with it")
+
+
+func test_sappers_blow_up_against_walls() -> void:
+	var b := _battle()
+	b.cash = 1000.0
+	b.keep_levels["damage"] = -100
+	b.build_wall(1)
+	var seg := Battle.wall_segment(1, PI / 4.0)
+	var hp := b.walls[1].segments[seg]
+	var e := b.spawn("sapper", PI / 4.0)
+	e.dist = b.wall_radius(1) + 3.0
+	var cash := b.cash
+	_run(b, 1.0)
+	check(b.walls[1].segments[seg] < hp, "the wall took the blast")
+	check(not b.enemies.has(e), "the sapper is gone")
+	near(b.cash, cash, 0.001, "a sapper that blows himself up pays nothing")
+
+
+func test_shamans_heal_raiders_near_them() -> void:
+	var b := _battle()
+	b.keep_levels["damage"] = -100
+	var shaman := b.spawn("shaman", 0.0)
+	var friend := b.spawn("footman", 0.0)
+	friend.hp = friend.max_hp * 0.5
+	var far := b.spawn("footman", PI)
+	far.hp = far.max_hp * 0.5
+	BattleCombat._heal(b, 1.0)
+	check(friend.hp > friend.max_hp * 0.5, "healed")
+	near(far.hp, far.max_hp * 0.5, 0.001, "out of reach")
+	near(shaman.hp, shaman.max_hp, 0.001, "shamans do not heal themselves (they are full anyway)")

@@ -25,8 +25,9 @@ static func _buy_one(b: Battle) -> bool:
 			options.append([b.build_cost(weapon) * 0.5, b.build.bind(slot.index, weapon)])
 			break
 	for ring in range(1, b.rings_unlocked + 1):
-		if not b.walls[ring].built:
-			options.append([b.wall_build_cost(ring) * 0.8, b.build_wall.bind(ring)])
+		var gap := b.walls[ring].sections.find(false)
+		if gap != -1:
+			options.append([b.section_cost(ring) * 0.8, b.build_section.bind(ring, gap)])
 		elif b.wave > 6:
 			options.append([b.wall_reinforce_cost(ring) * 1.5, b.reinforce_wall.bind(ring)])
 	for id in ["damage", "health", "rate", "regen"]:

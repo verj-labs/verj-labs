@@ -21,6 +21,12 @@ fi
 cd "$(dirname "$0")/godot" || exit 1
 # Registers our class_name scripts before the tests load them.
 "$GODOT_BIN" --headless --path . --import >/dev/null 2>&1
-"$GODOT_BIN" --headless --path . -s ../tools/run_tests.gd -- "${1:-}" 2>&1 \
-  | grep -E "FAIL|passed|ERROR|Error|    " | grep -v "profile.gd\|autoload\|at: "
-exit "${PIPESTATUS[0]}"
+OUT="$("$GODOT_BIN" --headless --path . -s ../tools/run_tests.gd -- "${1:-}" 2>&1)"
+CODE=$?
+echo "$OUT" | grep -E "FAIL|passed|ERROR|Error|    " | grep -v "autoload\|at: " | head -60
+# A script error inside a test does not stop the runner, so treat any as a failure.
+if echo "$OUT" | grep -q "SCRIPT ERROR"; then
+  echo "SCRIPT ERRORS: failing"
+  exit 1
+fi
+exit "$CODE"

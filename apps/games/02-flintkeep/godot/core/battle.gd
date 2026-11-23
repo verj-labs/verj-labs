@@ -79,6 +79,9 @@ func _build_layout() -> void:
 			slots.append(slot)
 		var wall := Wall.new()
 		wall.ring = ring
+		for i in count:
+			wall.sections.append(false)
+			wall.segments.append(0.0)
 		walls.append(wall)
 
 
@@ -257,33 +260,58 @@ func wall_radius(ring: int) -> float:
 	return Defs.RING_RADII[ring] + Defs.WALL_OFFSET
 
 
-func wall_max_hp(ring: int, level: int) -> float:
+func wall_max_hp(ring: int, level: int, fortified: bool = false) -> float:
 	var masonry := 1.0 + Research.effect("masonry", _r("masonry"))
-	return Defs.WALL_HP * pow(Defs.WALL_HP_RING_GROWTH, ring - 1) * pow(Defs.WALL_HP_GROWTH, level) * masonry
+	var bonus := Defs.FORTIFIED_HP if fortified else 1.0
+	return Defs.WALL_HP * pow(Defs.WALL_HP_RING_GROWTH, ring - 1) * pow(Defs.WALL_HP_GROWTH, level) * masonry * bonus
 
 
+func section_cost(ring: int) -> float:
+	return Defs.WALL_BUILD_BASE * Defs.WALL_SECTION_SHARE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount())
+
+
+## The price of every section of `ring` still missing.
 func wall_build_cost(ring: int) -> float:
-	return Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount())
+	return section_cost(ring) * (Defs.SLOT_COUNTS[ring] - walls[ring].built_count())
 
 
 func wall_reinforce_cost(ring: int) -> float:
-	return wall_build_cost(ring) * pow(Defs.WALL_REINFORCE_GROWTH, walls[ring].level + 1)
+	return Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount()) * pow(Defs.WALL_REINFORCE_GROWTH, walls[ring].level + 1)
 
 
 func wall_repair_cost(ring: int) -> float:
 	return ceilf(wall_reinforce_cost(ring) * Defs.WALL_REPAIR_SHARE * walls[ring].missing_share())
 
 
-func build_wall(ring: int) -> bool:
-	if ring > rings_unlocked or walls[ring].built or not _pay(wall_build_cost(ring)):
+func section_open(ring: int, seg: int) -> bool:
+	return ring >= 1 and ring <= rings_unlocked and seg >= 0 and seg < Defs.SLOT_COUNTS[ring]
+
+
+func build_section(ring: int, seg: int) -> bool:
+	if not section_open(ring, seg) or walls[ring].sections[seg] or not _pay(section_cost(ring)):
 		return false
 	var wall := walls[ring]
-	wall.built = true
-	wall.max_hp = wall_max_hp(ring, 0)
-	wall.segments.clear()
-	for i in Defs.SLOT_COUNTS[ring]:
-		wall.segments.append(wall.max_hp)
-	_event({"type": "wall_built", "ring": ring})
+	wall.sections[seg] = true
+	_update_wall_hp(wall)
+	wall.segments[seg] = wall.max_hp
+	_event({"type": "wall_built", "ring": ring, "segment": seg})
+	if wall.complete():
+		_event({"type": "fortified", "ring": ring})
+	return true
+
+
+## Builds every missing section of `ring` at once.
+func build_wall(ring: int) -> bool:
+	if ring > rings_unlocked or walls[ring].complete() or not _pay(wall_build_cost(ring)):
+		return false
+	var wall := walls[ring]
+	for i in wall.sections.size():
+		if not wall.sections[i]:
+			wall.sections[i] = true
+			wall.segments[i] = 0.0
+	_update_wall_hp(wall)
+	_heal_wall(wall)
+	_event({"type": "fortified", "ring": ring})
 	return true
 
 
@@ -292,7 +320,7 @@ func reinforce_wall(ring: int) -> bool:
 	if not wall.built or not _pay(wall_reinforce_cost(ring)):
 		return false
 	wall.level += 1
-	wall.max_hp = wall_max_hp(ring, wall.level)
+	_update_wall_hp(wall)
 	_heal_wall(wall)
 	return true
 
@@ -305,17 +333,41 @@ func repair_wall(ring: int) -> bool:
 	return true
 
 
+## Keeps each built section's share of health when the maximum changes.
+func _update_wall_hp(wall: Wall) -> void:
+	var old := wall.max_hp
+	wall.max_hp = wall_max_hp(wall.ring, wall.level, wall.complete())
+	if old > 0.0:
+		for i in wall.segments.size():
+			wall.segments[i] *= wall.max_hp / old
+
+
 func _heal_wall(wall: Wall) -> void:
 	for i in wall.segments.size():
-		wall.segments[i] = wall.max_hp
+		wall.segments[i] = wall.max_hp if wall.sections[i] else 0.0
 	_event({"type": "wall_built", "ring": wall.ring})
 
 
+## Damage of a tower in its slot: towers on a fortified ring hit harder.
+func slot_damage(slot: Slot) -> float:
+	var dmg := tower_damage(slot.tower)
+	if walls[slot.ring].complete():
+		dmg *= 1.0 + Defs.FORTIFIED_DAMAGE
+	return dmg
+
+
 ## Which section of a ring's wall stands in the way of an enemy coming from `angle`.
+## Sections run between neighbouring towers: section i spans tower i to tower i + 1.
 static func wall_segment(ring: int, angle: float) -> int:
 	var count: int = Defs.SLOT_COUNTS[ring]
 	var step := TAU / count
-	return posmod(int(roundf((angle - Defs.ring_angle_offset(ring)) / step)), count)
+	return posmod(int(floor((angle - Defs.ring_angle_offset(ring)) / step)), count)
+
+
+## The angle at the middle of a section.
+static func section_angle(ring: int, seg: int) -> float:
+	var step: float = TAU / Defs.SLOT_COUNTS[ring]
+	return Defs.ring_angle_offset(ring) + step * (seg + 0.5)
 
 
 # --- Running the battle ---------------------------------------------------------------------
@@ -386,6 +438,8 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.cash = def["cash"] * pow(Defs.CASH_GROWTH, w)
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
 	e.size = def["size"]
+	e.burst = def.get("burst", 0.0) * pow(Defs.DPS_GROWTH, w) * sqrt(tier_mult)
+	e.heal = def.get("heal", 0.0)
 	enemies.append(e)
 	return e
 
