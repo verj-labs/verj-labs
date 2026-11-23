@@ -6,29 +6,32 @@ extends RefCounted
 static func build(b: Battle, tier: int, record: bool, coins: float, goto: Callable) -> Control:
 	var body := Kit.vbox(10)
 	var fell := b.keep_hp <= 0.0
-	body.add_child(Kit.heading("The Keep has fallen" if fell else "You retreated", 34, Pal.RED if fell else Pal.PARCHMENT))
+	body.add_child(Kit.heading("The Keep has fallen!" if fell else "You retreated", 36, Pal.RED if fell else Pal.WHITE))
 	if record:
-		body.add_child(Kit.label("New best wave!", 22, Pal.GOLD, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER))
+		body.add_child(Kit.heading("New best wave!", 26, Pal.GOLD))
 	var stats := Kit.vbox(6)
 	stats.add_child(_stat("Tier", str(tier)))
 	stats.add_child(_stat("Wave reached", str(b.wave)))
 	stats.add_child(_stat("Best wave", str(Profile.data.best(tier))))
 	stats.add_child(_stat("Enemies slain", Num.fmt(b.kills)))
-	stats.add_child(_stat("Coins earned", Num.fmt(coins), Pal.GOLD))
-	var box := Kit.panel_container(Pal.PANEL_DEEP, Pal.LINE)
+	stats.add_child(_stat("Coins earned", Num.fmt(coins), Color("#b7791f")))
+	var box := Kit.panel_container(Kit.card())
 	box.add_child(stats)
 	body.add_child(box)
 	if tier == Profile.data.unlocked_tier - 1 and b.wave >= Defs.TIER_UNLOCK_WAVE:
-		body.add_child(Kit.label("Tier %d unlocked!" % (tier + 1), 22, Pal.CYAN, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER))
-	var research := Kit.button("Research", Kit.Btn.PRIMARY, 26, 70)
+		body.add_child(Kit.heading("Tier %d unlocked!" % (tier + 1), 24, Pal.CYAN))
+	var ready: int = Profile.data.claimable()
+	if ready > 0:
+		body.add_child(Kit.heading("%d mission%s complete! Claim on the menu." % [ready, "" if ready == 1 else "s"], 21, Pal.CASH))
+	var research := Kit.button("Research", Kit.Btn.PRIMARY, 30, 72)
 	research.pressed.connect(goto.bind("research"))
 	body.add_child(research)
 	var row := Kit.hbox(10)
-	var again := Kit.button("Play again", Kit.Btn.BUY, 21, 60)
+	var again := Kit.button("Play again", Kit.Btn.BUY, 24, 62)
 	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	again.pressed.connect(goto.bind("again"))
 	row.add_child(again)
-	var menu := Kit.button("Menu", Kit.Btn.SECONDARY, 21, 60)
+	var menu := Kit.button("Menu", Kit.Btn.SECONDARY, 24, 62)
 	menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu.pressed.connect(goto.bind("menu"))
 	row.add_child(menu)
@@ -36,10 +39,10 @@ static func build(b: Battle, tier: int, record: bool, coins: float, goto: Callab
 	return body
 
 
-static func _stat(name: String, value: String, color: Color = Pal.PARCHMENT) -> Control:
+static func _stat(name: String, value: String, color: Color = Pal.TEXT) -> Control:
 	var row := Kit.hbox(8)
-	var l := Kit.label(name, 19, Pal.DIM, Fonts.body())
+	var l := Kit.label(name, 20, Pal.TEXT_DIM, Fonts.semibold())
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(l)
-	row.add_child(Kit.label(value, 21, color, Fonts.bold(), HORIZONTAL_ALIGNMENT_RIGHT))
+	row.add_child(Kit.label(value, 22, color, Fonts.heading(), HORIZONTAL_ALIGNMENT_RIGHT))
 	return row

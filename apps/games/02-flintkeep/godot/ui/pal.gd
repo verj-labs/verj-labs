@@ -1,40 +1,47 @@
 class_name Pal
 extends RefCounted
-## Night battlefield, dark-walnut panels with brass trim, parchment text. Accents: gold for
-## coins, green for cash, cyan for the Keep's arcane bolts, violet for magic.
+## Casual cartoon colours: a sunny green field, warm wood panels with cream cards, glossy
+## saturated buttons. Dark brown outlines tie the UI to the art (same colour as sprite ink).
 
-const BG := Color("#10131a")
-const PANEL := Color("#2a2019")  ## dark walnut
-const PANEL_LIGHT := Color("#3a2c21")
-const PANEL_DEEP := Color("#1b1510")
-const LINE := Color("#5e4630")  ## wood edge
-const BRASS := Color("#d8a750")
-const BRASS_DIM := Color("#8c6a3a")
-const SHADOW := Color(0, 0, 0, 0.45)
+const INK := Color("#3a2218")  ## outlines and dark text, same as the sprites' outline
+const SKY_TOP := Color("#7fd6ff")
+const SKY_BOTTOM := Color("#3b95e6")
 
-const PARCHMENT := Color("#f5ead3")
-const DIM := Color("#c4b293")
-const MUTED := Color("#7f6e58")
+const WOOD := Color("#b46a33")  ## panel wood
+const WOOD_LIGHT := Color("#d48a48")
+const WOOD_DARK := Color("#7a4320")
+const CARD := Color("#fff2d4")  ## cream cards inside wood panels
+const CARD_EDGE := Color("#e0b97c")
 
-const GOLD := Color("#ffcc4d")  ## coins
-const CASH := Color("#8fdc6a")  ## cash
-const CASH_DARK := Color("#2f6b2c")
-const RED := Color("#e5534b")
-const ORANGE := Color("#ff9a3c")
-const CYAN := Color("#6fe3ff")
-const ARCANE := Color("#b98cff")
-const INK := Color("#22180f")  ## dark text on bright buttons
+const TEXT := Color("#5a3418")  ## on cream
+const TEXT_DIM := Color("#9a7352")
+const WHITE := Color("#fffaf0")  ## on wood, buttons and sky (always outlined)
+const MUTED := Color("#b9a58c")
 
-const GRASS_DARK := Color("#1a3324")
-const GRASS_LIGHT := Color("#3a6440")
-const EARTH := Color("#8a6a44")
+const GOLD := Color("#ffcf3a")  ## coins
+const CASH := Color("#6fe04a")  ## cash
+const RED := Color("#ff5247")
+const ORANGE := Color("#ff9a2e")
+const CYAN := Color("#3fd8ff")
+const ARCANE := Color("#c06bff")
+
+const GRASS := Color("#5cc451")
+const GRASS_LIGHT := Color("#74d665")
+const GRASS_DARK := Color("#45a742")
+const SAND := Color("#f2d79c")
+const PATH := Color("#e3bd7c")
 
 ## Colour of each weapon's shots and its name in the build list.
 const WEAPON_COLORS := {
-	"keep": Color("#6fe3ff"),
-	"musket": Color("#ffe27a"),
-	"cannon": Color("#ff9a3c"),
-	"volley": Color("#fff2b0"),
-	"sniper": Color("#e8fbff"),
-	"arcane": Color("#c89bff"),
+	"keep": Color("#3fd8ff"),
+	"musket": Color("#ffe066"),
+	"cannon": Color("#ff8a2a"),
+	"volley": Color("#fff0a0"),
+	"sniper": Color("#ffffff"),
+	"arcane": Color("#d78bff"),
+}
+## Darker versions for text on cream cards.
+const WEAPON_TEXT := {
+	"musket": Color("#c2410c"), "cannon": Color("#9a3412"), "volley": Color("#a16207"),
+	"sniper": Color("#166534"), "arcane": Color("#7e22ce"),
 }

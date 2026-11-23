@@ -64,7 +64,7 @@ static func econ_rows(b: Battle) -> Array[UpgradeRow]:
 			b.econ_levels[id] -= 1
 			return now + ARROW + next
 		rows.append(UpgradeRow.make(Defs.ECON_UPGRADES[id]["name"], detail,
-			[_cash_action(b, _price_label("", price), price, b.buy_econ_upgrade.bind(id))], Pal.GOLD if id == "coin_bounty" else Pal.PARCHMENT))
+			[_cash_action(b, _price_label("", price), price, b.buy_econ_upgrade.bind(id))], Color("#b7791f") if id == "coin_bounty" else Pal.TEXT))
 	return rows
 
 
@@ -83,7 +83,7 @@ static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 	for ring in range(1, Defs.MAX_RING + 1):
 		var title := "Ring %d wall" % ring
 		if ring > b.rings_unlocked:
-			rows.append(UpgradeRow.make(title, func() -> String: return "Research this ring first", [], Pal.MUTED))
+			rows.append(UpgradeRow.make(title, func() -> String: return "Research this ring first", [], Pal.TEXT_DIM))
 			continue
 		var wall := b.walls[ring]
 		var build_price := func() -> float: return -1.0 if wall.built else b.wall_build_cost(ring)
@@ -121,9 +121,9 @@ static func slot_rows(b: Battle, index: int, rebuild: Callable) -> Array[Upgrade
 	if slot.tower == null:
 		for weapon in Defs.WEAPON_ORDER:
 			var def: Dictionary = Defs.WEAPONS[weapon]
-			var color: Color = Pal.WEAPON_COLORS[weapon]
+			var color: Color = Pal.WEAPON_TEXT[weapon]
 			if not b.weapon_unlocked(weapon):
-				rows.append(UpgradeRow.make(def["short"], func() -> String: return "Locked: unlock it in Research", [], Pal.MUTED, weapon))
+				rows.append(UpgradeRow.make(def["short"], func() -> String: return "Locked: unlock it in Research", [], Pal.TEXT_DIM, weapon))
 				continue
 			var price := func() -> float: return b.build_cost(weapon)
 			var run := func() -> bool:
@@ -149,7 +149,7 @@ static func slot_rows(b: Battle, index: int, rebuild: Callable) -> Array[Upgrade
 		if ok:
 			rebuild.call_deferred()
 		return ok
-	rows.append(UpgradeRow.make("Upgrade", up_detail, [_cash_action(b, _price_label("", up_price), up_price, upgrade)], Pal.PARCHMENT, tower.weapon))
+	rows.append(UpgradeRow.make("Upgrade", up_detail, [_cash_action(b, _price_label("", up_price), up_price, upgrade)], Pal.TEXT, tower.weapon))
 	var stats := func() -> String:
 		return "%.2f shots/s  ·  range %d" % [b.tower_rate(tower), int(b.tower_range(tower))]
 	var about := func() -> String: return Defs.WEAPONS[tower.weapon]["about"]
@@ -160,5 +160,5 @@ static func slot_rows(b: Battle, index: int, rebuild: Callable) -> Array[Upgrade
 			rebuild.call_deferred()
 		return ok
 	rows.append(UpgradeRow.make(stats, about,
-		[_cash_action(b, func() -> String: return "Sell +" + Num.cash(b.sell_value(index)) if slot.tower != null else "Sell", sell_price, sell, Kit.Btn.DANGER)], Pal.DIM))
+		[_cash_action(b, func() -> String: return "Sell +" + Num.cash(b.sell_value(index)) if slot.tower != null else "Sell", sell_price, sell, Kit.Btn.DANGER)], Pal.TEXT_DIM))
 	return rows

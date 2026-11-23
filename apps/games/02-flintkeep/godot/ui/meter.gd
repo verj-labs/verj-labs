@@ -28,17 +28,17 @@ func set_state(p_value: float, p_text: String = "") -> void:
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var radius := int(size.y / 2.0)
-	draw_style_box(Kit.panel(Pal.PANEL_DEEP, Pal.LINE, radius, 2, false), r)
-	var inner := r.grow(-3)
+	draw_style_box(Kit.box(Color("#4a2a16"), Pal.INK, radius, 3), r)
+	var inner := r.grow(-4)
 	var w := inner.size.x * value
 	if w >= 2.0:
-		var bar := Kit.panel(fill, fill.lightened(0.25), int(inner.size.y / 2.0), 0, false)
+		var bar := Kit.box(fill, fill.darkened(0.3), int(inner.size.y / 2.0), 0)
 		draw_style_box(bar, Rect2(inner.position, Vector2(maxf(w, inner.size.y), inner.size.y)))
-		var shine := Kit.panel(Color(1, 1, 1, 0.18), Color.TRANSPARENT, int(inner.size.y / 4.0), 0, false)
-		draw_style_box(shine, Rect2(inner.position + Vector2(4, 2), Vector2(maxf(w - 8, 2), inner.size.y * 0.35)))
+		var shine := Kit.box(Color(1, 1, 1, 0.35), Color.TRANSPARENT, int(inner.size.y / 4.0), 0)
+		draw_style_box(shine, Rect2(inner.position + Vector2(5, 2), Vector2(maxf(w - 10, 2), inner.size.y * 0.32)))
 	if text != "":
-		var font := Fonts.bold()
+		var font := Fonts.heading()
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		var at := Vector2((size.x - tw) / 2.0, (size.y + font.get_ascent(font_size) - font.get_descent(font_size)) / 2.0)
-		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0, 0, 0, 0.6))
-		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Pal.PARCHMENT)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 6, Pal.INK)
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Pal.WHITE)

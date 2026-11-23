@@ -14,17 +14,35 @@ This document explains the intent; the code is the source of truth for values.
 
 ## Look and feel
 
-- Smooth vector art in a 3/4 top-down view, lit from the top left: round stone towers with
-  roofs and weapons on top, goblin raiders, and a stone Keep with a glowing arcane crystal.
-- Each ring's wall is one continuous stone ring with battlements. Hurt sections darken and
-  broken ones fall to rubble.
-- Empty build slots are stone foundations marked with a cross. They glow softly when you can
-  afford a tower. Tap one to choose what to build; tap a tower to upgrade or sell it.
-- Gradients are strongest at the source and fade outwards: the courtyard (darkest at the Keep,
-  fading into the grass past the outer wall), a selected tower's range, and each shot's tracer
-  (bright at the muzzle, fading towards the target).
-- Interface: rounded walnut panels with brass trim and parchment text. Cinzel for titles,
-  Barlow for numbers and everything you read while playing.
+Casual cartoon, built for a two-inch screen and a player who glances: every object reads from
+its silhouette alone.
+
+- **Sprites:** chunky shapes in a 3/4 top-down view, two or three flat colour bands per surface
+  (light left, base, shadow right), a thick dark-brown outline around each silhouette, and a
+  glossy white highlight in the same top-left spot on every object. Saturated colours: lavender
+  stone, red, blue and green roofs, orange wood, cyan and violet crystals, green goblins.
+- **Battlefield:** a sunny checkered meadow with grass tufts and flowers, a sandy courtyard that
+  is strongest at the Keep and fades out past the outer wall, and trodden paths along each ring.
+- **Walls:** each ring's wall is one continuous white-stone ring with outlined battlements.
+  Hurt sections turn brown, and broken ones fall to rubble.
+- **Slots:** stone foundations marked with a cross. They glow when you can afford a tower, and
+  the tutorial bounces an arrow over the first one.
+- **Gradients** fade from the source outward: the courtyard, a selected tower's range, and shot
+  tracers (bright at the muzzle).
+- **UI:** wood panels holding cream cards; glossy rounded buttons with a dark outline, a darker
+  lip underneath and white outlined text; a blue sky behind the menus. Lilita One for titles,
+  buttons and numbers; Fredoka (rounded) for everything else.
+- **Sound:** soft pops, chimes and little bugle calls (not harsh chiptune), plus a bouncy
+  music loop. Rapid-fire sounds are quieter and rate-limited so a big wave stays pleasant.
+
+## Retention features
+
+- **First-run tutorial:** five short tips: build a tower (with a pointer), what waves are,
+  build a wall, upgrade, and spend coins in Research. Shown once.
+- **Daily missions:** three goals a day picked from a pool (defeat enemies, shoot down flyers,
+  reach a wave, build or upgrade towers, build walls, defeat a Juggernaut), sized to the
+  player's best wave, each paying coins. The day is chosen by date, so the list is stable across
+  restarts. The menu's Missions button turns green when one is ready to claim.
 
 ## The loop
 
@@ -136,10 +154,8 @@ changing numbers.
 
 ## Not built yet (next steps)
 
-- Sound and music (chiptune, generated like the Shah Exchange redesign).
 - Several weapon mounts per tower (for example a cannon plus a rifle on one stone bastion).
 - Ranged enemies that shoot towers, and towers that can be damaged.
-- Daily missions, offline earnings, cards or perks, cosmetics.
+- Offline earnings, cards or perks, cosmetics (tower skins), achievements.
 - Gems (premium currency), ads or IAP, leaderboards.
-- Settings (reset progress, sound toggles) and a short tutorial for the first run.
 - Store screenshots and adaptive Android icon layers.

@@ -10,6 +10,9 @@ var best_wave: Dictionary = {}  ## tier (as String) -> best wave reached
 var unlocked_tier: int = 1
 var runs: int = 0
 var total_kills: int = 0
+var tutorial_done := false
+var mission_day := ""
+var missions: Array = []  ## today's missions, see Missions
 
 
 func _init() -> void:
@@ -103,10 +106,41 @@ func record_run(tier: int, wave: int, kills: int) -> bool:
 	return record
 
 
+## Rolls over to a new set of missions when the day changes.
+func refresh_missions(day: String) -> void:
+	if day == mission_day and not missions.is_empty():
+		return
+	var top := 0
+	for tier in best_wave:
+		top = maxi(top, int(best_wave[tier]))
+	mission_day = day
+	missions = Missions.generate(day, top)
+
+
+func claimable() -> int:
+	var n := 0
+	for m in missions:
+		if Missions.done(m) and not m["claimed"]:
+			n += 1
+	return n
+
+
+func claim(index: int) -> bool:
+	if index < 0 or index >= missions.size():
+		return false
+	var m: Dictionary = missions[index]
+	if m["claimed"] or not Missions.done(m):
+		return false
+	m["claimed"] = true
+	coins += m["reward"]
+	return true
+
+
 func to_dict() -> Dictionary:
 	return {
 		"version": 1, "coins": coins, "research": research, "labs": labs, "best_wave": best_wave,
 		"unlocked_tier": unlocked_tier, "runs": runs, "total_kills": total_kills,
+		"tutorial_done": tutorial_done, "mission_day": mission_day, "missions": missions,
 	}
 
 
@@ -127,4 +161,10 @@ static func from_dict(data: Dictionary) -> ProfileData:
 	p.unlocked_tier = clampi(int(data.get("unlocked_tier", 1)), 1, Defs.MAX_TIER)
 	p.runs = int(data.get("runs", 0))
 	p.total_kills = int(data.get("total_kills", 0))
+	p.tutorial_done = bool(data.get("tutorial_done", false))
+	p.mission_day = str(data.get("mission_day", ""))
+	for m in data.get("missions", []):
+		if m is Dictionary and Missions.POOL.has(m.get("kind", "")):
+			p.missions.append({"kind": m["kind"], "target": int(m.get("target", 1)), "progress": int(m.get("progress", 0)),
+				"reward": int(m.get("reward", 0)), "claimed": bool(m.get("claimed", false))})
 	return p

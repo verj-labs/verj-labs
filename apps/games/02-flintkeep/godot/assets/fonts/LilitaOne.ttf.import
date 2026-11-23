@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://wq1n0j4xm4c4"
-path="res://.godot/imported/Barlow-Bold.ttf-2a4f1cefd91e1b6107e635e76f033d06.fontdata"
+uid="uid://d4eqg4n7hri70"
+path="res://.godot/imported/LilitaOne.ttf-a433422ca76ebca38f6a25296c412c94.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Barlow-Bold.ttf"
-dest_files=["res://.godot/imported/Barlow-Bold.ttf-2a4f1cefd91e1b6107e635e76f033d06.fontdata"]
+source_file="res://assets/fonts/LilitaOne.ttf"
+dest_files=["res://.godot/imported/LilitaOne.ttf-a433422ca76ebca38f6a25296c412c94.fontdata"]
 
 [params]
 

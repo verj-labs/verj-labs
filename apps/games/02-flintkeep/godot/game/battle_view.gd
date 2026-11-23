@@ -15,6 +15,7 @@ var battle: Battle
 var speed := 1.0
 var paused := false
 var selected_slot := -1
+var hint_slot := -1  ## The tutorial points a bouncing arrow at this slot.
 var zoom := 3.0
 var field_size := Vector2(180, 200)  ## Visible area in field units.
 
@@ -24,7 +25,7 @@ var _things: Node2D
 var _time := 0.0
 var _soft: Texture2D
 var _vignette: Texture2D
-var _grass: NoiseTexture2D
+var _grass: Texture2D
 
 
 func _ready() -> void:
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_grass = _make_grass()
 	_ground = Node2D.new()
 	_ground.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	_ground.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_ground.draw.connect(_draw_ground)
 	add_child(_ground)
 	_things = Node2D.new()
@@ -98,21 +100,25 @@ func _on_event(e: Dictionary) -> void:
 	match e["type"]:
 		"shot":
 			fx.shot(_muzzle(e), e["to"], e["weapon"])
+			Sfx.play(e["weapon"], 0.08)
 		"chain":
 			fx.shot(e["from"], e["to"], "chain")
 		"blast":
 			fx.blast(e["at"], e["radius"])
 		"kill":
+			Sfx.play("coin" if e["boss"] else "kill", 0.1)
 			fx.burst(e["pos"], Pal.RED if not e["boss"] else Pal.ORANGE, 14 if e["boss"] else 6, 30.0)
 			fx.float_text(e["pos"] + Vector2(0, -8), "+" + Num.cash(e["cash"]), Pal.CASH)
 			if e["boss"]:
 				fx.float_text(e["pos"] + Vector2(0, -18), "+%s coins" % Num.fmt(e["coins"]), Pal.GOLD, 1.8, 9)
 		"wall_broken":
+			Sfx.play("wall_break")
 			var angle: float = Defs.ring_angle_offset(e["ring"]) + TAU * e["segment"] / Defs.SLOT_COUNTS[e["ring"]]
 			var at: Vector2 = Vector2.from_angle(angle) * battle.wall_radius(e["ring"])
-			fx.burst(at, Color("#9c968a"), 12, 25.0)
+			fx.burst(at, Color("#cfc8e6"), 12, 25.0)
 			fx.smoke(at, 5)
 		"built", "upgraded":
+			Sfx.play("build" if e["type"] == "built" else "upgrade", 0.0)
 			var slot: Entities.Slot = battle.slots[e["slot"]]
 			fx.burst(slot.pos + Vector2(0, -6), Pal.GOLD, 12, 28.0)
 	event.emit(e)
@@ -146,23 +152,47 @@ func _draw_ground() -> void:
 		return
 	var half := field_size / 2.0 + Vector2(4, 12)
 	var area := Rect2(-half, half * 2.0)
-	_ground.draw_rect(area, Pal.GRASS_DARK)
-	if _grass.get_image() != null:
-		var tile := 0.25  # one noise texel = a quarter field unit
-		_ground.draw_set_transform(Vector2.ZERO, 0.0, Vector2(tile, tile))
-		_ground.draw_texture_rect(_grass, Rect2(area.position / tile, area.size / tile), true)
-		_ground.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	# the courtyard: packed earth, strongest at the Keep and fading out past the outer wall
-	var yard := battle.wall_radius(battle.rings_unlocked) + 16.0
-	_ground.draw_texture_rect(_soft, Rect2(Vector2(-yard, -yard), Vector2(yard, yard) * 2.0), false, Color(Pal.EARTH, 0.95))
-	# worn paths along each ring, and faint guides for rings still to come
+	# checkered meadow: one texture tile is 24 field units
+	var tile := 24.0 / GRASS_TILE
+	_ground.draw_set_transform(Vector2.ZERO, 0.0, Vector2(tile, tile))
+	_ground.draw_texture_rect(_grass, Rect2(area.position / tile, area.size / tile), true)
+	_ground.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_tufts(area)
+	# the courtyard: warm sand, strongest at the Keep and fading out past the outer wall
+	var yard := battle.wall_radius(battle.rings_unlocked) + 18.0
+	_ground.draw_texture_rect(_soft, Rect2(Vector2(-yard, -yard), Vector2(yard, yard) * 2.0), false, Color(Pal.SAND, 1.0))
+	_ground.draw_texture_rect(_soft, Rect2(Vector2(-yard, -yard) * 0.7, Vector2(yard, yard) * 1.4), false, Color(Pal.SAND, 0.8))
+	# trodden paths along each ring, and faint guides for rings still to come
 	for ring in range(1, Defs.MAX_RING + 1):
 		var r: float = Defs.RING_RADII[ring]
-		var open := ring <= battle.rings_unlocked
-		var c := Color(0.08, 0.05, 0.02, 0.22) if open else Color(1, 1, 1, 0.05)
-		_ground.draw_arc(Vector2.ZERO, r, 0, TAU, 96, c, 5.0 if open else 0.6, true)
+		if ring <= battle.rings_unlocked:
+			_ground.draw_arc(Vector2.ZERO, r, 0, TAU, 96, Color(Pal.PATH, 0.9), 6.0, true)
+			_ground.draw_arc(Vector2.ZERO, r, 0, TAU, 96, Color(1, 1, 1, 0.18), 1.2, true)
+		else:
+			_ground.draw_arc(Vector2.ZERO, r, 0, TAU, 96, Color(1, 1, 1, 0.12), 0.6, true)
 	_draw_range()
 	_ground.draw_texture_rect(_vignette, area, false)
+
+
+func _draw_tufts(area: Rect2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var keep_clear := battle.wall_radius(battle.rings_unlocked) + 10.0
+	for i in 140:
+		var p := Vector2(rng.randf_range(area.position.x, area.end.x), rng.randf_range(area.position.y, area.end.y))
+		var kind := rng.randi() % 6
+		if p.length() < keep_clear:
+			continue
+		if kind == 0:  # flower
+			var c: Color = [Color("#ffffff"), Color("#ffe066"), Color("#ff8ab3")][rng.randi() % 3]
+			for k in 4:
+				_ground.draw_circle(p + Vector2.from_angle(k * PI / 2.0) * 0.55, 0.45, c, true, -1.0, true)
+			_ground.draw_circle(p, 0.32, Color("#ffb020"), true, -1.0, true)
+		else:  # grass tuft
+			var col := Pal.GRASS_DARK
+			_ground.draw_line(p, p + Vector2(-0.9, -1.8), col, 0.5, true)
+			_ground.draw_line(p, p + Vector2(0.0, -2.3), col, 0.5, true)
+			_ground.draw_line(p, p + Vector2(0.9, -1.8), col, 0.5, true)
 
 
 func _draw_range() -> void:
@@ -173,9 +203,9 @@ func _draw_range() -> void:
 	if slot.tower != null:
 		var reach := battle.tower_range(slot.tower)
 		# strongest at the tower, fading towards the edge of its reach
-		_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(reach, reach), Vector2(reach, reach) * 2.0), false, Color(0.44, 0.89, 1.0, 0.32))
-		_ground.draw_arc(slot.pos, reach, 0, TAU, 96, Color(0.44, 0.89, 1.0, 0.7), 0.6, true)
-	_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(14, 9), Vector2(28, 18)), false, Color(1.0, 0.85, 0.4, 0.55 * pulse))
+		_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(reach, reach), Vector2(reach, reach) * 2.0), false, Color(1.0, 1.0, 1.0, 0.45))
+		_ground.draw_arc(slot.pos, reach, 0, TAU, 96, Color(1, 1, 1, 0.9), 0.8, true)
+	_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(14, 9), Vector2(28, 18)), false, Color(1.0, 0.95, 0.5, 0.8 * pulse))
 
 
 # --- Fortress, towers and enemies ----------------------------------------------------------------
@@ -195,6 +225,19 @@ func _draw_things() -> void:
 	items.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for item in items:
 		(item[1] as Callable).call()
+	_draw_hint()
+
+
+func _draw_hint() -> void:
+	if hint_slot < 0 or hint_slot == selected_slot:
+		return
+	var tip: Vector2 = battle.slots[hint_slot].pos + Vector2(0, -6.0 - absf(sin(_time * 4.0)) * 4.0)
+	var arrow := PackedVector2Array([tip, tip + Vector2(-4, -5), tip + Vector2(-1.6, -5), tip + Vector2(-1.6, -10),
+		tip + Vector2(1.6, -10), tip + Vector2(1.6, -5), tip + Vector2(4, -5)])
+	var outline := arrow.duplicate()
+	outline.append(tip)
+	_things.draw_colored_polygon(arrow, Pal.GOLD)
+	_things.draw_polyline(outline, Pal.INK, 0.7, true)
 
 
 func _cheapest_build() -> float:
@@ -220,7 +263,7 @@ func _draw_slot(slot: Entities.Slot, cheapest: float) -> void:
 		_things.draw_texture_rect(Art.tex("slot"), plate, false, tint)
 		if battle.cash >= cheapest and slot.index != selected_slot:
 			var a := 0.25 + 0.2 * sin(_time * 3.0 + slot.index)
-			_things.draw_arc(slot.pos, 9.0, 0, TAU, 40, Color(1.0, 0.85, 0.4, a), 0.6, true)
+			_things.draw_arc(slot.pos + Vector2(0, -0.5), 9.5, 0, TAU, 40, Color(1.0, 1.0, 0.7, a + 0.25), 0.8, true)
 		return
 	var name := slot.tower.weapon
 	var r := Art.rect(name, slot.pos + Vector2(0, 2))
@@ -261,7 +304,7 @@ func _draw_enemy(e: Entities.Enemy) -> void:
 	var lift := 0.0
 	if e.air:
 		lift = 14.0 + sin(e.age * 3.0) * 1.5
-		_things.draw_texture_rect(_soft, Rect2(p + Vector2(-4, -1.2), Vector2(8, 2.6)), false, Color(0, 0, 0, 0.45))
+		_things.draw_texture_rect(_soft, Rect2(p + Vector2(-4, -1.2), Vector2(8, 2.6)), false, Color(0.05, 0.25, 0.1, 0.45))
 	elif e.attacking == -1:
 		lift = absf(sin(e.age * 9.0)) * 0.8
 	var r := Art.rect(name, p + Vector2(0, 1.5 - lift))
@@ -276,7 +319,7 @@ func _draw_enemy(e: Entities.Enemy) -> void:
 		var w := maxf(absf(r.size.x) * 0.8, 6.0)
 		var top := minf(r.position.y, r.end.y) - 2.0
 		var bar := Rect2(Vector2(p.x - w / 2.0, top), Vector2(w, 1.1))
-		_things.draw_rect(bar.grow(0.35), Color(0, 0, 0, 0.75))
+		_things.draw_rect(bar.grow(0.4), Pal.INK)
 		_things.draw_rect(Rect2(bar.position, Vector2(w * e.hp / e.max_hp, 1.1)), Pal.RED if not e.boss else Pal.ORANGE)
 
 
@@ -285,8 +328,8 @@ func _draw_enemy(e: Entities.Enemy) -> void:
 static func _make_vignette() -> Texture2D:
 	var g := Gradient.new()
 	g.set_color(0, Color(0, 0, 0, 0))
-	g.set_color(1, Color(0.02, 0.03, 0.05, 0.75))
-	g.add_point(0.55, Color(0, 0, 0, 0.0))
+	g.set_color(1, Color(0.05, 0.2, 0.1, 0.35))
+	g.add_point(0.6, Color(0, 0, 0, 0.0))
 	var tex := GradientTexture2D.new()
 	tex.gradient = g
 	tex.fill = GradientTexture2D.FILL_RADIAL
@@ -297,18 +340,19 @@ static func _make_vignette() -> Texture2D:
 	return tex
 
 
-static func _make_grass() -> NoiseTexture2D:
-	var noise := FastNoiseLite.new()
-	noise.seed = 7
-	noise.frequency = 0.02
-	noise.fractal_octaves = 3
-	var ramp := Gradient.new()
-	ramp.set_color(0, Pal.GRASS_DARK)
-	ramp.set_color(1, Pal.GRASS_LIGHT)
-	var tex := NoiseTexture2D.new()
-	tex.width = 256
-	tex.height = 256
-	tex.seamless = true
-	tex.noise = noise
-	tex.color_ramp = ramp
-	return tex
+const GRASS_TILE := 64
+
+
+## A checkered meadow tile: two shades of green in a diamond pattern, like a board game.
+static func _make_grass() -> Texture2D:
+	var img := Image.create(GRASS_TILE, GRASS_TILE, false, Image.FORMAT_RGBA8)
+	var half := GRASS_TILE / 2.0
+	for y in GRASS_TILE:
+		for x in GRASS_TILE:
+			var d := absf(x + 0.5 - half) + absf(y + 0.5 - half)
+			var c := Pal.GRASS_LIGHT if d < half * 0.92 else Pal.GRASS
+			if absf(d - half * 0.92) < 1.0:
+				c = c.lerp(Pal.GRASS_DARK, 0.25)
+			img.set_pixel(x, y, c)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)

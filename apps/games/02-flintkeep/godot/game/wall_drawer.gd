@@ -10,11 +10,12 @@ const FACE := 2.6  ## How far the wall's face drops below its top, for a little 
 const PIECE := deg_to_rad(5.0)
 const MERLON_EVERY := 2.6  ## Field units between battlements.
 
-const TOP_OUT := Color("#d3ccbd")
-const TOP_IN := Color("#8e877a")
-const FACE_COLOR := Color("#5e594f")
-const FACE_DARK := Color("#3d3a34")
-const HURT := Color("#5a3d2c")
+const TOP_OUT := Color("#f4efff")
+const TOP_IN := Color("#cfc8e6")
+const FACE_COLOR := Color("#a79dcc")
+const FACE_DARK := Color("#7a6fa8")
+const HURT := Color("#a0664a")
+const INK := Color("#3a2218")
 
 
 static func add(items: Array, b: Battle, ci: CanvasItem) -> void:
@@ -72,7 +73,12 @@ static func _piece(ci: CanvasItem, r: float, a0: float, a1: float, share: float,
 		top.append(inner[k])
 		cols.append(top_in)
 	ci.draw_polygon(top, cols)
-	ci.draw_polyline(outer, top_out.lightened(0.25), 0.35, true)
+	var face_edge := PackedVector2Array()
+	for p in outer:
+		face_edge.append(p + drop)
+	ci.draw_polyline(face_edge, INK, 0.55, true)
+	ci.draw_polyline(inner, INK, 0.45, true)
+	ci.draw_polyline(outer, Color.WHITE, 0.3, true)
 	_merlons(ci, r + THICKNESS / 2.0 - 0.7, a0, a1, top_out, face)
 	if hurt > 0.3:
 		var mid := Vector2.from_angle((a0 + a1) / 2.0) * r
@@ -85,8 +91,9 @@ static func _merlons(ci: CanvasItem, r: float, a0: float, a1: float, top: Color,
 	for k in count:
 		var a := lerpf(a0, a1, (k + 0.5) / count)
 		var p := Vector2.from_angle(a) * r
-		ci.draw_rect(Rect2(p + Vector2(-0.75, -0.9), Vector2(1.5, 1.6)), face)
-		ci.draw_rect(Rect2(p + Vector2(-0.75, -1.5), Vector2(1.5, 0.8)), top.lightened(0.1))
+		ci.draw_rect(Rect2(p + Vector2(-0.95, -1.75), Vector2(1.9, 2.1)), INK)
+		ci.draw_rect(Rect2(p + Vector2(-0.75, -1.0), Vector2(1.5, 1.2)), face)
+		ci.draw_rect(Rect2(p + Vector2(-0.75, -1.55), Vector2(1.5, 0.7)), top)
 
 
 static func _rubble(ci: CanvasItem, r: float, a0: float, a1: float, seed_value: int) -> void:
@@ -96,5 +103,5 @@ static func _rubble(ci: CanvasItem, r: float, a0: float, a1: float, seed_value: 
 		var a := lerpf(a0, a1, rng.randf())
 		var p := Vector2.from_angle(a) * (r + rng.randf_range(-1.5, 1.5))
 		var s := rng.randf_range(0.6, 1.2)
-		ci.draw_circle(p + Vector2(0, 0.6), s, Color("#3d3a34"), true, -1.0, true)
-		ci.draw_circle(p, s, Color("#8e877a"), true, -1.0, true)
+		ci.draw_circle(p + Vector2(0, 0.4), s + 0.3, INK, true, -1.0, true)
+		ci.draw_circle(p, s, Color("#cfc8e6"), true, -1.0, true)

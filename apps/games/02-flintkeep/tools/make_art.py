@@ -12,36 +12,50 @@ import os
 OUT = os.path.join(os.path.dirname(__file__), "..", "godot", "assets", "art")
 
 DEFS = """
-<linearGradient id="stone" x1="0" x2="1"><stop offset="0" stop-color="#c9c3b6"/><stop offset="0.45" stop-color="#9c968a"/><stop offset="1" stop-color="#5a554d"/></linearGradient>
-<linearGradient id="stoneDark" x1="0" x2="1"><stop offset="0" stop-color="#7c7a86"/><stop offset="0.5" stop-color="#55535f"/><stop offset="1" stop-color="#2f2e38"/></linearGradient>
-<linearGradient id="wood" x1="0" x2="1"><stop offset="0" stop-color="#b9824d"/><stop offset="0.5" stop-color="#8d5a30"/><stop offset="1" stop-color="#55331a"/></linearGradient>
-<linearGradient id="roofRed" x1="0" x2="1"><stop offset="0" stop-color="#e2574a"/><stop offset="0.55" stop-color="#b13a33"/><stop offset="1" stop-color="#6e1f22"/></linearGradient>
-<linearGradient id="roofBlue" x1="0" x2="1"><stop offset="0" stop-color="#5c8fe0"/><stop offset="0.55" stop-color="#355fae"/><stop offset="1" stop-color="#1d3566"/></linearGradient>
-<linearGradient id="roofGreen" x1="0" x2="1"><stop offset="0" stop-color="#6fae5a"/><stop offset="0.55" stop-color="#477d3a"/><stop offset="1" stop-color="#284a22"/></linearGradient>
-<linearGradient id="iron" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6b7180"/><stop offset="0.5" stop-color="#3a3e48"/><stop offset="1" stop-color="#1e2026"/></linearGradient>
-<linearGradient id="brass" x1="0" x2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="0.5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5f1c"/></linearGradient>
-<linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#b8b1a3"/><stop offset="1" stop-color="#7d776c"/></linearGradient>
-<radialGradient id="crystal" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#9ff4ff"/><stop offset="1" stop-color="#1fa8d6"/></radialGradient>
-<radialGradient id="violet" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#dcb8ff"/><stop offset="1" stop-color="#7b3fd1"/></radialGradient>
-<radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff0ff" stop-opacity="0.7"/><stop offset="1" stop-color="#7ff0ff" stop-opacity="0"/></radialGradient>
-<radialGradient id="glowViolet"><stop offset="0" stop-color="#c89bff" stop-opacity="0.7"/><stop offset="1" stop-color="#c89bff" stop-opacity="0"/></radialGradient>
-<radialGradient id="shadow"><stop offset="0" stop-color="#000" stop-opacity="0.45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
-<linearGradient id="skin" x1="0" x2="1"><stop offset="0" stop-color="#9ccf5c"/><stop offset="1" stop-color="#4f8a2f"/></linearGradient>
-<linearGradient id="tunicRed" x1="0" x2="1"><stop offset="0" stop-color="#d9534a"/><stop offset="1" stop-color="#7d2522"/></linearGradient>
-<linearGradient id="tunicOrange" x1="0" x2="1"><stop offset="0" stop-color="#f29a42"/><stop offset="1" stop-color="#9a5418"/></linearGradient>
-<linearGradient id="plate" x1="0" x2="1"><stop offset="0" stop-color="#c3c8d2"/><stop offset="0.5" stop-color="#8a909c"/><stop offset="1" stop-color="#4a4e58"/></linearGradient>
-<linearGradient id="wyvern" x1="0" x2="1"><stop offset="0" stop-color="#9a6ad6"/><stop offset="1" stop-color="#4a2580"/></linearGradient>
-<linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset="0.5" stop-color="#ffc83d"/><stop offset="1" stop-color="#b77d12"/></linearGradient>
+<linearGradient id="stone" x1="0" x2="1"><stop offset="0" stop-color="#f4efff"/><stop offset="0.22" stop-color="#f4efff"/><stop offset="0.22" stop-color="#cfc8e6"/><stop offset="0.68" stop-color="#cfc8e6"/><stop offset="0.68" stop-color="#9d93c2"/><stop offset="1" stop-color="#9d93c2"/></linearGradient>
+<linearGradient id="stoneDark" x1="0" x2="1"><stop offset="0" stop-color="#8f78d6"/><stop offset="0.3" stop-color="#8f78d6"/><stop offset="0.3" stop-color="#6a52b8"/><stop offset="0.7" stop-color="#6a52b8"/><stop offset="0.7" stop-color="#4a3590"/><stop offset="1" stop-color="#4a3590"/></linearGradient>
+<linearGradient id="wood" x1="0" x2="1"><stop offset="0" stop-color="#ffb86a"/><stop offset="0.25" stop-color="#ffb86a"/><stop offset="0.25" stop-color="#e38a3d"/><stop offset="0.7" stop-color="#e38a3d"/><stop offset="0.7" stop-color="#b8602a"/><stop offset="1" stop-color="#b8602a"/></linearGradient>
+<linearGradient id="roofRed" x1="0" x2="1"><stop offset="0" stop-color="#ff8a74"/><stop offset="0.35" stop-color="#ff8a74"/><stop offset="0.35" stop-color="#f2463c"/><stop offset="0.75" stop-color="#f2463c"/><stop offset="0.75" stop-color="#c22a2f"/><stop offset="1" stop-color="#c22a2f"/></linearGradient>
+<linearGradient id="roofBlue" x1="0" x2="1"><stop offset="0" stop-color="#7cc4ff"/><stop offset="0.35" stop-color="#7cc4ff"/><stop offset="0.35" stop-color="#3a8cff"/><stop offset="0.75" stop-color="#3a8cff"/><stop offset="0.75" stop-color="#2a5fd0"/><stop offset="1" stop-color="#2a5fd0"/></linearGradient>
+<linearGradient id="roofGreen" x1="0" x2="1"><stop offset="0" stop-color="#9df06a"/><stop offset="0.35" stop-color="#9df06a"/><stop offset="0.35" stop-color="#4cc23f"/><stop offset="0.75" stop-color="#4cc23f"/><stop offset="0.75" stop-color="#2e8a35"/><stop offset="1" stop-color="#2e8a35"/></linearGradient>
+<linearGradient id="iron" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8f9bb8"/><stop offset="0.35" stop-color="#8f9bb8"/><stop offset="0.35" stop-color="#5b6582"/><stop offset="1" stop-color="#3d4560"/></linearGradient>
+<linearGradient id="brass" x1="0" x2="1"><stop offset="0" stop-color="#fff2a0"/><stop offset="0.3" stop-color="#fff2a0"/><stop offset="0.3" stop-color="#ffc93c"/><stop offset="0.75" stop-color="#ffc93c"/><stop offset="0.75" stop-color="#d98a1a"/><stop offset="1" stop-color="#d98a1a"/></linearGradient>
+<linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#e6d3b0"/><stop offset="1" stop-color="#e6d3b0"/></linearGradient>
+<radialGradient id="crystal" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#aefbff"/><stop offset="0.7" stop-color="#2fd6ff"/><stop offset="1" stop-color="#1c8fe0"/></radialGradient>
+<radialGradient id="violet" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#f6c8ff"/><stop offset="0.7" stop-color="#c158ff"/><stop offset="1" stop-color="#8a2be2"/></radialGradient>
+<radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#7ff6ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="glowViolet"><stop offset="0" stop-color="#e3a6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#e3a6ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="shadow"><stop offset="0" stop-color="#103a1a" stop-opacity="0.45"/><stop offset="1" stop-color="#103a1a" stop-opacity="0"/></radialGradient>
+<linearGradient id="skin" x1="0" x2="1"><stop offset="0" stop-color="#c8f56a"/><stop offset="0.35" stop-color="#c8f56a"/><stop offset="0.35" stop-color="#7fd23a"/><stop offset="1" stop-color="#4fa82a"/></linearGradient>
+<linearGradient id="tunicRed" x1="0" x2="1"><stop offset="0" stop-color="#ff7a6a"/><stop offset="0.35" stop-color="#ff7a6a"/><stop offset="0.35" stop-color="#e83a3a"/><stop offset="1" stop-color="#b8222e"/></linearGradient>
+<linearGradient id="tunicOrange" x1="0" x2="1"><stop offset="0" stop-color="#ffc06a"/><stop offset="0.35" stop-color="#ffc06a"/><stop offset="0.35" stop-color="#ff8a1f"/><stop offset="1" stop-color="#d0600f"/></linearGradient>
+<linearGradient id="plate" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ffffff"/><stop offset="0.3" stop-color="#bfc8e0"/><stop offset="0.72" stop-color="#bfc8e0"/><stop offset="0.72" stop-color="#8590b4"/><stop offset="1" stop-color="#8590b4"/></linearGradient>
+<linearGradient id="wyvern" x1="0" x2="1"><stop offset="0" stop-color="#d79bff"/><stop offset="0.35" stop-color="#d79bff"/><stop offset="0.35" stop-color="#a24dff"/><stop offset="1" stop-color="#6d24c9"/></linearGradient>
+<linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff6b0"/><stop offset="0.4" stop-color="#ffd43a"/><stop offset="1" stop-color="#f09a12"/></linearGradient>
 """
 
 
-def svg(w, h, body):
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
-            f"<defs>{DEFS}</defs>{body}</svg>")
+OUTLINE = "#3a2218"
+
+
+def svg(w, h, body, outline=3.2):
+    """Cartoon outline: the art is drawn twice, first with a thick dark stroke on every shape,
+    then plainly on top, so only the outer silhouette keeps its outline. Shadows and glows sit
+    outside the outline (anything before the <!--art--> marker)."""
+    back, _, art = body.rpartition("<!--art-->") if "<!--art-->" in body else ("", "", body)
+    inked = (f'<g stroke="{OUTLINE}" stroke-width="{outline}" stroke-linejoin="round" stroke-linecap="round">{art}</g>'
+             if outline > 0 else "")
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="-4 -4 {w + 8} {h + 8}">'
+            f"<defs>{DEFS}</defs>{back}{inked}{art}</svg>")
+
+
+def gloss(cx, cy, rx, ry, rot=-25, opacity=0.55):
+    """The glossy highlight casual art puts in the same top-left spot on every object."""
+    return f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" transform="rotate({rot} {cx} {cy})" fill="#ffffff" opacity="{opacity}" stroke="none"/>'
 
 
 def shadow(cx, cy, rx, ry):
-    return f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="url(#shadow)"/>'
+    return f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="url(#shadow)"/><!--art-->'
 
 
 def cylinder(x0, x1, top, bottom, fill, ry=None):
@@ -106,10 +120,11 @@ def keep_body():
     b += cylinder(12, 108, 42, 54, "url(#stone)", 13)
     b += '<path d="M12 42 A48 13 0 0 0 108 42" stroke="#e6e0d2" stroke-width="1.2" fill="none"/>'
     # arcane crystal on its pedestal
-    b += '<circle cx="60" cy="18" r="20" fill="url(#glowCyan)"/>'
+    b += '<circle cx="60" cy="18" r="20" fill="url(#glowCyan)" stroke="none"/>'
     b += cylinder(53, 67, 30, 44, "url(#stoneDark)", 3)
     b += '<polygon points="60,2 69,18 60,34 51,18" fill="url(#crystal)" stroke="#0e5f7d" stroke-width="1"/>'
-    b += '<polygon points="60,2 60,34 51,18" fill="#ffffff" opacity="0.25"/>'
+    b += '<polygon points="60,2 60,34 51,18" fill="#ffffff" opacity="0.35" stroke="none"/>'
+    b += gloss(56, 13, 1.6, 4, 30, 0.8)
     b += merlons(60, 42, 46, 12, 7, 9, 10, "url(#stone)")
     # banner
     b += '<line x1="94" y1="6" x2="94" y2="46" stroke="#5b4a32" stroke-width="2"/>'
@@ -135,7 +150,8 @@ def musket():
     b += '<line x1="34" y1="51" x2="55" y2="46" stroke="#2a2a2e" stroke-width="2.2" stroke-linecap="round"/>'
     b += '<line x1="34" y1="51" x2="42" y2="49.3" stroke="#7a4a22" stroke-width="2.6" stroke-linecap="round"/>'
     b += '<path d="M7 39 L32 6 L57 39 A25 7 0 0 1 7 39 Z" fill="url(#roofRed)"/>'
-    b += '<path d="M7 39 A25 7 0 0 0 57 39" stroke="#4a1414" stroke-width="1.5" fill="none"/>'
+    b += '<path d="M7 39 A25 7 0 0 0 57 39" stroke="#8a1a1f" stroke-width="1.5" fill="none"/>'
+    b += gloss(20, 26, 4, 9, 35)
     b += '<line x1="32" y1="6" x2="32" y2="0" stroke="#5b4a32" stroke-width="1.5"/>'
     b += '<path d="M32 0.5 L41 2.5 L32 5 Z" fill="#355fae"/>'
     return svg(64, 100, b)
@@ -184,7 +200,8 @@ def sniper():
     b += '<path d="M27 26 L35 26 L33 23.5 L29 23.5 Z" fill="#1b1b22"/>'
     b += '<line x1="33" y1="31" x2="62" y2="26" stroke="#2a2a2e" stroke-width="1.8" stroke-linecap="round"/>'
     b += '<path d="M12 25 L32 2 L52 25 A20 6 0 0 1 12 25 Z" fill="url(#roofGreen)"/>'
-    b += '<path d="M12 25 A20 6 0 0 0 52 25" stroke="#1d3517" stroke-width="1.3" fill="none"/>'
+    b += '<path d="M12 25 A20 6 0 0 0 52 25" stroke="#1f6a2a" stroke-width="1.3" fill="none"/>'
+    b += gloss(22, 16, 3, 7, 40)
     return svg(64, 100, b)
 
 
@@ -196,9 +213,10 @@ def arcane():
     for (x, y) in ((30, 58), (34, 70), (29, 82)):
         b += f'<path d="M{x} {y} l3 -4 l3 4 l-3 4 Z" fill="#c89bff"/>'
     b += '<ellipse cx="32" cy="40" rx="11" ry="3.5" fill="#3b2a5c" stroke="#c89bff" stroke-width="1"/>'
-    b += '<circle cx="32" cy="20" r="18" fill="url(#glowViolet)"/>'
+    b += '<circle cx="32" cy="20" r="18" fill="url(#glowViolet)" stroke="none"/>'
     b += '<polygon points="32,4 40,19 32,34 24,19" fill="url(#violet)" stroke="#4a1f86" stroke-width="1"/>'
-    b += '<polygon points="32,4 32,34 24,19" fill="#ffffff" opacity="0.25"/>'
+    b += '<polygon points="32,4 32,34 24,19" fill="#ffffff" opacity="0.35" stroke="none"/>'
+    b += gloss(28.5, 14, 1.5, 4, 30, 0.8)
     return svg(64, 100, b)
 
 
@@ -262,8 +280,8 @@ def balloon():
     b += '<g clip-path="url(#env)">'
     for x in (8, 22, 36):
         b += f'<rect x="{x - 3}" y="0" width="6" height="48" fill="#f1dca4"/>'
-    b += '<ellipse cx="16" cy="14" rx="9" ry="7" fill="#fff" opacity="0.25"/>'
-    b += '<rect x="0" y="0" width="48" height="48" fill="url(#shadow)" opacity="0.0"/></g>'
+    b += '<ellipse cx="15" cy="12" rx="7" ry="5" fill="#fff" opacity="0.5" stroke="none"/>'
+    b += '</g>'
     b += '<ellipse cx="24" cy="24" rx="20" ry="22" fill="none" stroke="#5e1a16" stroke-width="1.2"/>'
     b += '<line x1="12" y1="42" x2="17" y2="56" stroke="#4a2c18"/><line x1="36" y1="42" x2="31" y2="56" stroke="#4a2c18"/>'
     b += '<ellipse cx="24" cy="54" rx="6" ry="5" fill="url(#skin)"/><circle cx="22" cy="53" r="1" fill="#ffd23f"/><circle cx="26" cy="53" r="1" fill="#ffd23f"/>'
@@ -297,7 +315,7 @@ def juggernaut():
     b += '<path d="M10 22 Q36 10 62 22 L58 62 Q36 70 14 62 Z" fill="url(#iron)" stroke="#111" stroke-width="1"/>'
     b += '<path d="M12 24 Q36 14 60 24" stroke="#9aa1ae" stroke-width="2" fill="none"/>'
     b += '<circle cx="36" cy="42" r="9" fill="#ff7a1a"/><circle cx="36" cy="42" r="5" fill="#ffe08a"/>'
-    b += '<circle cx="36" cy="42" r="14" fill="#ff7a1a" opacity="0.25"/>'
+    b += '<circle cx="36" cy="42" r="14" fill="#ff7a1a" opacity="0.25" stroke="none"/>'
     for (x, y) in ((18, 30), (54, 30), (20, 56), (52, 56)):
         b += f'<circle cx="{x}" cy="{y}" r="1.6" fill="#c3c8d2"/>'
     b += '<rect x="25" y="2" width="22" height="18" rx="5" fill="url(#iron)" stroke="#111"/>'
@@ -308,9 +326,10 @@ def juggernaut():
 # --- Icons ----------------------------------------------------------------------------------------
 
 def coin():
-    b = '<circle cx="16" cy="16" r="15" fill="#8a5a10"/><circle cx="16" cy="15" r="14" fill="url(#gold)"/>'
-    b += '<circle cx="16" cy="15" r="10" fill="none" stroke="#b77d12" stroke-width="1.5"/>'
-    b += '<path d="M11 18 L11 12 L13.5 14.5 L16 10 L18.5 14.5 L21 12 L21 18 Z" fill="#b77d12"/>'
+    b = '<circle cx="16" cy="16.5" r="14" fill="#c97d0a"/><circle cx="16" cy="15" r="14" fill="url(#gold)"/>'
+    b += '<circle cx="16" cy="15" r="10" fill="none" stroke="#e09a12" stroke-width="1.5"/>'
+    b += '<path d="M11 18 L11 12 L13.5 14.5 L16 10 L18.5 14.5 L21 12 L21 18 Z" fill="#c97d0a" stroke="none"/>'
+    b += gloss(10, 9, 3, 5, 35, 0.6)
     return svg(32, 32, b)
 
 
@@ -323,7 +342,7 @@ def cash():
 
 def heart():
     b = '<path d="M16 28 C4 19 2 12 6 7 C10 2 15 5 16 9 C17 5 22 2 26 7 C30 12 28 19 16 28 Z" fill="#e5534b" stroke="#7d2522" stroke-width="1.5"/>'
-    b += '<ellipse cx="10" cy="10" rx="3" ry="2" fill="#fff" opacity="0.4"/>'
+    b += '<ellipse cx="10" cy="10" rx="3.5" ry="2.2" fill="#fff" opacity="0.6" stroke="none"/>'
     return svg(32, 32, b)
 
 
@@ -336,12 +355,13 @@ ART = {
 
 def app_icon():
     """The launcher icon: the Keep on a night-blue tile with a cyan glow."""
-    b = '<radialGradient id="night" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="#2a3c5c"/><stop offset="1" stop-color="#0b0d12"/></radialGradient>'
+    b = '<radialGradient id="night" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="#8fe0ff"/><stop offset="1" stop-color="#2f8be0"/></radialGradient>'
     b += '<rect width="256" height="256" fill="url(#night)"/>'
     b += '<circle cx="128" cy="70" r="90" fill="url(#glowCyan)" opacity="0.6"/>'
-    b += '<ellipse cx="128" cy="236" rx="110" ry="22" fill="#8a6a44" opacity="0.55"/>'
-    b += f'<g transform="translate(38 22) scale(1.5)">{keep_body()}</g>'
-    return svg(256, 256, b)
+    b += '<ellipse cx="128" cy="240" rx="140" ry="34" fill="#5ccf4a"/>'
+    sh, _, art = keep_body().partition("<!--art-->")
+    b += f'<g transform="translate(38 22) scale(1.5)">{sh}</g><!--art--><g transform="translate(38 22) scale(1.5)">{art}</g>'
+    return svg(256, 256, b, outline=3.2)
 
 
 if __name__ == "__main__":

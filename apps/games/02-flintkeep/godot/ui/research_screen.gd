@@ -25,34 +25,32 @@ func _ready() -> void:
 	margin.add_child(col)
 
 	var top := Kit.hbox(10)
-	var back_button := Kit.button("‹", Kit.Btn.SECONDARY, 34, 56)
+	var back_button := Kit.button("<", Kit.Btn.SECONDARY, 30, 58)
 	back_button.custom_minimum_size.x = 64
 	back_button.pressed.connect(func() -> void: back.emit())
 	top.add_child(back_button)
-	var title := Kit.heading("Research", 38, Pal.PARCHMENT, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := Kit.heading("Research", 42, Pal.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
-	var pill := Kit.panel_container(Pal.PANEL_DEEP, Pal.LINE, 22)
-	var coins := Kit.hbox(8)
-	coins.add_child(Kit.icon("coin", 26))
-	_coins_label = Kit.label("", 22, Pal.GOLD, Fonts.bold())
-	coins.add_child(_coins_label)
-	pill.add_child(coins)
-	top.add_child(pill)
+	var pill: Array = Kit.pill("coin", Pal.GOLD)
+	_coins_label = pill[1]
+	top.add_child(pill[0])
 	col.add_child(top)
 
-	var labs := Kit.panel_container(Pal.PANEL, Pal.LINE)
+	var labs := Kit.panel_container(Kit.wood())
 	var lab_list := Kit.vbox(8)
 	labs.add_child(lab_list)
 	for i in Profile.data.labs.size():
-		var m := Meter.new(Color("#7d52c9"), 34, 16)
+		var m := Meter.new(Color("#b45cff"), 36, 18)
 		lab_list.add_child(m)
 		_lab_meters.append(m)
 	col.add_child(labs)
 
+	var frame := Kit.panel_container(Kit.wood())
+	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(frame)
 	var scroll := TouchScroll.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(scroll)
+	frame.add_child(scroll)
 	var list := Kit.vbox(8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
@@ -60,7 +58,7 @@ func _ready() -> void:
 		var header := Kit.hbox(10)
 		header.custom_minimum_size.y = 48
 		header.add_child(Kit.icon(GROUP_ICONS[group], 30))
-		header.add_child(Kit.heading(group, 26, Pal.GOLD, HORIZONTAL_ALIGNMENT_LEFT))
+		header.add_child(Kit.heading(group, 28, Pal.WHITE, HORIZONTAL_ALIGNMENT_LEFT))
 		list.add_child(header)
 		for id in Research.ids_in(group):
 			var row := _row(id)
@@ -80,7 +78,7 @@ func _row(id: String) -> UpgradeRow:
 	var detail := func() -> String:
 		var text := Research.describe(id, data.level(id))
 		if not data.is_maxed(id):
-			text += "   ⏱ " + Num.duration(data.next_seconds(id)).to_lower()
+			text += "   ·   " + Num.duration(data.next_seconds(id)).to_lower()
 		return text
 	var price := func() -> float:
 		var block := data.blocker(id)
@@ -96,7 +94,7 @@ func _row(id: String) -> UpgradeRow:
 	var action := {"label": label, "price": price, "run": Profile.start_research.bind(id), "kind": Kit.Btn.PRIMARY,
 		"wallet": func() -> float: return data.coins}
 	var icon := id if Defs.WEAPONS.has(id) else ""
-	var row := UpgradeRow.make(title, detail, [action], Pal.PARCHMENT, icon)
+	var row := UpgradeRow.make(title, detail, [action], Pal.TEXT, icon)
 	row.acted.connect(_refresh)
 	return row
 

@@ -16,7 +16,7 @@ var _detail: Label
 var _buttons: Array[Button] = []
 
 
-static func make(title: Variant, detail: Callable, actions: Array, accent: Color = Pal.PARCHMENT, icon: String = "") -> UpgradeRow:
+static func make(title: Variant, detail: Callable, actions: Array, accent: Color = Pal.TEXT, icon: String = "") -> UpgradeRow:
 	var row := UpgradeRow.new()
 	row._title_fn = title if title is Callable else func() -> String: return str(title)
 	row._detail_fn = detail
@@ -26,12 +26,7 @@ static func make(title: Variant, detail: Callable, actions: Array, accent: Color
 
 
 func _build(accent: Color, icon: String) -> void:
-	var style := Kit.panel(Pal.PANEL_LIGHT, Pal.LINE, 12, 1, false)
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	style.content_margin_left = 12
-	style.content_margin_right = 8
-	add_theme_stylebox_override("panel", style)
+	add_theme_stylebox_override("panel", Kit.card())
 	custom_minimum_size.y = 72
 	var h := Kit.hbox(10)
 	add_child(h)
@@ -43,14 +38,14 @@ func _build(accent: Color, icon: String) -> void:
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_child(texts)
-	_title = Kit.label("", 21, accent, Fonts.bold())
+	_title = Kit.label("", 22, accent, Fonts.heading())
 	_title.clip_text = true
 	texts.add_child(_title)
-	_detail = Kit.label("", 16, Pal.DIM, Fonts.body())
+	_detail = Kit.label("", 17, Pal.TEXT_DIM, Fonts.semibold())
 	_detail.clip_text = true
 	texts.add_child(_detail)
 	for a in _actions:
-		var b := Kit.button("", a.get("kind", Kit.Btn.BUY), 20 if _actions.size() == 1 else 17, 54)
+		var b := Kit.button("", a.get("kind", Kit.Btn.BUY), 22 if _actions.size() == 1 else 18, 54)
 		b.custom_minimum_size.x = 124 if _actions.size() == 1 else 104
 		b.pressed.connect(_on_pressed.bind(a))
 		h.add_child(b)
@@ -61,6 +56,8 @@ func _build(accent: Color, icon: String) -> void:
 func _on_pressed(action: Dictionary) -> void:
 	if (action["run"] as Callable).call():
 		acted.emit()
+	else:
+		Sfx.play("denied")
 
 
 func refresh() -> void:

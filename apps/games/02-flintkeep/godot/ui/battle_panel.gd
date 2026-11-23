@@ -27,16 +27,16 @@ func _init(p_battle: Battle) -> void:
 	_tabs_row = Kit.hbox(6)
 	add_child(_tabs_row)
 	for t in TABS:
-		var b := Kit.button(t, Kit.Btn.TAB, 20, 48)
+		var b := Kit.button(t, Kit.Btn.TAB, 22, 50)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(_set_tab.bind(t))
 		_tabs_row.add_child(b)
 		_tab_buttons[t] = b
 	_header = Kit.hbox(8)
-	_header_label = Kit.heading("", 24, Pal.GOLD, HORIZONTAL_ALIGNMENT_LEFT)
+	_header_label = Kit.heading("", 26, Pal.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	_header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_header.add_child(_header_label)
-	var close := Kit.button("Done", Kit.Btn.GHOST, 18, 48)
+	var close := Kit.button("Done", Kit.Btn.SECONDARY, 20, 48)
 	close.custom_minimum_size.x = 88
 	close.pressed.connect(func() -> void: close_slot.emit())
 	_header.add_child(close)
@@ -84,7 +84,7 @@ func _rebuild() -> void:
 	_tabs_row.visible = _slot < 0
 	_header.visible = _slot >= 0
 	for t in TABS:
-		Kit.style_button(_tab_buttons[t], Kit.Btn.TAB_ON if t == _tab else Kit.Btn.TAB, 20)
+		Kit.style_button(_tab_buttons[t], Kit.Btn.TAB_ON if t == _tab else Kit.Btn.TAB, 22)
 	var rows: Array[UpgradeRow] = []
 	_slot_built = _slot >= 0 and battle.slots[_slot].tower != null
 	if _slot >= 0:

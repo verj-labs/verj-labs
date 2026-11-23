@@ -25,6 +25,7 @@ var _banner: Label
 var _banner_time := 0.0
 var _field: Control
 var _overlay: Control
+var _tutorial: Tutorial
 
 
 func _init(p_tier: int) -> void:
@@ -34,7 +35,10 @@ func _init(p_tier: int) -> void:
 
 func _ready() -> void:
 	battle = Battle.new(Profile.data.research.duplicate(), tier)
-	add_child(Kit.backdrop())
+	Profile.data.refresh_missions(Missions.today())
+	var bg := Kit.color_rect(Pal.GRASS)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
 	var margin := SafeMargin.new(0)
 	add_child(margin)
 	var column := Kit.vbox(0)
@@ -42,49 +46,62 @@ func _ready() -> void:
 	column.add_child(_build_hud())
 	column.add_child(_build_field())
 	column.add_child(_build_panel())
-	_banner = Kit.heading("", 44, Pal.PARCHMENT)
+	_banner = Kit.heading("", 48, Pal.WHITE)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
-	_show_banner("Wave 1", Pal.PARCHMENT)
+	_show_banner("Wave 1", Pal.WHITE)
+	if not Profile.data.tutorial_done:
+		_tutorial = Tutorial.new(battle, view)
+		_field.add_child(_tutorial)
+		_tutorial.anchor_left = 0.0
+		_tutorial.anchor_right = 1.0
+		_tutorial.anchor_top = 1.0
+		_tutorial.anchor_bottom = 1.0
+		_tutorial.offset_left = 12
+		_tutorial.offset_right = -12
+		_tutorial.offset_bottom = -12
+		_tutorial.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_update_hud()
 
 
 func _build_hud() -> Control:
 	var hud := PanelContainer.new()
-	var box := Kit.panel(Pal.PANEL, Pal.LINE, 0, 0)
-	box.border_width_bottom = 2
-	box.border_color = Pal.BRASS_DIM
-	box.content_margin_left = 16
-	box.content_margin_right = 16
-	hud.add_theme_stylebox_override("panel", box)
+	var style := Kit.box(Pal.WOOD, Pal.INK, 0, 0)
+	style.border_width_bottom = 4
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 8
+	style.content_margin_bottom = 10
+	hud.add_theme_stylebox_override("panel", style)
 	var v := Kit.vbox(8)
 	hud.add_child(v)
 	var top := Kit.hbox(8)
 	v.add_child(top)
-	top.add_child(Kit.icon("cash", 34))
-	_cash_label = Kit.label("", 30, Pal.CASH, Fonts.bold())
-	_cash_label.custom_minimum_size.x = 140
-	top.add_child(_cash_label)
-	top.add_child(Kit.icon("coin", 26))
-	_coin_label = Kit.label("", 22, Pal.GOLD, Fonts.bold())
-	_coin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_coin_label)
-	_speed_button = Kit.button("1x", Kit.Btn.SECONDARY, 20, 48)
+	var cash: Array = Kit.pill("cash", Pal.CASH)
+	_cash_label = cash[1]
+	_cash_label.add_theme_font_size_override("font_size", 28)
+	_cash_label.custom_minimum_size.x = 110
+	top.add_child(cash[0])
+	var coins: Array = Kit.pill("coin", Pal.GOLD)
+	_coin_label = coins[1]
+	top.add_child(coins[0])
+	top.add_child(Kit.spacer(true))
+	_speed_button = Kit.button("1x", Kit.Btn.SECONDARY, 22, 50)
 	_speed_button.custom_minimum_size.x = 64
 	_speed_button.pressed.connect(_cycle_speed)
 	top.add_child(_speed_button)
-	var pause := Kit.button("II", Kit.Btn.SECONDARY, 18, 48)
+	var pause := Kit.button("II", Kit.Btn.PRIMARY, 22, 50)
 	pause.custom_minimum_size.x = 56
 	pause.pressed.connect(_pause)
 	top.add_child(pause)
-	var bars := Kit.hbox(10)
+	var bars := Kit.hbox(8)
 	v.add_child(bars)
-	bars.add_child(Kit.icon("heart", 26))
-	_hp_meter = Meter.new(Color("#d8453d"), 28, 16)
+	bars.add_child(Kit.icon("heart", 30))
+	_hp_meter = Meter.new(Color("#ff4d4d"), 32, 18)
 	_hp_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hp_meter.size_flags_stretch_ratio = 1.5
 	bars.add_child(_hp_meter)
-	_wave_meter = Meter.new(Color("#3f8fa6"), 28, 16)
+	_wave_meter = Meter.new(Color("#3fb6ff"), 32, 18)
 	_wave_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bars.add_child(_wave_meter)
 	return hud
@@ -104,8 +121,10 @@ func _build_field() -> Control:
 
 func _build_panel() -> Control:
 	var box := PanelContainer.new()
-	var style := Kit.panel(Pal.PANEL, Pal.BRASS_DIM, 18, 0)
-	style.border_width_top = 2
+	var style := Kit.box(Pal.WOOD, Pal.INK, 22, 3)
+	style.border_width_bottom = 0
+	style.border_width_left = 0
+	style.border_width_right = 0
 	style.corner_radius_bottom_left = 0
 	style.corner_radius_bottom_right = 0
 	style.content_margin_top = 12
@@ -157,18 +176,36 @@ func _show_banner(text: String, color: Color, seconds: float = 1.6) -> void:
 
 
 func _on_battle_event(e: Dictionary) -> void:
+	_track_missions(e)
 	match e["type"]:
 		"wave":
 			_bank_coins()
+			Sfx.play("boss" if e["boss"] else "wave", 0.0)
 			if e["boss"]:
 				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
 			else:
-				_show_banner("Wave %d" % e["wave"], Pal.PARCHMENT)
+				_show_banner("Wave %d" % e["wave"], Pal.WHITE)
 		"interest":
 			if e["cash"] >= 1.0:
 				view.fx.float_text(Vector2(0, -40), "Interest +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 7)
 		"game_over":
+			Sfx.play("game_over", 0.0)
 			_end_run()
+
+
+func _track_missions(e: Dictionary) -> void:
+	var list: Array = Profile.data.missions
+	match e["type"]:
+		"kill":
+			Missions.track(list, "kills", 1)
+			if Defs.ENEMIES[e["kind"]]["air"]:
+				Missions.track(list, "flyers", 1)
+			if e["boss"]:
+				Missions.track(list, "boss", 1)
+		"wave": Missions.track(list, "wave", e["wave"])
+		"built": Missions.track(list, "build", 1)
+		"upgraded": Missions.track(list, "upgrade", 1)
+		"wall_built": Missions.track(list, "walls", 1)
 
 
 func _bank_coins() -> void:
@@ -189,12 +226,19 @@ func _pause() -> void:
 		return
 	view.paused = true
 	var body := Kit.vbox(16)
-	body.add_child(Kit.heading("Paused", 40))
-	body.add_child(Kit.label("Tier %d  ·  Wave %d" % [tier, battle.wave], 20, Pal.DIM, null, HORIZONTAL_ALIGNMENT_CENTER))
+	body.add_child(Kit.heading("Paused", 44))
+	body.add_child(Kit.label("Tier %d  ·  Wave %d" % [tier, battle.wave], 22, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
 	var resume := Kit.button("Resume", Kit.Btn.PRIMARY, 26, 72)
 	resume.pressed.connect(_resume)
 	body.add_child(resume)
-	var retreat := Kit.button("Retreat and end the run", Kit.Btn.DANGER, 20, 60)
+	var settings := Kit.button("Settings", Kit.Btn.SECONDARY, 24, 62)
+	settings.pressed.connect(func() -> void:
+		_close_overlay()
+		_open_overlay(SettingsPanel.build(func() -> void:
+			_close_overlay()
+			_pause(), false)))
+	body.add_child(settings)
+	var retreat := Kit.button("Retreat and end the run", Kit.Btn.DANGER, 22, 60)
 	retreat.pressed.connect(_end_run)
 	body.add_child(retreat)
 	_open_overlay(body)
@@ -216,24 +260,7 @@ func _end_run() -> void:
 
 
 func _open_overlay(body: Control) -> void:
-	_overlay = Control.new()
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var dim := Kit.color_rect(Color(0.02, 0.03, 0.05, 0.78))
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(center)
-	var card := Kit.panel_container(Pal.PANEL, Pal.BRASS, 20)
-	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_left = 24
-	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_right = 24
-	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_top = 22
-	(card.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = 22
-	card.custom_minimum_size.x = 460
-	center.add_child(card)
-	card.add_child(body)
-	add_child(_overlay)
+	_overlay = Kit.modal(self, body)
 
 
 func _close_overlay() -> void:

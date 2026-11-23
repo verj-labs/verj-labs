@@ -2,8 +2,8 @@
 
 An endless fortress defense for Android and iOS, made in Godot 4.7. Hold the Keep against
 goblin raiders, build a castle around it ring by ring, and research permanent upgrades between
-runs. Flintlock fantasy at night: smooth vector art (SVG), Cinzel and Barlow fonts, and walnut
-and brass panels.
+runs. Bright casual-cartoon look: glossy, outlined vector art (SVG), Lilita One and Fredoka
+fonts, wood panels with cream cards and chunky glossy buttons.
 
 Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 
@@ -19,11 +19,14 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] Coins and research with 2 timed labs that keep running while the game is closed
 - [x] Saving, best wave per tier, coins banked every wave
 - [x] Screens: menu, battle (HUD, field, upgrade panel, slot sheet, pause, summary), research
-- [x] Vector art for the Keep, 5 towers, build foundations, 6 enemies and icons; continuous ring
-      walls; gradients on the courtyard, tower range and shot tracers
-- [x] Tests (rules, research, saves, number formatting) and a balance check that plays whole runs
-- [ ] Sound and music
-- [ ] Tutorial, settings, store screenshots
+- [x] Cartoon vector art for the Keep, 5 towers, build foundations, 6 enemies and icons;
+      continuous ring walls; a sunny checkered meadow; gradients that fade from the source outward
+- [x] Sound effects and a music loop (synthesised), with Music and Sound switches in Settings
+- [x] First-run tutorial with a pointer to the first foundation
+- [x] Daily missions: three goals a day that pay coins
+- [x] Settings: music, sound effects, reset progress
+- [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
+- [ ] Store screenshots, adaptive Android icon layers
 - [ ] More content (see "Not built yet" in the design doc)
 
 ## Run it
@@ -69,14 +72,18 @@ godot --headless --export-debug "iOS" builds/ios/Flintkeep.ipa    # writes an Xc
 
 ## Art and fonts
 
-- Sprites are SVG files in `godot/assets/art/`, written by `python3 tools/make_art.py`. Edit
+- Sprites are SVG files in `godot/assets/art/`, written by `python3 tools/make_art.py` in a
+  casual-cartoon style: cel-shaded colour bands, a thick dark outline around each silhouette, and
+  a glossy highlight in the top-left. Edit
   the script and re-run it, or replace a file by hand: keep its canvas size and the point it
   stands on (`FOOT` in `godot/ui/art.gd`, which also sets how wide each sprite is on the
   battlefield). The game rasterises them at 3x with mipmaps, so they stay sharp at any zoom.
 - Walls, the ground, glows and effects are drawn in code (`game/wall_drawer.gd`,
   `game/battle_view.gd`, `game/field_fx.gd`).
-- Fonts are in `godot/assets/fonts/`: Cinzel for headings, Barlow for everything else. Both are
-  under the SIL Open Font License, and the licence files are next to them.
+- Fonts are in `godot/assets/fonts/`: Lilita One for titles, buttons and numbers, Fredoka for
+  everything else. Both are under the SIL Open Font License, and the licence files are next to them.
+- Sounds and music are synthesised by `python3 tools/make_audio.py` into `godot/assets/audio/`
+  (standard library only, nothing downloaded). The `Sound` autoload plays them; call `Sfx.play("coin")`.
 
 ## Layout
 
@@ -85,9 +92,9 @@ docs/GAME_DESIGN.md  what the game is and why; numbers live in code
 godot/core/          rules: no nodes or drawing (Battle, research, profile, waves, AutoPlayer)
 godot/game/          the battlefield view: ground, walls, sprites, shots, glow, particles
 godot/ui/            screens, panels, fonts, the art loader, the Profile autoload
-godot/assets/        SVG art and fonts
+godot/assets/        SVG art, fonts, sounds
 godot/tests/         tests (run by tools/run_tests.gd)
-tools/               art generator, test runner, balance report, flow check, screenshots
+tools/               art and audio generators, test runner, balance report, flow check, screenshots
 ```
 
 Ground rules:

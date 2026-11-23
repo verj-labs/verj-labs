@@ -58,6 +58,7 @@ func _finish_research() -> void:
 	save_game()
 	for id in done:
 		research_done.emit(id)
+	Sfx.play("research_done", 0.0)
 	changed.emit()
 
 

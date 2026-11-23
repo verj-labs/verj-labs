@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://btue16gpo0drk"
-path="res://.godot/imported/Barlow-Medium.ttf-f8e32e17618c23ddf9afe4345a314e3b.fontdata"
+uid="uid://deenx8jtgmndu"
+path="res://.godot/imported/Fredoka.ttf-38db4f924b441151c6642ef65fe93e1f.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Barlow-Medium.ttf"
-dest_files=["res://.godot/imported/Barlow-Medium.ttf-f8e32e17618c23ddf9afe4345a314e3b.fontdata"]
+source_file="res://assets/fonts/Fredoka.ttf"
+dest_files=["res://.godot/imported/Fredoka.ttf-38db4f924b441151c6642ef65fe93e1f.fontdata"]
 
 [params]
 
