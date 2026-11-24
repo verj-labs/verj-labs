@@ -284,3 +284,17 @@ func test_shamans_heal_raiders_near_them() -> void:
 	check(friend.hp > friend.max_hp * 0.5, "healed")
 	near(far.hp, far.max_hp * 0.5, 0.001, "out of reach")
 	near(shaman.hp, shaman.max_hp, 0.001, "shamans do not heal themselves (they are full anyway)")
+
+
+func test_calling_the_next_wave_early_pays_a_bonus() -> void:
+	var b := _battle()
+	check(not b.call_next_wave(), "not while the wave is still arriving")
+	_run(b, Defs.SPAWN_SECONDS + 0.5)
+	b.keep_hp = b.keep_max_hp()
+	var cash := b.cash
+	var bonus := b.early_bonus()
+	check(bonus > 0.0, "time left is worth something")
+	var wave := b.wave
+	check(b.call_next_wave(), "called")
+	eq(b.wave, wave + 1)
+	check(b.cash >= cash + bonus - 0.01, "bonus paid")

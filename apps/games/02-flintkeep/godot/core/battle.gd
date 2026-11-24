@@ -390,6 +390,30 @@ func step(dt: float) -> void:
 		_event({"type": "game_over"})
 
 
+const EARLY_BONUS_PER_SECOND := 0.6  ## cash per second skipped, times the wave number
+
+
+## Starts the next wave now; pays a bonus for the time skipped. Only once the current wave
+## has finished arriving.
+func early_bonus() -> float:
+	return floorf(maxf(wave_timer, 0.0) * EARLY_BONUS_PER_SECOND * wave)
+
+
+func can_call_early() -> bool:
+	return not over and wave_elapsed() >= Defs.SPAWN_SECONDS and _spawn_queue.is_empty()
+
+
+func call_next_wave() -> bool:
+	if not can_call_early():
+		return false
+	var bonus := early_bonus()
+	cash += bonus
+	_event({"type": "early", "cash": bonus})
+	wave_timer = 0.0
+	_next_wave()
+	return true
+
+
 func wave_elapsed() -> float:
 	return Defs.WAVE_SECONDS - wave_timer
 

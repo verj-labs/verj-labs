@@ -97,3 +97,15 @@ func test_weapon_research_raises_start_level_and_discount() -> void:
 	eq(Research.weapon_start_level("cannon", 3), 3)
 	eq(Research.weapon_start_level("musket", 2), 3)
 	near(Research.weapon_discount("cannon", 3), 2 * Research.WEAPON_DISCOUNT_STEP)
+
+
+func test_offline_coins_need_time_away_and_are_capped() -> void:
+	var p := ProfileData.new()
+	eq(p.offline_coins(10000.0), 0.0, "first launch pays nothing")
+	p.last_seen = 10000.0
+	eq(p.offline_coins(10000.0 + 60.0), 0.0, "a minute away pays nothing")
+	near(p.offline_coins(10000.0 + 3600.0), p.offline_rate(), 1.0, "an hour pays the hourly rate")
+	near(p.offline_coins(10000.0 + 100 * 3600.0), p.offline_rate() * ProfileData.OFFLINE_MAX_HOURS, 1.0, "capped at 8 hours")
+	var slow := p.offline_rate()
+	p.best_wave["1"] = 30
+	check(p.offline_rate() > slow, "better players earn more while away")

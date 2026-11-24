@@ -11,6 +11,7 @@ var unlocked_tier: int = 1
 var runs: int = 0
 var total_kills: int = 0
 var tutorial_done := false
+var last_seen := 0.0  ## unix seconds the game was last open, for offline earnings
 var mission_day := ""
 var missions: Array = []  ## today's missions, see Missions
 
@@ -106,6 +107,28 @@ func record_run(tier: int, wave: int, kills: int) -> bool:
 	return record
 
 
+const OFFLINE_MIN_SECONDS := 300.0  ## away less than this pays nothing
+const OFFLINE_MAX_HOURS := 8.0
+
+
+## Coins earned per hour while the game is closed: the garrison keeps collecting tolls.
+func offline_rate() -> float:
+	var top := 0
+	for tier in best_wave:
+		top = maxi(top, int(best_wave[tier]) * int(tier))
+	return 6.0 + 2.0 * top
+
+
+## Coins owed for the time since last_seen (0 for a first launch or a short absence).
+func offline_coins(now: float) -> float:
+	if last_seen <= 0.0:
+		return 0.0
+	var away := now - last_seen
+	if away < OFFLINE_MIN_SECONDS:
+		return 0.0
+	return roundf(offline_rate() * minf(away / 3600.0, OFFLINE_MAX_HOURS))
+
+
 ## Rolls over to a new set of missions when the day changes.
 func refresh_missions(day: String) -> void:
 	if day == mission_day and not missions.is_empty():
@@ -140,7 +163,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": 1, "coins": coins, "research": research, "labs": labs, "best_wave": best_wave,
 		"unlocked_tier": unlocked_tier, "runs": runs, "total_kills": total_kills,
-		"tutorial_done": tutorial_done, "mission_day": mission_day, "missions": missions,
+		"tutorial_done": tutorial_done, "last_seen": last_seen, "mission_day": mission_day, "missions": missions,
 	}
 
 
@@ -163,6 +186,7 @@ static func from_dict(data: Dictionary) -> ProfileData:
 	p.total_kills = int(data.get("total_kills", 0))
 	p.tutorial_done = bool(data.get("tutorial_done", false))
 	p.mission_day = str(data.get("mission_day", ""))
+	p.last_seen = float(data.get("last_seen", 0.0))
 	for m in data.get("missions", []):
 		if m is Dictionary and Missions.POOL.has(m.get("kind", "")):
 			p.missions.append({"kind": m["kind"], "target": int(m.get("target", 1)), "progress": int(m.get("progress", 0)),

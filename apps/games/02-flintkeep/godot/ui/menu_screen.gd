@@ -82,12 +82,36 @@ func _ready() -> void:
 	col.add_child(Kit.spacer())
 	Profile.changed.connect(_refresh)
 	_refresh()
+	if Profile.offline_pending >= 1.0:
+		_show_offline.call_deferred()
 
 
 func _process(delta: float) -> void:
 	_time += delta
 	_hero.queue_redraw()
 	_lab_label.text = _lab_text()
+
+
+func _show_offline() -> void:
+	var body := Kit.vbox(14)
+	body.add_child(Kit.heading("Welcome back!", 42, Pal.WHITE))
+	body.add_child(Kit.label("While you were away, your garrison collected tolls.", 20, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
+	var card := Kit.panel_container(Kit.card())
+	var row := Kit.hbox(10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(Kit.icon("coin", 44))
+	row.add_child(Kit.label("+" + Num.fmt(Profile.offline_pending), 40, Color("#b7791f"), Fonts.heading()))
+	card.add_child(row)
+	body.add_child(card)
+	var holder := [null]
+	var collect := Kit.button("Collect", Kit.Btn.BUY, 30, 70)
+	collect.pressed.connect(func() -> void:
+		Profile.collect_offline()
+		Sfx.play("coin", 0.0)
+		holder[0].queue_free()
+		_refresh())
+	body.add_child(collect)
+	holder[0] = Kit.modal(self, body)
 
 
 func _open_missions() -> void:

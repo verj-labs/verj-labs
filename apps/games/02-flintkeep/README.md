@@ -12,9 +12,12 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 ## Status
 
 - [x] Endless runs: waves every 24 s, a boss every 10th wave, tiers unlocked at wave 25
-- [x] The Keep plus 4 rings of build slots (4 / 6 / 8 / 12) and walls split into sections
+- [x] The Keep plus 4 rings of towers (4 / 6 / 8 / 12) standing on their walls; wall sections
+      between towers are bought one at a time, and a finished ring is fortified
+- [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright
 - [x] 5 weapons (musket, cannon, volley gun, rifle nest, arcane spire), armour and ward
-- [x] 6 enemies (raider, runner, brute, war balloon, wyvern, juggernaut)
+- [x] 8 enemies (raider, runner, brute, sapper, shaman, war balloon, wyvern, juggernaut), with
+      walking animations; towers look grander at levels 5 and 10
 - [x] Cash upgrades during a run: Keep, walls, economy (bounty, coin bounty, interest)
 - [x] Coins and research with 2 timed labs that keep running while the game is closed
 - [x] Saving, best wave per tier, coins banked every wave
@@ -24,6 +27,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] Sound effects and a music loop (synthesised), with Music and Sound switches in Settings
 - [x] First-run tutorial with a pointer to the first foundation
 - [x] Daily missions: three goals a day that pay coins
+- [x] Offline earnings (up to 8 hours) and calling the next wave early for bonus cash
 - [x] Settings: music, sound effects, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers

@@ -4,7 +4,8 @@ extends SceneTree
 ##
 ##   godot --path godot --resolution 540x1170 -s ../tools/screenshot.gd -- battle out.png wait=20 research=mid auto=1 speed=3
 ##
-## Screens: menu, battle, research, missions, settings. tutorial=1 shows the first-run tips. research=fresh|mid|late fakes a profile (nothing is saved).
+## Screens: menu, battle, research, missions, settings. tutorial=1 shows the first-run tips,
+## offline=1 the welcome-back coins, section=RING,SEG selects a wall section. research=fresh|mid|late fakes a profile (nothing is saved).
 ## auto=1 lets the AutoPlayer spend cash during the battle. slot=N selects a build slot.
 
 const PROFILES := {
@@ -18,7 +19,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var screen := args[0]
 	var out_path := args[1]
-	var opts := {"wait": "2", "research": "fresh", "auto": "0", "speed": "1", "slot": "-1", "tab": "", "tutorial": "0"}
+	var opts := {"wait": "2", "research": "fresh", "auto": "0", "speed": "1", "slot": "-1", "tab": "", "tutorial": "0", "offline": "0", "section": ""}
 	for arg in args.slice(2):
 		if arg.contains("="):
 			opts[arg.get_slice("=", 0)] = arg.get_slice("=", 1)
@@ -35,6 +36,8 @@ func _initialize() -> void:
 	profile.data.refresh_missions(Missions.today())
 	profile.data.missions[0]["progress"] = profile.data.missions[0]["target"]
 	profile.data.missions[1]["progress"] = int(profile.data.missions[1]["target"]) / 2
+	if opts["offline"] == "1":
+		profile.offline_pending = 240.0
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
@@ -50,6 +53,9 @@ func _initialize() -> void:
 		bs.view.speed = float(opts["speed"])
 		if opts["auto"] == "1":
 			_autoplay(bs)
+		if opts["section"] != "":
+			await create_timer(float(opts["wait"]) - 0.3).timeout
+			bs.call("_select_section", Vector2i(int(opts["section"].get_slice(",", 0)), int(opts["section"].get_slice(",", 1))))
 		if int(opts["slot"]) >= 0:
 			await create_timer(float(opts["wait"]) - 0.3).timeout
 			bs.call("_select_slot", int(opts["slot"]))

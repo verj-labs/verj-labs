@@ -26,6 +26,7 @@ var _banner_time := 0.0
 var _field: Control
 var _overlay: Control
 var _tutorial: Tutorial
+var _early_button: Button
 
 
 func _init(p_tier: int) -> void:
@@ -104,6 +105,11 @@ func _build_hud() -> Control:
 	_wave_meter = Meter.new(Color("#3fb6ff"), 32, 18)
 	_wave_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bars.add_child(_wave_meter)
+	_early_button = Kit.button(">>", Kit.Btn.BUY, 18, 36)
+	_early_button.custom_minimum_size.x = 52
+	_early_button.tooltip_text = "Call the next wave now for bonus cash"
+	_early_button.pressed.connect(func() -> void: battle.call_next_wave())
+	bars.add_child(_early_button)
 	return hud
 
 
@@ -151,6 +157,7 @@ func _update_hud() -> void:
 	_coin_label.text = Num.fmt(Profile.data.coins + battle.coins_earned - _banked)
 	_hp_meter.set_state(battle.keep_hp / battle.keep_max_hp(), "%s / %s" % [Num.fmt(battle.keep_hp), Num.fmt(battle.keep_max_hp())])
 	_wave_meter.set_state(battle.wave_elapsed() / Defs.WAVE_SECONDS, "Wave %d" % battle.wave)
+	_early_button.disabled = not battle.can_call_early()
 
 
 func _on_field_input(event: InputEvent) -> void:
@@ -200,6 +207,8 @@ func _on_battle_event(e: Dictionary) -> void:
 				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
 			else:
 				_show_banner("Wave %d" % e["wave"], Pal.WHITE)
+		"early":
+			view.fx.float_text(Vector2(0, -48), "Early! +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 8)
 		"interest":
 			if e["cash"] >= 1.0:
 				view.fx.float_text(Vector2(0, -40), "Interest +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 7)

@@ -15,8 +15,14 @@ var data := ProfileData.new()
 var _since := 0.0
 
 
+## Coins earned while the game was closed, waiting for the menu to show them.
+var offline_pending := 0.0
+
+
 func _ready() -> void:
 	load_game()
+	offline_pending = data.offline_coins(now())
+	data.last_seen = now()
 	_finish_research()
 
 
@@ -73,7 +79,16 @@ func load_game() -> void:
 		push_warning("Save file unreadable, starting fresh")
 
 
+func collect_offline() -> float:
+	var amount := offline_pending
+	offline_pending = 0.0
+	add_coins(amount)
+	save_game()
+	return amount
+
+
 func save_game() -> void:
+	data.last_seen = now()
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
 		push_warning("Could not write save: %s" % error_string(FileAccess.get_open_error()))

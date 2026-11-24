@@ -35,6 +35,19 @@ its silhouette alone.
 - **Sound:** soft pops, chimes and little bugle calls (not harsh chiptune), plus a bouncy
   music loop. Rapid-fire sounds are quieter and rate-limited so a big wave stays pleasant.
 
+## Camera and depth
+
+The battlefield is seen by a camera tilted about 50 degrees: the ground layer (grass,
+courtyard, paths, range circles) is squashed vertically to 60%, while walls, pedestals,
+towers, enemies and decorations are drawn upright and sorted back to front. Walls have
+height with a lit face on the near side. It is still 2D (cheap on phones); the code is in
+`game/battle_view.gd` (`proj()`) and `game/wall_drawer.gd`.
+
+## Tower looks
+
+Each weapon has three looks, one new detail per step: level 1 plain, level 5 adds a gold band
+and a banner, level 10 adds a golden crown and a gem.
+
 ## Retention features
 
 - **First-run tutorial:** five short tips: build a tower (with a pointer), what waves are,
@@ -43,6 +56,10 @@ its silhouette alone.
   reach a wave, build or upgrade towers, build walls, defeat a Juggernaut), sized to the
   player's best wave, each paying coins. The day is chosen by date, so the list is stable across
   restarts. The menu's Missions button turns green when one is ready to claim.
+- **Offline earnings:** while the game is closed the garrison collects coins (6 + 2 x best
+  wave x tier per hour, for up to 8 hours), shown on a "Welcome back" card.
+- **Call the next wave early:** once a wave has finished arriving, the >> button starts the
+  next one immediately and pays cash for the time skipped.
 
 ## The loop
 
@@ -87,10 +104,13 @@ multiplier).
   start; rings 2–4 are unlocked by research, in order. Slots grow with ring size, so a new
   player has 4 decisions and a veteran has 30. We used 4 rather than 2 for ring 1 because
   enemies come from every side.
-- **Walls:** each ring can be walled for cash. A wall is split into one section per slot.
-  Ground enemies stop at the first intact section in their path and hack at it; once it
-  breaks they march to the next ring in, or to the Keep. Walls can be reinforced (more HP,
-  fully healed) or repaired. Flyers ignore walls.
+- **Towers stand on the walls.** Every slot is a stone pedestal on its ring's wall line, and
+  the wall **sections are the arcs between neighbouring towers** (ring 1: N-E, E-S, S-W, W-N).
+  Tap an arc to buy that section; the Walls tab can also buy all missing sections at once.
+  Finishing every section of a ring **fortifies** it: +50% wall HP and +15% damage for that
+  ring's towers. Ground enemies stop at the first built, intact section in their path and hack
+  at it; gaps let them through. Walls can be reinforced (more HP, fully healed) or repaired.
+  Flyers ignore walls.
 - The camera starts close and zooms out once you have three rings, so the castle always
   fills the screen.
 
@@ -119,6 +139,8 @@ towers **start one level higher** and makes their in-run upgrades 4% cheaper (up
 | War Balloon | 5 | flyer; drops bombs on the Keep |
 | Brute | 6 | armoured: blocks 50% of physical damage, so bring cannons or magic |
 | Wyvern | 12 | fast flyer; warded: blocks 50% of magic |
+| Sapper | 8 | carries a bomb: blows up against the first wall (or the Keep) and pays nothing |
+| Shaman | 15 | heals raiders within reach by 4% of their health a second |
 | Juggernaut | every 10th wave | boss: huge health, armour and ward |
 
 Enemy health grows 11.5% per wave, damage 7% per wave. Each tier multiplies enemy stats
