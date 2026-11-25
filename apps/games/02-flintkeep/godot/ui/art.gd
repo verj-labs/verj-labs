@@ -1,13 +1,12 @@
 class_name Art
 extends RefCounted
 ## The game's sprites: SVG files in res://assets/art (made by tools/make_art.py, or by hand).
-## Each is rasterised once at high resolution with mipmaps, so it stays crisp at any zoom.
+## Godot imports each one as a 3x texture with mipmaps, so it stays crisp at any zoom.
 ##
 ## WIDTH is how wide the sprite is on the battlefield (field units) and FOOT is the point it
 ## stands on, as a fraction of the canvas (0.5, 1.0 = bottom centre).
 
 const DIR := "res://assets/art/"
-const RASTER_SCALE := 3.0
 
 const WIDTH := {
 	"keep": 36.0, "musket": 19.0, "cannon": 20.0, "volley": 19.0, "sniper": 19.0, "arcane": 19.0,
@@ -37,14 +36,15 @@ static func tex(name: String) -> Texture2D:
 
 
 static func _load(name: String) -> Texture2D:
-	var img := Image.new()
-	var svg := FileAccess.get_file_as_string(DIR + name + ".svg")
-	if svg == "" or img.load_svg_from_string(svg, RASTER_SCALE) != OK:
+	# Godot imports each SVG as a texture (3x, with mipmaps: see the .import files written by
+	# tools/make_art.py). Exports ship only that texture, never the raw SVG, so load it this way.
+	var t := load(DIR + name + ".svg") as Texture2D
+	if t == null:
 		push_warning("Missing art: " + name)
-		img = Image.create(8, 8, false, Image.FORMAT_RGBA8)
+		var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 		img.fill(Color.MAGENTA)
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
+		t = ImageTexture.create_from_image(img)
+	return t
 
 
 ## Where to draw `name` so its foot lands on `at`, `width` field units wide.

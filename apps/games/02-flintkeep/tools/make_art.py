@@ -8,6 +8,7 @@ An artist can also replace any SVG by hand; keep the canvas size and foot point.
 """
 import math
 import os
+import re
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "godot", "assets", "art")
 
@@ -460,11 +461,42 @@ def app_icon():
     return svg(256, 256, b, outline=3.2)
 
 
+IMPORT_TEMPLATE = """[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+
+[params]
+
+compress/mode=0
+mipmaps/generate=true
+svg/scale=3.0
+"""
+
+
+def set_import_options(svg_path):
+    """Godot converts each SVG into a texture when the project is imported, and only that
+    texture is shipped in exports. Render it at 3x with mipmaps so it stays sharp when zoomed."""
+    path = svg_path + ".import"
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            f.write(IMPORT_TEMPLATE)
+        return
+    with open(path) as f:
+        text = f.read()
+    text = text.replace("mipmaps/generate=false", "mipmaps/generate=true")
+    text = re.sub(r"svg/scale=[0-9.]+", "svg/scale=3.0", text)
+    with open(path, "w") as f:
+        f.write(text)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for name, fn in ART.items():
-        with open(os.path.join(OUT, name + ".svg"), "w") as f:
+        svg_path = os.path.join(OUT, name + ".svg")
+        with open(svg_path, "w") as f:
             f.write(fn())
+        set_import_options(svg_path)
     with open(os.path.join(OUT, "..", "..", "icon.svg"), "w") as f:
         f.write(app_icon())
     print("wrote %d sprites to %s, and godot/icon.svg" % (len(ART), os.path.normpath(OUT)))
