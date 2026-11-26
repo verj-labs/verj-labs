@@ -32,8 +32,28 @@ var over := false
 var keep_hp := 0.0
 var keep_cooldown := 0.0
 var keep_fired := 0.0
-var keep_levels := {}  ## upgrade id -> level bought this run
-var econ_levels := {}
+var levels := {}  ## cash upgrade id -> level bought this run (see Upgrades)
+var workshop: Dictionary  ## id -> level, from the profile's coin workshop
+
+## Perks chosen this run (Perks), and the choice on offer: three ids and seconds left.
+var perk := {}
+var perk_offer: Array[String] = []
+var perk_time := 0.0
+
+## Powers (Powers): seconds until each is ready, which ones cast themselves, effect timers.
+var power_cd := {}
+var power_auto := {}
+var freeze_left := 0.0
+var gold_left := 0.0
+
+## Tabs whose upgrades buy themselves when cash allows ("Attack", "Walls" ...).
+var auto_tabs := {}
+var _auto_timer := 0.0
+
+## End-of-run report: damage by source, kills by enemy kind, what last hit the Keep.
+var damage_by := {}
+var kills_by := {}
+var killed_by := ""
 
 var rings_unlocked := 1
 var slots: Array[Slot] = []
@@ -44,8 +64,9 @@ var _spawn_queue: Array = []  ## [seconds into the wave, kind, angle]
 var _next_id := 1
 
 
-func _init(p_research: Dictionary = {}, p_tier: int = 1, seed_value: int = 0) -> void:
+func _init(p_research: Dictionary = {}, p_tier: int = 1, seed_value: int = 0, p_workshop: Dictionary = {}) -> void:
 	research = p_research
+	workshop = p_workshop
 	tier = p_tier
 	if seed_value != 0:
 		rng.seed = seed_value
@@ -56,13 +77,32 @@ func _init(p_research: Dictionary = {}, p_tier: int = 1, seed_value: int = 0) ->
 		if _r("ring_%d" % ring) >= 1:
 			rings_unlocked = ring
 	_build_layout()
-	cash = BASE_START_CASH + Research.effect("start_cash", _r("start_cash"))
+	cash = BASE_START_CASH + Workshop.effect("start_cash", _w("start_cash"))
 	keep_hp = keep_max_hp()
+	for id in Powers.ORDER:
+		power_cd[id] = 0.0
+		power_auto[id] = false
 	_next_wave()
 
 
 func _r(id: String) -> int:
 	return int(research.get(id, 0))
+
+
+func _w(id: String) -> int:
+	return int(workshop.get(id, 0))
+
+
+func _ws(id: String) -> float:
+	return Workshop.effect(id, _w(id))
+
+
+func perk_mult(stat: String) -> float:
+	return float(perk.get(stat, 1.0))
+
+
+func perk_add(stat: String) -> float:
+	return float(perk.get(stat, 0.0))
 
 
 func _build_layout() -> void:
@@ -91,84 +131,101 @@ func discount() -> float:
 	return Research.effect("discount", _r("discount"))
 
 
+func level(id: String) -> int:
+	return int(levels.get(id, 0))
+
+
+func stat(id: String) -> float:
+	return Upgrades.value(id, level(id))
+
+
 func keep_damage() -> float:
-	var lvl: int = keep_levels.get("damage", 0)
-	return Defs.KEEP["dmg"] * (1.0 + Research.effect("keep_damage", _r("keep_damage"))) * pow(1.0 + Defs.KEEP_UPGRADES["damage"]["step"], lvl)
+	return stat("damage") * _ws("damage") * perk_mult("damage")
 
 
 func keep_rate() -> float:
-	var lvl: int = keep_levels.get("rate", 0)
-	return Defs.KEEP["rate"] * (1.0 + Research.effect("keep_rate", _r("keep_rate"))) * (1.0 + Defs.KEEP_UPGRADES["rate"]["step"] * lvl)
+	return stat("rate") * (1.0 + _ws("rate"))
 
 
 func keep_range() -> float:
-	return Defs.KEEP["range"] + Defs.KEEP_UPGRADES["range"]["step"] * keep_levels.get("range", 0)
+	return stat("range")
 
 
 func keep_max_hp() -> float:
-	var lvl: int = keep_levels.get("health", 0)
-	return Defs.KEEP["hp"] * (1.0 + Research.effect("keep_health", _r("keep_health"))) * pow(1.0 + Defs.KEEP_UPGRADES["health"]["step"], lvl)
+	return stat("health") * _ws("health") * perk_mult("health")
 
 
 func keep_regen() -> float:
-	var lvl: int = keep_levels.get("regen", 0)
-	var mult: float = (1.0 + Research.effect("keep_regen", _r("keep_regen"))) * (1.0 + Defs.KEEP_UPGRADES["regen"]["step"] * lvl)
-	return keep_max_hp() * Defs.KEEP["regen"] * mult
+	return keep_max_hp() * stat("regen") / 100.0 * _ws("regen")
 
 
 func keep_armor() -> float:
-	return minf(Defs.KEEP_UPGRADES["armor"]["step"] * keep_levels.get("armor", 0), MAX_ARMOR)
+	return stat("armor")
+
+
+func crit_chance() -> float:
+	return minf(stat("crit_chance") + _ws("crit") + perk_add("crit"), 0.95)
+
+
+func multishot_chance() -> float:
+	return minf(stat("multishot") + perk_add("multishot"), 0.9)
+
+
+## Extra enemies a multishot hits: one more for every 10 levels bought, up to 4.
+func multishot_targets() -> int:
+	return mini(1 + level("multishot") / 10, 4)
+
+
+func bounce_chance() -> float:
+	return minf(stat("bounce") + perk_add("bounce"), 0.8)
+
+
+func push_chance() -> float:
+	return minf(stat("push_chance") + perk_add("push"), 0.8)
 
 
 func cash_mult() -> float:
-	return (1.0 + Research.effect("cash_bonus", _r("cash_bonus"))) * (1.0 + Defs.ECON_UPGRADES["bounty"]["step"] * econ_levels.get("bounty", 0))
+	return stat("bounty") * _ws("cash") * perk_mult("cash") * (2.0 if gold_left > 0.0 else 1.0)
 
 
 func coin_mult() -> float:
 	var research_mult := 1.0 + Research.effect("coin_bonus", _r("coin_bonus"))
-	var run_mult: float = 1.0 + Defs.ECON_UPGRADES["coin_bounty"]["step"] * econ_levels.get("coin_bounty", 0)
-	return research_mult * run_mult * Defs.tier_coin_mult(tier)
+	return stat("coin_bounty") * research_mult * perk_mult("coins") * Defs.tier_coin_mult(tier)
+
+
+## A few coins every wave; the Economy tab's "Coins per wave" raises it (kill bounty does not).
+func wave_coins() -> float:
+	return stat("wave_coins") * coin_mult() / stat("coin_bounty")
 
 
 func interest_rate() -> float:
-	return Defs.ECON_UPGRADES["interest"]["step"] * econ_levels.get("interest", 0)
+	return stat("interest")
 
 
-func upgrade_level(group: Dictionary, id: String) -> int:
-	return int(group.get(id, 0))
+func siege() -> float:
+	return minf(Research.effect("siege", _r("siege")), 0.75)
 
 
-func keep_upgrade_cost(id: String) -> float:
-	return Defs.upgrade_cost(Defs.KEEP_UPGRADES[id], upgrade_level(keep_levels, id), discount())
+## Enemies move this much slower while Freeze is active.
+func enemy_speed_factor() -> float:
+	return 0.3 if freeze_left > 0.0 else 1.0
 
 
-func econ_upgrade_cost(id: String) -> float:
-	return Defs.upgrade_cost(Defs.ECON_UPGRADES[id], upgrade_level(econ_levels, id), discount())
+func upgrade_cost(id: String) -> float:
+	return Upgrades.price(id, level(id)) * (1.0 - discount())
 
 
-func keep_upgrade_maxed(id: String) -> bool:
-	var cap: int = Defs.KEEP_UPGRADES[id]["max"]
-	return cap > 0 and upgrade_level(keep_levels, id) >= cap
+func upgrade_maxed(id: String) -> bool:
+	return Upgrades.maxed(id, level(id))
 
 
-func econ_upgrade_maxed(id: String) -> bool:
-	var cap: int = Defs.ECON_UPGRADES[id]["max"]
-	return cap > 0 and upgrade_level(econ_levels, id) >= cap
-
-
-func buy_keep_upgrade(id: String) -> bool:
-	if keep_upgrade_maxed(id) or not _pay(keep_upgrade_cost(id)):
+func buy_upgrade(id: String) -> bool:
+	if upgrade_maxed(id) or not _pay(upgrade_cost(id)):
 		return false
 	var old_max := keep_max_hp()
-	keep_levels[id] = upgrade_level(keep_levels, id) + 1
+	levels[id] = level(id) + 1
 	keep_hp += keep_max_hp() - old_max  # extra health arrives full
-	return true
-
-
-func buy_econ_upgrade(id: String) -> bool:
-	if econ_upgrade_maxed(id) or not _pay(econ_upgrade_cost(id)):
-		return false
-	econ_levels[id] = upgrade_level(econ_levels, id) + 1
+	_event({"type": "bought", "id": id})
 	return true
 
 
@@ -202,6 +259,7 @@ func build(index: int, weapon: String) -> bool:
 	var tower := Tower.new()
 	tower.weapon = weapon
 	tower.level = Research.weapon_start_level(weapon, _r(weapon))
+	tower.start_level = tower.level
 	tower.invested = price
 	slots[index].tower = tower
 	_event({"type": "built", "slot": index})
@@ -213,7 +271,8 @@ func tower_upgrade_cost(index: int) -> float:
 	var def: Dictionary = Defs.WEAPONS[tower.weapon]
 	var off := 1.0 - maxf(discount(), 0.0)
 	var weapon_off := 1.0 - Research.weapon_discount(tower.weapon, _r(tower.weapon))
-	return def["cost"] * Defs.WEAPON_UPGRADE_BASE * pow(Defs.WEAPON_COST_GROWTH, tower.level - 1) * off * weapon_off
+	# priced by levels bought this run, so research that starts towers higher never costs more
+	return def["cost"] * Defs.WEAPON_UPGRADE_BASE * pow(Defs.WEAPON_COST_GROWTH, tower.level - tower.start_level) * off * weapon_off
 
 
 func upgrade_tower(index: int) -> bool:
@@ -243,7 +302,7 @@ func sell(index: int) -> bool:
 
 
 func tower_damage(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1)
+	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1) * _ws("towers") * perk_mult("towers")
 
 
 func tower_rate(tower: Tower) -> float:
@@ -251,7 +310,7 @@ func tower_rate(tower: Tower) -> float:
 
 
 func tower_range(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["range"] + Defs.WEAPON_RANGE_GROWTH * (tower.level - 1)
+	return Defs.WEAPONS[tower.weapon]["range"] + minf(Defs.WEAPON_RANGE_GROWTH * (tower.level - 1), Defs.WEAPON_RANGE_MAX)
 
 
 # --- Walls ----------------------------------------------------------------------------------
@@ -261,7 +320,7 @@ func wall_radius(ring: int) -> float:
 
 
 func wall_max_hp(ring: int, level: int, fortified: bool = false) -> float:
-	var masonry := 1.0 + Research.effect("masonry", _r("masonry"))
+	var masonry := _ws("masonry") * perk_mult("walls")
 	var bonus := Defs.FORTIFIED_HP if fortified else 1.0
 	return Defs.WALL_HP * pow(Defs.WALL_HP_RING_GROWTH, ring - 1) * pow(Defs.WALL_HP_GROWTH, level) * masonry * bonus
 
@@ -380,23 +439,29 @@ func step(dt: float) -> void:
 	if wave_timer <= 0.0:
 		_next_wave()
 	_spawn_due()
+	_tick_effects(dt)
 	BattleCombat.move_enemies(self, dt)
 	keep_hp = minf(keep_hp + keep_regen() * dt, keep_max_hp())
 	BattleCombat.fire(self, dt)
 	_collect_dead()
+	_auto_timer += dt
+	if _auto_timer >= 0.5:
+		_auto_timer = 0.0
+		_auto_buy()
 	if keep_hp <= 0.0:
 		keep_hp = 0.0
 		over = true
+		perk_offer.clear()
 		_event({"type": "game_over"})
 
 
-const EARLY_BONUS_PER_SECOND := 0.6  ## cash per second skipped, times the wave number
+const EARLY_BONUS_PER_SECOND := 0.6  ## cash per second skipped (times 4x the wave's cash scale)
 
 
 ## Starts the next wave now; pays a bonus for the time skipped. Only once the current wave
 ## has finished arriving.
 func early_bonus() -> float:
-	return floorf(maxf(wave_timer, 0.0) * EARLY_BONUS_PER_SECOND * wave)
+	return floorf(maxf(wave_timer, 0.0) * EARLY_BONUS_PER_SECOND * 4.0 * Upgrades.cash_scale(wave, siege()))
 
 
 func can_call_early() -> bool:
@@ -414,18 +479,142 @@ func call_next_wave() -> bool:
 	return true
 
 
+# --- Perks ---------------------------------------------------------------------------------
+
+func choose_perk(id: String) -> bool:
+	if not perk_offer.has(id):
+		return false
+	var p: Dictionary = Perks.LIST[id]
+	var key: String = p["stat"]
+	if p["kind"] == "mult":
+		perk[key] = perk_mult(key) * p["value"]
+	else:
+		perk[key] = perk_add(key) + p["value"]
+	if key == "health":
+		keep_hp = keep_max_hp()
+	if key == "walls":
+		for ring in range(1, Defs.MAX_RING + 1):
+			if walls[ring].built:
+				_update_wall_hp(walls[ring])
+				_heal_wall(walls[ring])
+	perk_offer.clear()
+	_event({"type": "perk_chosen", "id": id})
+	return true
+
+
+# --- Powers --------------------------------------------------------------------------------
+
+func power_level(id: String) -> int:
+	return _r(Powers.LIST[id]["research"])
+
+
+func power_ready(id: String) -> bool:
+	return power_level(id) >= 1 and float(power_cd[id]) <= 0.0 and not over
+
+
+func cast(id: String) -> bool:
+	if not power_ready(id):
+		return false
+	var lvl := power_level(id)
+	power_cd[id] = Powers.cooldown(id, lvl)
+	match id:
+		"rain":
+			for e in enemies:
+				_deal(e, keep_damage() * Powers.power(id, lvl), Defs.DamageType.PHYSICAL, 0.5, "Arrow Rain")
+		"thunder":
+			var targets := enemies.duplicate()
+			targets.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.hp > b.hp)
+			for e in targets.slice(0, Powers.strikes(lvl)):
+				_deal(e, keep_damage() * Powers.power(id, lvl), Defs.DamageType.MAGIC, 0.0, "Thunderstorm")
+				_event({"type": "chain", "from": e.pos() + Vector2(0, -60), "to": e.pos()})
+		"freeze":
+			freeze_left = Powers.power(id, lvl)
+		"gold":
+			gold_left = Powers.power(id, lvl)
+	_event({"type": "power", "id": id})
+	return true
+
+
+func _tick_effects(dt: float) -> void:
+	freeze_left = maxf(freeze_left - dt, 0.0)
+	gold_left = maxf(gold_left - dt, 0.0)
+	for id in Powers.ORDER:
+		power_cd[id] = maxf(float(power_cd[id]) - dt, 0.0)
+		if power_auto[id] and power_ready(id) and enemies.size() >= 3:
+			cast(id)
+	if not perk_offer.is_empty():
+		perk_time -= dt
+		if perk_time <= 0.0:
+			choose_perk(perk_offer[rng.randi() % perk_offer.size()])
+	var regen := stat("wall_regen")
+	if regen > 0.0:
+		for ring in range(1, rings_unlocked + 1):
+			var wall := walls[ring]
+			for i in wall.segments.size():
+				if wall.sections[i] and wall.segments[i] > 0.0:
+					wall.segments[i] = minf(wall.segments[i] + wall.max_hp * regen * dt, wall.max_hp)
+
+
+## Damage from any source, with armour/ward, run stats and lifesteal. Returns damage dealt.
+func _deal(e: Enemy, amount: float, type: int, pierce: float, source: String) -> float:
+	var dealt := BattleCombat.hit(e, amount, type, pierce)
+	damage_by[source] = float(damage_by.get(source, 0.0)) + dealt
+	var steal := stat("lifesteal")
+	if steal > 0.0 and source == "Keep":  # lifesteal heals from the Keep's own shots
+		keep_hp = minf(keep_hp + dealt * steal, keep_max_hp())
+	return dealt
+
+
+# --- Auto-buy ------------------------------------------------------------------------------
+
+func set_auto(tab: String, on: bool) -> void:
+	auto_tabs[tab] = on
+
+
+## Buys the cheapest affordable upgrade in each auto tab (walls: missing sections, then repairs).
+func _auto_buy() -> void:
+	for tab in auto_tabs:
+		if not auto_tabs[tab]:
+			continue
+		if tab == "Walls":
+			_auto_walls()
+		var best := ""
+		for id in Upgrades.ids_in(tab):
+			if not upgrade_maxed(id) and (best == "" or upgrade_cost(id) < upgrade_cost(best)):
+				best = id
+		if best != "" and cash >= upgrade_cost(best):
+			buy_upgrade(best)
+
+
+func _auto_walls() -> void:
+	for ring in range(1, rings_unlocked + 1):
+		var gap := walls[ring].sections.find(false)
+		if gap != -1 and build_section(ring, gap):
+			return
+		if walls[ring].missing_share() > 0.3 and repair_wall(ring):
+			return
+
+
 func wave_elapsed() -> float:
 	return Defs.WAVE_SECONDS - wave_timer
 
 
 func _next_wave() -> void:
-	if wave > 0 and interest_rate() > 0.0:
-		var gain := minf(cash * interest_rate(), Defs.INTEREST_CAP_PER_WAVE * wave)
-		cash += gain
-		_event({"type": "interest", "cash": gain})
-	wave += 1
+	if wave > 0:
+		var pay := stat("wave_cash") * Upgrades.cash_scale(wave, siege()) * _ws("cash")
+		if interest_rate() > 0.0:
+			pay += minf(cash * interest_rate(), Defs.INTEREST_CAP_PER_WAVE * Upgrades.cash_scale(wave, siege()) * 10.0)
+		cash += pay
+		_event({"type": "interest", "cash": pay})
+	var advanced := wave < Defs.MAX_WAVE  # after the last wave it just repeats
+	if advanced:
+		wave += 1
+	if advanced and wave % Defs.PERK_EVERY == 0:
+		perk_offer = Perks.pick_three(rng)
+		perk_time = Defs.PERK_SECONDS
+		_event({"type": "perk_offer"})
 	wave_timer += Defs.WAVE_SECONDS
-	coins_earned += Defs.WAVE_COINS * wave * coin_mult()
+	coins_earned += wave_coins()
 	_spawn_queue = BattleWaves.plan(wave, rng)
 	_event({"type": "wave", "wave": wave, "boss": wave % Defs.BOSS_EVERY == 0})
 
@@ -451,18 +640,18 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.dist = edge + SPAWN_MARGIN
 	var w := wave - 1
 	var tier_mult := Defs.tier_enemy_mult(tier)
-	e.max_hp = def["hp"] * pow(Defs.HP_GROWTH, w) * tier_mult
+	e.max_hp = def["hp"] * Upgrades.enemy_scale(wave, siege()) * tier_mult
 	e.hp = e.max_hp
-	e.dps = def["dps"] * pow(Defs.DPS_GROWTH, w) * sqrt(tier_mult)
+	e.dps = def["dps"] * Upgrades.dps_scale(wave, siege()) * sqrt(tier_mult)
 	e.speed = def["speed"]
 	e.armor = def["armor"]
 	e.ward = def["ward"]
 	e.air = def["air"]
 	e.boss = kind == "juggernaut"
-	e.cash = def["cash"] * pow(Defs.CASH_GROWTH, w)
+	e.cash = def["cash"] * Upgrades.cash_scale(wave, siege())
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
 	e.size = def["size"]
-	e.burst = def.get("burst", 0.0) * pow(Defs.DPS_GROWTH, w) * sqrt(tier_mult)
+	e.burst = def.get("burst", 0.0) * Upgrades.dps_scale(wave, siege()) * sqrt(tier_mult)
 	e.heal = def.get("heal", 0.0)
 	enemies.append(e)
 	return e
@@ -480,6 +669,7 @@ func _collect_dead() -> void:
 		cash += cash_gain
 		coins_earned += coin_gain
 		kills += 1
+		kills_by[e.kind] = int(kills_by.get(e.kind, 0)) + 1
 		_event({"type": "kill", "pos": e.pos(), "cash": cash_gain, "coins": coin_gain, "kind": e.kind, "boss": e.boss})
 		enemies.remove_at(i)
 

@@ -7,7 +7,6 @@ extends Control
 signal finished(goto: String)  ## "menu", "research" or "again"
 
 const PANEL_HEIGHT := 340.0
-const SPEEDS := [1.0, 2.0, 3.0]
 
 var tier := 1
 var battle: Battle
@@ -27,6 +26,9 @@ var _field: Control
 var _overlay: Control
 var _tutorial: Tutorial
 var _early_button: Button
+var _boss_meter: Meter
+var _perk_overlay: Control
+var _perk_label: Label
 
 
 func _init(p_tier: int) -> void:
@@ -35,7 +37,7 @@ func _init(p_tier: int) -> void:
 
 
 func _ready() -> void:
-	battle = Battle.new(Profile.data.research.duplicate(), tier)
+	battle = Battle.new(Profile.data.research.duplicate(), tier, 0, Profile.data.workshop.duplicate())
 	Profile.data.refresh_missions(Missions.today())
 	var bg := Kit.color_rect(Pal.GRASS)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -122,6 +124,15 @@ func _build_field() -> Control:
 	view.setup(battle)
 	view.event.connect(_on_battle_event)
 	_field.gui_input.connect(_on_field_input)
+	_boss_meter = Meter.new(Color("#ff7a2a"), 30, 16)
+	_boss_meter.anchor_left = 0.0
+	_boss_meter.anchor_right = 1.0
+	_boss_meter.offset_left = 60
+	_boss_meter.offset_right = -60
+	_boss_meter.offset_top = 8
+	_boss_meter.offset_bottom = 38
+	_boss_meter.visible = false
+	_field.add_child(_boss_meter)
 	return _field
 
 
@@ -144,6 +155,13 @@ func _build_panel() -> Control:
 
 func _process(delta: float) -> void:
 	view.layout(_field.size)
+	_update_boss_bar()
+	if _perk_overlay != null:
+		if battle.perk_offer.is_empty():
+			_perk_overlay.queue_free()
+			_perk_overlay = null
+		else:
+			_perk_label.text = "Picked for you in %ds" % int(ceil(battle.perk_time))
 	_update_hud()
 	if _banner_time > 0.0:
 		_banner_time -= delta
@@ -164,6 +182,7 @@ func _on_field_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var slot := view.slot_at(event.position)
 		if slot >= 0:
+			Input.vibrate_handheld(12)
 			_select_slot(slot)
 			return
 		var section := view.section_at(event.position)
@@ -185,10 +204,15 @@ func _select_section(section: Vector2i) -> void:
 	_panel.show_section(section.x, section.y)
 
 
+## Cycles 1x, 2x ... up to the fastest speed researched in the labs.
 func _cycle_speed() -> void:
-	_speed_index = (_speed_index + 1) % SPEEDS.size()
-	view.speed = SPEEDS[_speed_index]
-	_speed_button.text = "%dx" % int(SPEEDS[_speed_index])
+	var top := Research.max_speed(Profile.data.level("game_speed"))
+	if top <= 1:
+		_show_banner("Research Game speed\nto play faster", Pal.WHITE, 2.0)
+		return
+	_speed_index = (_speed_index + 1) % top
+	view.speed = 1.0 + _speed_index
+	_speed_button.text = "%dx" % (1 + _speed_index)
 
 
 func _show_banner(text: String, color: Color, seconds: float = 1.6) -> void:
@@ -197,13 +221,50 @@ func _show_banner(text: String, color: Color, seconds: float = 1.6) -> void:
 	_banner_time = seconds
 
 
+func _update_boss_bar() -> void:
+	var boss: Entities.Enemy = null
+	for e in battle.enemies:
+		if e.boss:
+			boss = e
+			break
+	_boss_meter.visible = boss != null
+	if boss != null:
+		_boss_meter.set_state(boss.hp / boss.max_hp, "Juggernaut  %s" % Num.fmt(maxf(boss.hp, 0.0)))
+
+
+## Every 100 waves: three perks to choose from, picked at random when the timer runs out.
+func _offer_perks() -> void:
+	if _perk_overlay != null:
+		return
+	var body := Kit.vbox(10)
+	body.add_child(Kit.heading("Choose a perk", 34, Pal.GOLD))
+	_perk_label = Kit.label("", 18, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true)
+	body.add_child(_perk_label)
+	for id in battle.perk_offer:
+		var p: Dictionary = Perks.LIST[id]
+		var b := Kit.button("%s: %s" % [p["name"], p["about"]], Kit.Btn.PRIMARY, 18, 58)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.pressed.connect(func() -> void: battle.choose_perk(id))
+		body.add_child(b)
+	_perk_overlay = Kit.modal(self, body, 480)
+
+
 func _on_battle_event(e: Dictionary) -> void:
 	_track_missions(e)
 	match e["type"]:
+		"perk_offer":
+			_offer_perks()
+		"perk_chosen":
+			_show_banner(Perks.LIST[e["id"]]["name"] + "!", Pal.GOLD)
+		"power":
+			_show_banner(Powers.LIST[e["id"]]["name"] + "!", Pal.CYAN, 1.2)
 		"wave":
 			_bank_coins()
 			Sfx.play("boss" if e["boss"] else "wave", 0.0)
-			if e["boss"]:
+			var fresh := _new_enemy(e["wave"])
+			if fresh != "" and not e["boss"]:
+				_show_banner("Wave %d\nNew enemy: %s" % [e["wave"], fresh], Pal.ORANGE, 2.4)
+			elif e["boss"]:
 				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
 			else:
 				_show_banner("Wave %d" % e["wave"], Pal.WHITE)
@@ -211,10 +272,21 @@ func _on_battle_event(e: Dictionary) -> void:
 			view.fx.float_text(Vector2(0, -48), "Early! +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 8)
 		"interest":
 			if e["cash"] >= 1.0:
-				view.fx.float_text(Vector2(0, -40), "Interest +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 7)
+				view.fx.float_text(Vector2(0, -40), "Wave pay +" + Num.cash(e["cash"]), Pal.CASH, 1.4, 7)
 		"game_over":
 			Sfx.play("game_over", 0.0)
 			_end_run()
+
+
+const ENEMY_NAMES := {"runner": "Runners", "balloon": "War balloons (flyers)", "brute": "Armoured brutes",
+	"sapper": "Sappers (blow up walls)", "wyvern": "Wyverns (flyers)", "shaman": "Shamans (heal others)"}
+
+
+func _new_enemy(wave: int) -> String:
+	for kind in Defs.ENEMY_WAVES:
+		if int(Defs.ENEMY_WAVES[kind][0]) == wave and ENEMY_NAMES.has(kind):
+			return ENEMY_NAMES[kind]
+	return ""
 
 
 func _track_missions(e: Dictionary) -> void:

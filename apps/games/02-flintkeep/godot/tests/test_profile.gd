@@ -9,44 +9,44 @@ func _rich() -> ProfileData:
 
 
 func test_research_costs_and_times_grow_with_level() -> void:
-	check(Research.cost("keep_damage", 3) > Research.cost("keep_damage", 2), "cost grows")
-	check(Research.seconds("keep_damage", 3) > Research.seconds("keep_damage", 2), "time grows")
-	check(Research.seconds("keep_damage", 59) <= Research.MAX_SECONDS, "time is capped")
+	check(Research.cost("coin_bonus", 3) > Research.cost("coin_bonus", 2), "cost grows")
+	check(Research.seconds("coin_bonus", 3) > Research.seconds("coin_bonus", 2), "time grows")
+	check(Research.seconds("coin_bonus", 59) <= Research.MAX_SECONDS, "time is capped")
 
 
 func test_starting_research_takes_coins_and_a_lab() -> void:
 	var p := ProfileData.new()
-	p.coins = 50.0
-	check(p.start("keep_damage", 1000.0), "affordable research starts")
-	near(p.coins, 30.0, 0.001, "price paid")
-	eq(p.lab_of("keep_damage"), 0)
-	eq(p.level("keep_damage"), 0, "level only rises when the lab finishes")
+	p.coins = 100.0
+	check(p.start("coin_bonus", 1000.0), "affordable research starts")
+	near(p.coins, 40.0, 0.001, "price paid")
+	eq(p.lab_of("coin_bonus"), 0)
+	eq(p.level("coin_bonus"), 0, "level only rises when the lab finishes")
 
 
 func test_cannot_start_without_coins() -> void:
 	var p := ProfileData.new()
 	p.coins = 5.0
-	eq(p.blocker("keep_damage"), "NEED COINS")
-	check(not p.start("keep_damage", 0.0), "refused")
+	eq(p.blocker("coin_bonus"), "NEED COINS")
+	check(not p.start("coin_bonus", 0.0), "refused")
 	near(p.coins, 5.0)
 
 
 func test_labs_limit_parallel_research() -> void:
 	var p := _rich()
-	check(p.start("keep_damage", 0.0), "lab 1")
-	check(p.start("keep_health", 0.0), "lab 2")
-	eq(p.blocker("keep_regen"), "LABS BUSY")
-	eq(p.blocker("keep_damage"), "IN LAB", "the same research cannot run twice")
+	check(p.start("coin_bonus", 0.0), "lab 1")
+	check(p.start("siege", 0.0), "lab 2")
+	eq(p.blocker("discount"), "LABS BUSY")
+	eq(p.blocker("coin_bonus"), "IN LAB", "the same research cannot run twice")
 
 
 func test_research_finishes_when_time_is_up() -> void:
 	var p := _rich()
-	p.start("keep_damage", 0.0)
-	var seconds := Research.seconds("keep_damage", 0)
+	p.start("coin_bonus", 0.0)
+	var seconds := Research.seconds("coin_bonus", 0)
 	eq(p.finish_due(seconds - 1.0).size(), 0, "not yet")
 	var done := p.finish_due(seconds)
-	eq(done, ["keep_damage"] as Array[String])
-	eq(p.level("keep_damage"), 1)
+	eq(done, ["coin_bonus"] as Array[String])
+	eq(p.level("coin_bonus"), 1)
 	eq(p.free_lab(), 0, "the lab is free again")
 
 
@@ -71,11 +71,13 @@ func test_best_wave_and_tier_unlock() -> void:
 
 func test_save_round_trip() -> void:
 	var p := _rich()
-	p.research = {"keep_damage": 4, "ring_2": 1}
+	p.research = {"coin_bonus": 4, "ring_2": 1}
+	p.workshop = {"damage": 7}
 	p.start("cannon", 500.0)
 	p.record_run(2, 30, 10)
 	var copy := ProfileData.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
-	eq(copy.level("keep_damage"), 4)
+	eq(copy.level("coin_bonus"), 4)
+	eq(copy.workshop_level("damage"), 7)
 	eq(copy.level("ring_2"), 1)
 	eq(copy.lab_of("cannon"), 0)
 	eq(copy.best(2), 30)
@@ -109,3 +111,21 @@ func test_offline_coins_need_time_away_and_are_capped() -> void:
 	var slow := p.offline_rate()
 	p.best_wave["1"] = 30
 	check(p.offline_rate() > slow, "better players earn more while away")
+
+
+
+func test_old_stat_research_moves_to_the_workshop() -> void:
+	var copy := ProfileData.from_dict({"research": {"keep_damage": 6, "masonry": 3, "cannon": 2}})
+	eq(copy.workshop_level("damage"), 6, "keep damage research became workshop damage")
+	eq(copy.workshop_level("masonry"), 3)
+	eq(copy.level("cannon"), 2, "weapon research stays research")
+
+
+func test_workshop_is_instant_and_expensive() -> void:
+	var p := ProfileData.new()
+	p.coins = 100.0
+	check(not p.buy_workshop("damage"), "150 coins needed")
+	p.coins = 1000.0
+	check(p.buy_workshop("damage"), "bought")
+	eq(p.workshop_level("damage"), 1)
+	check(p.workshop_cost("damage") > Workshop.cost("damage", 0), "and the next costs more")

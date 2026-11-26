@@ -5,6 +5,7 @@ extends RefCounted
 
 var coins: float = 0.0
 var research: Dictionary = {}  ## id -> level
+var workshop: Dictionary = {}  ## id -> level (instant coin upgrades)
 var labs: Array = []  ## one Dictionary per lab: {"id": "" when free, "ends": unix seconds}
 var best_wave: Dictionary = {}  ## tier (as String) -> best wave reached
 var unlocked_tier: int = 1
@@ -31,6 +32,22 @@ func best(tier: int) -> int:
 
 func is_maxed(id: String) -> bool:
 	return level(id) >= int(Research.ITEMS[id]["max"])
+
+
+func workshop_level(id: String) -> int:
+	return int(workshop.get(id, 0))
+
+
+func workshop_cost(id: String) -> float:
+	return Workshop.cost(id, workshop_level(id))
+
+
+func buy_workshop(id: String) -> bool:
+	if Workshop.maxed(id, workshop_level(id)) or coins < workshop_cost(id):
+		return false
+	coins -= workshop_cost(id)
+	workshop[id] = workshop_level(id) + 1
+	return true
 
 
 func next_cost(id: String) -> float:
@@ -161,7 +178,7 @@ func claim(index: int) -> bool:
 
 func to_dict() -> Dictionary:
 	return {
-		"version": 1, "coins": coins, "research": research, "labs": labs, "best_wave": best_wave,
+		"version": 2, "coins": coins, "research": research, "workshop": workshop, "labs": labs, "best_wave": best_wave,
 		"unlocked_tier": unlocked_tier, "runs": runs, "total_kills": total_kills,
 		"tutorial_done": tutorial_done, "last_seen": last_seen, "mission_day": mission_day, "missions": missions,
 	}
@@ -173,6 +190,11 @@ static func from_dict(data: Dictionary) -> ProfileData:
 	for id in data.get("research", {}):
 		if Research.ITEMS.has(id):
 			p.research[id] = int(data["research"][id])
+		elif Research.MOVED_TO_WORKSHOP.has(id):  # 0.1 saves: stat research became workshop levels
+			p.workshop[Research.MOVED_TO_WORKSHOP[id]] = int(data["research"][id])
+	for id in data.get("workshop", {}):
+		if Workshop.ITEMS.has(id):
+			p.workshop[id] = int(data["workshop"][id])
 	var saved_labs: Array = data.get("labs", [])
 	for i in mini(saved_labs.size(), p.labs.size()):
 		var lab: Dictionary = saved_labs[i]

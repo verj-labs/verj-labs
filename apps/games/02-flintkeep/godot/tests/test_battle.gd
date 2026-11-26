@@ -19,17 +19,20 @@ func _run(b: Battle, seconds: float) -> void:
 
 func test_fortress_layout_grows_outward() -> void:
 	var b := _battle()
-	eq(b.slots.size(), 4 + 6 + 8 + 12)
+	eq(b.slots.size(), 4 + 4 + 8 + 12)
 	eq(b.rings_unlocked, 1)
 	check(b.slot_open(0), "ring 1 is open")
 	check(not b.slot_open(4), "ring 2 starts locked")
 	eq(_battle({"ring_2": 1, "ring_3": 1}).rings_unlocked, 3)
 
 
-func test_ring_one_sits_on_the_compass_points() -> void:
-	var b := _battle()
-	near(b.slots[0].pos.x, 0.0, 0.01, "first slot is north")
-	near(b.slots[0].pos.y, -Defs.RING_RADII[1], 0.01)
+func test_ring_one_is_a_cross_and_ring_two_a_plus() -> void:
+	var b := _battle({"ring_2": 1})
+	var r1: float = Defs.RING_RADII[1]
+	near(absf(b.slots[0].pos.x), absf(b.slots[0].pos.y), 0.01, "ring 1 towers sit on the diagonals (an X)")
+	near(b.slots[0].pos.length(), r1, 0.01)
+	near(b.slots[4].pos.x, 0.0, 0.01, "ring 2 starts due north (a plus)")
+	near(b.slots[4].pos.y, -Defs.RING_RADII[2], 0.01)
 
 
 func test_building_costs_cash() -> void:
@@ -57,8 +60,7 @@ func test_research_sets_tower_start_level_and_cheaper_upgrades() -> void:
 	plain.build(0, "musket")
 	drilled.build(0, "musket")
 	eq(drilled.slots[0].tower.level, 4)
-	var plain_price := Defs.WEAPONS["musket"]["cost"] * Defs.WEAPON_UPGRADE_BASE * pow(Defs.WEAPON_COST_GROWTH, 3)
-	check(drilled.tower_upgrade_cost(0) < plain_price, "research makes upgrades cheaper")
+	check(drilled.tower_upgrade_cost(0) < plain.tower_upgrade_cost(0), "a higher start level never makes upgrades pricier")
 	check(drilled.tower_damage(drilled.slots[0].tower) > plain.tower_damage(plain.slots[0].tower), "higher start level hits harder")
 
 
@@ -77,7 +79,7 @@ func test_ground_enemy_stops_at_an_intact_wall() -> void:
 	var b := _battle()
 	b.cash = 1000.0
 	b.build_wall(1)
-	b.keep_levels["damage"] = -100  # the Keep cannot hurt anything; we only watch movement
+	b.levels["damage"] = -200  # the Keep cannot hurt anything; we only watch movement
 	var e := b.spawn("footman", -PI / 2.0)
 	e.hp = 1e9
 	_run(b, 20.0)
@@ -91,7 +93,7 @@ func test_broken_wall_lets_enemies_through() -> void:
 	var b := _battle()
 	b.cash = 1000.0
 	b.build_wall(1)
-	b.keep_levels["damage"] = -100
+	b.levels["damage"] = -200
 	var e := b.spawn("footman", -PI / 2.0)
 	e.hp = 1e9
 	b.walls[1].segments[Battle.wall_segment(1, e.angle)] = 0.0
@@ -103,7 +105,7 @@ func test_flyers_ignore_walls() -> void:
 	var b := _battle()
 	b.cash = 1000.0
 	b.build_wall(1)
-	b.keep_levels["damage"] = -100
+	b.levels["damage"] = -200
 	var e := b.spawn("balloon", 0.0)
 	e.hp = 1e9
 	_run(b, 25.0)
@@ -147,7 +149,7 @@ func test_kills_pay_cash_and_coins() -> void:
 
 func test_waves_arrive_on_a_timer_and_pay_coins() -> void:
 	var b := Battle.new({}, 1, SEED)
-	b.keep_levels["health"] = 60  # survive long enough to watch
+	b.levels["health"] = 60  # survive long enough to watch
 	var coins := b.coins_earned
 	_run(b, Defs.WAVE_SECONDS + 0.1)
 	eq(b.wave, 2)
@@ -165,11 +167,13 @@ func test_boss_every_tenth_wave() -> void:
 
 func test_interest_is_capped_per_wave() -> void:
 	var b := _battle()
-	b.econ_levels["interest"] = 10
+	b.levels["interest"] = 10
 	b.cash = 1_000_000.0
 	b.wave_timer = 0.01
+	var wave_pay := b.stat("wave_cash") * Upgrades.cash_scale(1)
 	b.step(0.05)
-	near(b.cash, 1_000_000.0 + Defs.INTEREST_CAP_PER_WAVE * 1.0, 1.0)
+	var cap := Defs.INTEREST_CAP_PER_WAVE * Upgrades.cash_scale(1) * 10.0
+	near(b.cash, 1_000_000.0 + wave_pay + cap, 1.0, "interest stops at the cap")
 
 
 func test_the_run_ends_when_the_keep_falls() -> void:
@@ -188,7 +192,7 @@ func test_keep_health_upgrade_heals_the_difference() -> void:
 	b.cash = 1000.0
 	b.keep_hp = 50.0
 	var before := b.keep_max_hp()
-	b.buy_keep_upgrade("health")
+	b.buy_upgrade("health")
 	near(b.keep_hp, 50.0 + b.keep_max_hp() - before)
 
 
@@ -207,11 +211,12 @@ func test_walls_repair_and_reinforce() -> void:
 
 
 func test_wall_sections_sit_between_towers() -> void:
-	# Ring 1 towers are N, E, S, W; section 0 runs from the north tower to the east one.
+	# Ring 2 towers are N, E, S, W; section 0 runs from the north tower to the east one.
 	var north := -PI / 2.0
-	eq(Battle.wall_segment(1, north + 0.1), 0, "just east of north is section 0")
-	eq(Battle.wall_segment(1, north - 0.1), 3, "just west of north is the last section")
-	near(Battle.section_angle(1, 0), north + PI / 4.0, 0.001, "section 0 is centred on the north-east")
+	eq(Battle.wall_segment(2, north + 0.1), 0, "just east of north is section 0")
+	eq(Battle.wall_segment(2, north - 0.1), 3, "just west of north is the last section")
+	near(Battle.section_angle(2, 0), north + PI / 4.0, 0.001, "section 0 is centred on the north-east")
+	near(Battle.section_angle(1, 0), 0.0, 0.001, "ring 1 (an X) has its first section due east")
 
 
 func test_sections_are_bought_one_at_a_time() -> void:
@@ -230,7 +235,7 @@ func test_sections_are_bought_one_at_a_time() -> void:
 func test_an_enemy_only_stops_at_a_built_section() -> void:
 	var b := _battle()
 	b.cash = 1000.0
-	b.keep_levels["damage"] = -100
+	b.levels["damage"] = -200
 	b.build_section(1, 0)  # north-east arc only
 	var blocked := b.spawn("footman", Battle.section_angle(1, 0))
 	var free := b.spawn("footman", Battle.section_angle(1, 2))
@@ -259,7 +264,7 @@ func test_completing_a_ring_fortifies_it() -> void:
 func test_sappers_blow_up_against_walls() -> void:
 	var b := _battle()
 	b.cash = 1000.0
-	b.keep_levels["damage"] = -100
+	b.levels["damage"] = -200
 	b.build_wall(1)
 	var seg := Battle.wall_segment(1, PI / 4.0)
 	var hp := b.walls[1].segments[seg]
@@ -274,7 +279,7 @@ func test_sappers_blow_up_against_walls() -> void:
 
 func test_shamans_heal_raiders_near_them() -> void:
 	var b := _battle()
-	b.keep_levels["damage"] = -100
+	b.levels["damage"] = -200
 	var shaman := b.spawn("shaman", 0.0)
 	var friend := b.spawn("footman", 0.0)
 	friend.hp = friend.max_hp * 0.5
@@ -298,3 +303,127 @@ func test_calling_the_next_wave_early_pays_a_bonus() -> void:
 	check(b.call_next_wave(), "called")
 	eq(b.wave, wave + 1)
 	check(b.cash >= cash + bonus - 0.01, "bonus paid")
+
+
+func test_upgrade_caps_hold() -> void:
+	var b := _battle()
+	b.levels["bounce"] = 999
+	b.levels["push_chance"] = 999
+	b.levels["lifesteal"] = Upgrades.LIST["lifesteal"]["max"]
+	check(b.bounce_chance() <= 0.8 + 0.0001, "bounce tops out at 80%")
+	check(b.push_chance() <= 0.8 + 0.0001, "pushback chance tops out at 80%")
+	near(b.stat("lifesteal"), 0.05, 0.0001, "lifesteal tops out at 5%")
+	check(Upgrades.maxed("lifesteal", 50), "and cannot be bought further")
+
+
+func test_prices_grow_faster_than_effects() -> void:
+	# the rule that keeps runs finite: no upgrade pays for itself forever
+	for id in Upgrades.LIST:
+		var u: Dictionary = Upgrades.LIST[id]
+		if u["kind"] == "mult":
+			check(u["growth"] > u["step"], "%s: price growth must beat effect growth" % id)
+
+
+func test_multishot_and_bounce_hit_more_enemies() -> void:
+	var b := _battle()
+	b.levels["multishot"] = 40
+	b.levels["bounce"] = 40
+	b.perk["multishot"] = 0.5  # 80% + 50%: always
+	for i in 4:
+		var e := b.spawn("footman", 0.1 * i)
+		e.dist = 30.0
+		e.hp = 1e9
+	_run(b, 2.0)  # a few volleys (each has a 90% multishot chance)
+	var hit := 0
+	for e in b.enemies:
+		if e.hp < 1e9:
+			hit += 1
+	check(hit >= 2, "one volley hurt several enemies (%d)" % hit)
+
+
+func test_pushback_knocks_ground_enemies_back() -> void:
+	var b := _battle()
+	b.levels["push_chance"] = 40
+	b.perk["push"] = 0.5
+	var e := b.spawn("footman", 0.0)
+	e.dist = 40.0
+	e.hp = 1e9
+	b.keep_cooldown = 0.0
+	b.step(0.01)
+	check(e.dist > 40.0, "pushed back (now %.1f)" % e.dist)
+
+
+func test_a_perk_is_offered_every_fifty_waves_and_picked_if_ignored() -> void:
+	var b := _battle()
+	b.levels["health"] = 300  # survive long enough to watch the timer
+	b.keep_hp = b.keep_max_hp()
+	b.wave = Defs.PERK_EVERY - 1
+	b.wave_timer = 0.01
+	b.step(0.05)
+	eq(b.wave, Defs.PERK_EVERY)
+	eq(b.perk_offer.size(), 3, "three perks on offer")
+	_run(b, Defs.PERK_SECONDS + 0.5)
+	check(b.perk_offer.is_empty(), "one was picked at random when time ran out")
+	check(not b.perk.is_empty(), "and it applies")
+
+
+func test_powers_need_research_and_recharge() -> void:
+	var b := _battle()
+	check(not b.cast("rain"), "locked without research")
+	var r := _battle({"power_rain": 1})
+	var e := r.spawn("footman", 0.0)
+	var hp := e.hp
+	check(r.cast("rain"), "cast")
+	check(e.hp < hp, "Arrow Rain hit the enemy")
+	check(not r.cast("rain"), "recharging")
+
+
+func test_auto_buy_spends_cash_in_its_tab() -> void:
+	var b := _battle()
+	b.cash = 500.0
+	b.set_auto("Attack", true)
+	_run(b, 1.1)
+	var bought := 0
+	for id in Upgrades.ids_in("Attack"):
+		bought += b.level(id)
+	check(bought > 0, "auto-buy bought attack upgrades")
+	eq(b.level("health"), 0, "and nothing from other tabs")
+
+
+func test_workshop_and_research_make_runs_stronger() -> void:
+	var plain := Battle.new({}, 1, 1)
+	var strong := Battle.new({"siege": 10}, 1, 1, {"damage": 10, "health": 10, "start_cash": 2})
+	check(strong.keep_damage() > plain.keep_damage() * 2.0, "workshop damage compounds")
+	check(strong.keep_max_hp() > plain.keep_max_hp() * 2.0, "workshop health compounds")
+	check(strong.cash > plain.cash, "starting cash")
+	check(Upgrades.enemy_scale(500, strong.siege()) < Upgrades.enemy_scale(500, plain.siege()), "siege lore slows enemy growth")
+
+
+
+func test_coins_every_wave_grow_with_the_economy_upgrade() -> void:
+	var b := _battle()
+	var few := b.wave_coins()
+	check(few > 0.0 and few < 10.0, "a few coins a wave (%.1f)" % few)
+	b.levels["wave_coins"] = 10
+	check(b.wave_coins() > few * 2.0, "the Coins per wave upgrade raises it")
+
+
+func test_waves_stop_at_the_maximum() -> void:
+	var b := _battle()
+	b.levels["health"] = 400
+	b.keep_hp = b.keep_max_hp()
+	b.wave = Defs.MAX_WAVE
+	b.wave_timer = 0.01
+	b.step(0.05)
+	eq(b.wave, Defs.MAX_WAVE, "the last wave repeats")
+	check(b.perk_offer.is_empty(), "no extra perk offers while it repeats")
+
+
+func test_higher_tiers_are_the_same_curve_raised() -> void:
+	var t1 := Battle.new({}, 1, 3)
+	var t2 := Battle.new({}, 2, 3)
+	t1.wave = 40
+	t2.wave = 40
+	var a := t1.spawn("footman", 0.0)
+	var c := t2.spawn("footman", 0.0)
+	near(c.max_hp / a.max_hp, Defs.tier_enemy_mult(2), 0.001, "tier 2 multiplies every wave by the same factor")

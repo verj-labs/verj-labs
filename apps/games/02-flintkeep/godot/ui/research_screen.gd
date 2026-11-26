@@ -5,12 +5,17 @@ extends Control
 
 signal back
 
-const GROUP_ICONS := {"Keep": "keep", "Economy": "coin", "Arsenal": "cannon", "Fortress": "slot"}
+const GROUP_ICONS := {"Command": "keep", "Arsenal": "cannon", "Powers": "arcane", "Fortress": "slot"}
 
 var _coins_label: Label
 var _lab_meters: Array[Meter] = []
 var _rows: Array[UpgradeRow] = []
 var _refresh_timer := 0.0
+var _tab_workshop: Button
+var _tab_labs: Button
+var _workshop_list: VBoxContainer
+var _labs_list: VBoxContainer
+var _labs_box: Control
 
 
 func _init() -> void:
@@ -29,7 +34,7 @@ func _ready() -> void:
 	back_button.custom_minimum_size.x = 64
 	back_button.pressed.connect(func() -> void: back.emit())
 	top.add_child(back_button)
-	var title := Kit.heading("Research", 42, Pal.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := Kit.heading("Upgrades", 40, Pal.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	var pill: Array = Kit.pill("coin", Pal.GOLD)
@@ -37,7 +42,17 @@ func _ready() -> void:
 	top.add_child(pill[0])
 	col.add_child(top)
 
+	var tabs := Kit.hbox(6)
+	_tab_workshop = Kit.button("Workshop", Kit.Btn.TAB_ON, 22, 50)
+	_tab_labs = Kit.button("Labs", Kit.Btn.TAB, 22, 50)
+	for b in [_tab_workshop, _tab_labs]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tabs.add_child(b)
+	_tab_workshop.pressed.connect(_show.bind(true))
+	_tab_labs.pressed.connect(_show.bind(false))
+	col.add_child(tabs)
 	var labs := Kit.panel_container(Kit.wood())
+	_labs_box = labs
 	var lab_list := Kit.vbox(8)
 	labs.add_child(lab_list)
 	for i in Profile.data.labs.size():
@@ -51,9 +66,20 @@ func _ready() -> void:
 	col.add_child(frame)
 	var scroll := TouchScroll.new()
 	frame.add_child(scroll)
+	var holder := Kit.vbox(8)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(holder)
+	_workshop_list = Kit.vbox(8)
+	holder.add_child(_workshop_list)
+	_workshop_list.add_child(Kit.label("Instant, permanent upgrades. Expensive, and they stack.", 18, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
+	for id in Workshop.ORDER:
+		var row := _workshop_row(id)
+		_workshop_list.add_child(row)
+		_rows.append(row)
 	var list := Kit.vbox(8)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
+	holder.add_child(list)
+	_labs_list = list
 	for group in Research.GROUPS:
 		var header := Kit.hbox(10)
 		header.custom_minimum_size.y = 48
@@ -65,7 +91,34 @@ func _ready() -> void:
 			list.add_child(row)
 			_rows.append(row)
 	Profile.changed.connect(_refresh)
+	_show(true)
 	_refresh()
+
+
+func _show(workshop: bool) -> void:
+	_workshop_list.visible = workshop
+	_labs_list.visible = not workshop
+	_labs_box.visible = not workshop
+	Kit.style_button(_tab_workshop, Kit.Btn.TAB_ON if workshop else Kit.Btn.TAB, 22)
+	Kit.style_button(_tab_labs, Kit.Btn.TAB if workshop else Kit.Btn.TAB_ON, 22)
+
+
+func _workshop_row(id: String) -> UpgradeRow:
+	var data := Profile.data
+	var item: Dictionary = Workshop.ITEMS[id]
+	var title := func() -> String: return "%s  ·  Lv %d" % [item["name"], data.workshop_level(id)]
+	var detail := func() -> String: return Workshop.describe(id, data.workshop_level(id))
+	var price := func() -> float: return -1.0 if Workshop.maxed(id, data.workshop_level(id)) else data.workshop_cost(id)
+	var label := func() -> String: return "Max" if Workshop.maxed(id, data.workshop_level(id)) else Num.fmt(data.workshop_cost(id))
+	var buy := func() -> bool:
+		var ok := data.buy_workshop(id)
+		if ok:
+			Sfx.play("upgrade", 0.0)
+			Profile.save_game()
+			Profile.changed.emit()
+		return ok
+	var action := {"label": label, "price": price, "run": buy, "kind": Kit.Btn.PRIMARY, "wallet": func() -> float: return data.coins}
+	return UpgradeRow.make(title, detail, [action], Pal.TEXT)
 
 
 func _row(id: String) -> UpgradeRow:
@@ -93,7 +146,7 @@ func _row(id: String) -> UpgradeRow:
 		return Num.fmt(data.next_cost(id))
 	var action := {"label": label, "price": price, "run": Profile.start_research.bind(id), "kind": Kit.Btn.PRIMARY,
 		"wallet": func() -> float: return data.coins}
-	var icon := id if Defs.WEAPONS.has(id) else ""
+	var icon := id if Defs.WEAPONS.has(id) else ("arcane" if id.begins_with("power_") else "")
 	var row := UpgradeRow.make(title, detail, [action], Pal.TEXT, icon)
 	row.acted.connect(_refresh)
 	return row

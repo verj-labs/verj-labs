@@ -5,6 +5,12 @@ extends RefCounted
 ## repair them when they are hurt, then upgrade whatever is cheapest.
 
 const REPAIR_BELOW := 0.35  ## Repair a wall once this share of it is missing.
+## Which cash upgrades the bot buys, and how keen it is (lower = sooner).
+const WEIGHTS := {
+	"damage": 1.0, "health": 1.0, "rate": 1.2, "regen": 1.3, "crit_chance": 1.3, "crit_factor": 1.6,
+	"multishot": 1.6, "bounce": 1.8, "armor": 1.4, "absolute": 1.8, "lifesteal": 2.0, "bounty": 1.3,
+	"wave_cash": 1.5, "wall_regen": 2.0, "push_chance": 2.5,
+}
 
 
 static func think(b: Battle) -> void:
@@ -30,11 +36,9 @@ static func _buy_one(b: Battle) -> bool:
 			options.append([b.section_cost(ring) * 0.8, b.build_section.bind(ring, gap)])
 		elif b.wave > 6:
 			options.append([b.wall_reinforce_cost(ring) * 1.5, b.reinforce_wall.bind(ring)])
-	for id in ["damage", "health", "rate", "regen"]:
-		if not b.keep_upgrade_maxed(id):
-			options.append([b.keep_upgrade_cost(id), b.buy_keep_upgrade.bind(id)])
-	if not b.econ_upgrade_maxed("bounty"):
-		options.append([b.econ_upgrade_cost("bounty") * 1.2, b.buy_econ_upgrade.bind("bounty")])
+	for id in WEIGHTS:
+		if not b.upgrade_maxed(id):
+			options.append([b.upgrade_cost(id) * WEIGHTS[id], b.buy_upgrade.bind(id)])
 	for slot in b.slots:
 		if slot.tower != null:
 			options.append([b.tower_upgrade_cost(slot.index), b.upgrade_tower.bind(slot.index)])
@@ -58,10 +62,9 @@ static func _next_weapon(b: Battle) -> String:
 
 
 ## Plays a whole run as fast as possible. Returns the wave the Keep fell on.
-static func play(research: Dictionary, tier: int, seed_value: int, max_wave: int = 200) -> Battle:
-	var b := Battle.new(research, tier, seed_value)
+static func play(research: Dictionary, tier: int, seed_value: int, max_wave: int = 200, workshop: Dictionary = {}, dt: float = 1.0 / 20.0) -> Battle:
+	var b := Battle.new(research, tier, seed_value, workshop)
 	b.record_events = false
-	var dt := 1.0 / 20.0
 	var think_every := 0.5
 	var since := 0.0
 	while not b.over and b.wave <= max_wave:
@@ -70,4 +73,8 @@ static func play(research: Dictionary, tier: int, seed_value: int, max_wave: int
 		if since >= think_every:
 			since = 0.0
 			think(b)
+			if not b.perk_offer.is_empty():
+				b.choose_perk(b.perk_offer[0])
+			for id in Powers.ORDER:
+				b.cast(id)
 	return b
