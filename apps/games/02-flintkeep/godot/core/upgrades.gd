@@ -10,7 +10,7 @@ extends RefCounted
 ## faster), so a run's power grows a little slower than the enemies and every run ends. How far
 ## it gets is set by research and the workshop, whose bonuses multiply (see docs/DECISIONS.md).
 
-const TABS := ["Attack", "Defense", "Walls", "Economy", "Powers"]
+const TABS := ["Attack", "Defense", "Walls", "Towers", "Economy", "Powers"]
 
 const LIST := {
 	# --- Attack (the Keep's own shot; crits, multishot, bounce and pushback apply to every shot)

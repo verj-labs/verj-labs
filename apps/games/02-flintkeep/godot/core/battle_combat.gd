@@ -13,6 +13,8 @@ const AIR_HOVER := 7.0  ## Flyers stop this far outside the Keep and bomb it.
 const SHOT_ORIGIN_KEEP := Vector2(0.0, -10.0)
 const BOUNCE_REACH := 40.0
 const MAX_BOUNCES := 3
+const KEEP_EFFECTS := {"crit": true, "multishot": true, "bounce": true, "push": true}
+const HEAL_TICK := 0.25  ## shamans heal in pulses this far apart (same total; far fewer checks)
 const ABSOLUTE_FLOOR := 0.1  ## absolute defense never blocks more than 90% of an attack
 const PUSH_BOSS_SHARE := 0.25  ## bosses are pushed a quarter as far
 const PUSH_COOLDOWN := 2.0  ## an enemy can be pushed at most once every 2 seconds
@@ -21,7 +23,10 @@ const PUSH_COOLDOWN := 2.0  ## an enemy can be pushed at most once every 2 secon
 # --- Movement -------------------------------------------------------------------------------
 
 static func move_enemies(b: Battle, dt: float) -> void:
-	_heal(b, dt)
+	b.heal_timer -= dt
+	if b.heal_timer <= 0.0:
+		b.heal_timer += HEAL_TICK
+		_heal(b, HEAL_TICK)
 	for e in b.enemies:
 		e.age += dt
 		e.hit_flash = maxf(e.hit_flash - dt, 0.0)
@@ -54,11 +59,13 @@ static func move_enemies(b: Battle, dt: float) -> void:
 
 ## Shamans mend the raiders around them (not themselves).
 static func _heal(b: Battle, dt: float) -> void:
+	var reach_sq := Defs.SHAMAN_REACH * Defs.SHAMAN_REACH
 	for s in b.enemies:
 		if s.heal <= 0.0 or not s.alive():
 			continue
+		var at := s.pos()
 		for e in b.enemies:
-			if e != s and e.alive() and e.hp < e.max_hp and e.pos().distance_to(s.pos()) <= Defs.SHAMAN_REACH:
+			if e != s and e.alive() and e.hp < e.max_hp and e.pos().distance_squared_to(at) <= reach_sq:
 				e.hp = minf(e.hp + e.max_hp * s.heal * dt, e.max_hp)
 
 
@@ -119,7 +126,7 @@ static func _fire_keep(b: Battle, dt: float) -> void:
 	if b.rng.randf() < b.multishot_chance():
 		targets.append_array(_others(b, target, Vector2.ZERO, b.keep_range(), b.multishot_targets()))
 	for t in targets:
-		_shoot(b, t, b.keep_damage(), Defs.DamageType.PHYSICAL, 0.0, "Keep")
+		_shoot(b, t, b.keep_damage(), Defs.DamageType.PHYSICAL, 0.0, "Keep", KEEP_EFFECTS)
 		b._event({"type": "shot", "weapon": "keep", "from": SHOT_ORIGIN_KEEP, "to": t.pos()})
 
 
@@ -140,8 +147,12 @@ static func _fire_tower(b: Battle, s: Entities.Slot, dt: float) -> void:
 	tower.fired = 0.0
 	var damage := b.slot_damage(s)
 	var to := target.pos()
-	_shoot(b, target, damage, def["type"], def["pierce"], def["short"])
+	_shoot(b, target, damage, def["type"], def["pierce"], def["short"], tower.addons)
 	b._event({"type": "shot", "weapon": tower.weapon, "from": from, "to": to, "slot": s.index})
+	if tower.addons.has("multishot") and b.rng.randf() < b.multishot_chance():
+		for other in _others(b, target, from, b.tower_range(tower), b.multishot_targets()):
+			_shoot(b, other, damage, def["type"], def["pierce"], def["short"], tower.addons)
+			b._event({"type": "shot", "weapon": tower.weapon, "from": from, "to": other.pos(), "slot": s.index})
 	if def["splash"] > 0.0:
 		_splash(b, target, to, def, damage * SPLASH_SHARE)
 	if def["chain"] > 0:
@@ -149,22 +160,27 @@ static func _fire_tower(b: Battle, s: Entities.Slot, dt: float) -> void:
 
 
 ## One shot landing: critical hits, pushback, then maybe bouncing on to other enemies.
-static func _shoot(b: Battle, target: Enemy, damage: float, type: int, pierce: float, source: String) -> void:
+## One shot, with the attack effects in `effects` (the Keep has them all; a tower only the
+## add-ons it bought): critical hits, pushback and bouncing to the next enemy.
+static func _shoot(b: Battle, target: Enemy, damage: float, type: int, pierce: float, source: String, effects: Dictionary) -> void:
 	var current := target
 	var hit_ids := {}
-	for bounce in MAX_BOUNCES + 1:
+	var crit := effects.has("crit")
+	var pushes := effects.has("push")
+	var bounces := MAX_BOUNCES if effects.has("bounce") else 0
+	for bounce in bounces + 1:
 		var amount := damage
-		if b.rng.randf() < b.crit_chance():
+		if crit and b.rng.randf() < b.crit_chance():
 			amount *= b.stat("crit_factor")
 			b._event({"type": "crit", "pos": current.pos(), "amount": amount})
 		b._deal(current, amount, type, pierce, source)
-		if current.push_cd <= 0.0 and not current.air and b.rng.randf() < b.push_chance():
+		if pushes and current.push_cd <= 0.0 and not current.air and b.rng.randf() < b.push_chance():
 			current.push_cd = PUSH_COOLDOWN
 			var push := b.stat("push_dist") * (PUSH_BOSS_SHARE if current.boss else 1.0)
 			current.dist += push
 			current.attacking = -1
 		hit_ids[current.id] = true
-		if bounce == MAX_BOUNCES or b.rng.randf() >= b.bounce_chance():
+		if bounce == bounces or b.rng.randf() >= b.bounce_chance():
 			return
 		var next := _nearest(b, current.pos(), BOUNCE_REACH, hit_ids)
 		if next == null:

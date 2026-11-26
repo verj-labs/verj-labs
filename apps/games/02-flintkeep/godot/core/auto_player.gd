@@ -11,6 +11,7 @@ const WEIGHTS := {
 	"multishot": 1.6, "bounce": 1.8, "armor": 1.4, "absolute": 1.8, "lifesteal": 2.0, "bounty": 1.3,
 	"wave_cash": 1.5, "wall_regen": 2.0, "push_chance": 2.5,
 }
+const ADDON_WEIGHTS := {"crit": 1.2, "multishot": 1.4, "bounce": 1.5, "push": 2.5}
 
 
 static func think(b: Battle) -> void:
@@ -42,6 +43,10 @@ static func _buy_one(b: Battle) -> bool:
 	for slot in b.slots:
 		if slot.tower != null:
 			options.append([b.tower_upgrade_cost(slot.index), b.upgrade_tower.bind(slot.index)])
+			for id in Defs.ADDON_ORDER:
+				var price := b.addon_cost(slot.index, id)
+				if price >= 0.0:
+					options.append([price * ADDON_WEIGHTS[id], b.buy_addon.bind(slot.index, id)])
 	options.sort_custom(func(a: Array, c: Array) -> bool: return a[0] < c[0])
 	if options.is_empty():
 		return false

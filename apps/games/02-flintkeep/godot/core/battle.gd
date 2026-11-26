@@ -26,6 +26,7 @@ var spawn_extents := Vector2(140.0, 180.0)
 var time := 0.0
 var wave := 0
 var wave_timer := 0.0
+var heal_timer := 0.0  ## next shaman healing pulse
 var cash := 0.0
 var coins_earned := 0.0
 var gems_earned := 0  ## rare boss drops, banked into the profile by the screen
@@ -295,6 +296,112 @@ func upgrade_tower(index: int) -> bool:
 	tower.invested += price
 	_event({"type": "upgraded", "slot": index})
 	return true
+
+
+# --- Tower add-ons and whole-fortress actions -------------------------------------------------
+
+func addon_count(id: String) -> int:
+	var n := 0
+	for slot in slots:
+		if slot.tower != null and slot.tower.addons.has(id):
+			n += 1
+	return n
+
+
+## Price of add-on `id` for the tower in slot `index`, or -1 if there is no tower or it has it.
+func addon_cost(index: int, id: String, already: int = -1) -> float:
+	var tower := slots[index].tower
+	if tower == null or tower.addons.has(id):
+		return -1.0
+	var owned := addon_count(id) if already < 0 else already
+	var base: float = Defs.WEAPONS[tower.weapon]["cost"] * Defs.ADDONS[id]["cost"]
+	return base * pow(Defs.ADDON_GROWTH, owned) * (1.0 - maxf(discount(), 0.0))
+
+
+func buy_addon(index: int, id: String) -> bool:
+	var price := addon_cost(index, id)
+	if price < 0.0 or over or not _pay(price):
+		return false
+	var tower := slots[index].tower
+	tower.addons[id] = true
+	tower.invested += price
+	_event({"type": "upgraded", "slot": index})
+	return true
+
+
+## Slots whose tower lacks add-on `id`, cheapest weapon first.
+func towers_without(id: String) -> Array[int]:
+	var out: Array[int] = []
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index) and not slot.tower.addons.has(id):
+			out.append(slot.index)
+	out.sort_custom(func(a: int, c: int) -> bool: return Defs.WEAPONS[slots[a].tower.weapon]["cost"] < Defs.WEAPONS[slots[c].tower.weapon]["cost"])
+	return out
+
+
+## What giving every tower add-on `id` costs (each one dearer than the last), or -1 if all have it.
+func addon_all_cost(id: String) -> float:
+	var todo := towers_without(id)
+	if todo.is_empty():
+		return -1.0
+	var total := 0.0
+	var owned := addon_count(id)
+	for index in todo:
+		total += addon_cost(index, id, owned)
+		owned += 1
+	return total
+
+
+## Gives add-on `id` to as many towers as cash allows, cheapest first.
+func buy_addon_all(id: String) -> bool:
+	var bought := false
+	for index in towers_without(id):
+		if not buy_addon(index, id):
+			break
+		bought = true
+	return bought
+
+
+## The cheapest single step of "upgrade all" (to enable its button), or -1 with no towers.
+func cheapest_tower_upgrade() -> float:
+	var best := -1.0
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			var price := tower_upgrade_cost(slot.index)
+			if best < 0.0 or price < best:
+				best = price
+	return best
+
+
+## One more level for every tower, or -1 with no towers.
+func upgrade_all_cost() -> float:
+	var total := -1.0
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			total = maxf(total, 0.0) + tower_upgrade_cost(slot.index)
+	return total
+
+
+## Raises every tower one level, cheapest first, as far as cash allows.
+func upgrade_all_towers() -> bool:
+	var order: Array[int] = []
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			order.append(slot.index)
+	order.sort_custom(func(a: int, c: int) -> bool: return tower_upgrade_cost(a) < tower_upgrade_cost(c))
+	var bought := false
+	for index in order:
+		if not upgrade_tower(index):
+			break
+		bought = true
+	return bought
+
+
+## Sets every tower's targeting ("" = each weapon's default).
+func set_focus_all(focus: String) -> void:
+	for slot in slots:
+		if slot.tower != null:
+			slot.tower.focus = focus
 
 
 func sell_value(index: int) -> float:
@@ -604,12 +711,34 @@ func _auto_buy() -> void:
 			continue
 		if tab == "Walls":
 			_auto_walls()
+		if tab == "Towers":
+			_auto_towers()
 		var best := ""
 		for id in Upgrades.ids_in(tab):
 			if not upgrade_maxed(id) and (best == "" or upgrade_cost(id) < upgrade_cost(best)):
 				best = id
 		if best != "" and cash >= upgrade_cost(best):
 			buy_upgrade(best)
+
+
+## The Towers tab's auto-buy: the cheapest tower level or add-on.
+func _auto_towers() -> void:
+	var best_price := INF
+	var best: Callable
+	for slot in slots:
+		if slot.tower == null or not slot_open(slot.index):
+			continue
+		var up := tower_upgrade_cost(slot.index)
+		if up < best_price:
+			best_price = up
+			best = upgrade_tower.bind(slot.index)
+		for id in Defs.ADDON_ORDER:
+			var price := addon_cost(slot.index, id)
+			if price >= 0.0 and price < best_price:
+				best_price = price
+				best = buy_addon.bind(slot.index, id)
+	if best.is_valid() and cash >= best_price:
+		best.call()
 
 
 func _auto_walls() -> void:

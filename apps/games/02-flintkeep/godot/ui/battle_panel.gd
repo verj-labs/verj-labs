@@ -1,8 +1,9 @@
 class_name BattlePanel
 extends VBoxContainer
-## The bottom of the battle screen: five tabs (Attack, Defense, Walls, Economy, Powers) of
+## The bottom of the battle screen: six tabs (Attack, Defense, Walls, Towers, Economy, Powers) of
 ## upgrade cards in a two-column grid, each tab with an Auto-buy switch; or, after tapping the
-## battlefield, the sheet of a tower, an empty pedestal or a wall section.
+## battlefield, the sheet of a tower, an empty pedestal or a wall section. The Towers tab acts on
+## every tower at once (upgrade all, add-ons for all, targeting).
 
 signal close_slot
 
@@ -28,7 +29,8 @@ func _init(p_battle: Battle) -> void:
 	_tabs_row = Kit.hbox(4)
 	add_child(_tabs_row)
 	for t in Upgrades.TABS:
-		var b := Kit.button(t, Kit.Btn.TAB, 16, 46)
+		var b := Kit.button(t, Kit.Btn.TAB, 15, 46)
+		Kit.tighten(b)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		b.pressed.connect(_set_tab.bind(t))
@@ -100,7 +102,8 @@ func _rebuild() -> void:
 	_tabs_row.visible = not focused
 	_header.visible = focused
 	for t in Upgrades.TABS:
-		Kit.style_button(_tab_buttons[t], Kit.Btn.TAB_ON if t == _tab else Kit.Btn.TAB, 16)
+		Kit.style_button(_tab_buttons[t], Kit.Btn.TAB_ON if t == _tab else Kit.Btn.TAB, 15)
+		Kit.tighten(_tab_buttons[t])
 	_slot_built = _slot >= 0 and battle.slots[_slot].tower != null
 	if _slot >= 0:
 		_header_label.text = BattleRows.slot_title(battle, _slot)
@@ -123,7 +126,11 @@ func _build_tab() -> void:
 		_paint_auto()
 	if _tab == "Walls":
 		_add_rows(BattleRows.wall_rows(battle))
-	var cards: Array[Control] = BattleRows.power_cards(battle) if _tab == "Powers" else BattleRows.upgrade_cards(battle, _tab)
+	var cards: Array[Control]
+	match _tab:
+		"Powers": cards = BattleRows.power_cards(battle)
+		"Towers": cards = BattleRows.tower_cards(battle)
+		_: cards = BattleRows.upgrade_cards(battle, _tab)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)

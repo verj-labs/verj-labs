@@ -10,7 +10,7 @@ extends RefCounted
 const RING_RADII := [0.0, 32.0, 54.0, 75.0, 96.0]
 ## Towers per ring (index 0 = the Keep). Rings 1 and 2 have four each: ring 1 is an X (the
 ## diagonals, so no tower hides behind the Keep) and ring 2 a plus (N, E, S, W).
-const SLOT_COUNTS := [0, 4, 4, 8, 12]
+const SLOT_COUNTS := [0, 4, 4, 6, 8]
 ## Towers stand on their ring's wall; the wall sections are the arcs between them.
 const WALL_OFFSET := 0.0
 const MAX_RING := 4
@@ -80,6 +80,18 @@ const WEAPON_DMG_GROWTH := 1.10  ## Damage multiplier per tower level (compounds
 const WEAPON_RATE_GROWTH := 0.02  ## +2% fire rate per tower level.
 const WEAPON_RANGE_GROWTH := 0.5  ## +0.5 range per tower level (capped below).
 const WEAPON_RANGE_MAX := 20.0
+## Tower add-ons: a tower can buy the Keep's attack effects for itself, and then uses the Keep's
+## values from the Attack tab (crit chance and damage, multishot, bounce, pushback). Price: the
+## weapon's build price x `cost`, x ADDON_GROWTH for every tower that already has that add-on,
+## so the first few are affordable and kitting out a whole fortress is a long-term goal.
+const ADDON_ORDER := ["crit", "multishot", "bounce", "push"]
+const ADDONS := {
+	"crit": {"name": "Critical hits", "about": "Uses the Keep's critical chance and damage", "cost": 4.0},
+	"multishot": {"name": "Multishot", "about": "Uses the Keep's multishot: hits extra enemies", "cost": 8.0},
+	"bounce": {"name": "Bounce", "about": "Uses the Keep's bounce: shots jump to the next enemy", "cost": 8.0},
+	"push": {"name": "Pushback", "about": "Uses the Keep's pushback chance and distance", "cost": 5.0},
+}
+const ADDON_GROWTH := 1.35
 const WEAPON_COST_GROWTH := 1.12  ## Upgrade price multiplier per level bought in the run.
 const WEAPON_UPGRADE_BASE := 0.8  ## First upgrade costs 80% of the build price.
 const SELL_REFUND := 0.5

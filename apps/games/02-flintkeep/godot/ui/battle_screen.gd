@@ -53,6 +53,7 @@ func _ready() -> void:
 	column.add_child(_build_panel())
 	_banner = Kit.heading("", 48, Pal.WHITE)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # long enemy names wrap instead of running off screen
 	add_child(_banner)
 	_show_banner("Wave 1", Pal.WHITE)
 	if not Profile.data.tutorial_done:

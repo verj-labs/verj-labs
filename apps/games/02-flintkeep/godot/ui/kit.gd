@@ -139,6 +139,15 @@ static func style_button(b: Button, kind: Btn, size: int = 24) -> void:
 	b.add_theme_constant_override("outline_size", maxi(5, size / 4))
 
 
+## Narrow side padding, for rows of many small buttons (the battle panel's six tabs).
+static func tighten(b: Button, side: float = 4.0) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box := b.get_theme_stylebox(state) as StyleBoxFlat
+		if box != null:
+			box.content_margin_left = side
+			box.content_margin_right = side
+
+
 static func _button_box(fill: Color, lip: Color, lip_px: int) -> StyleBoxFlat:
 	## Ink outline around the face; a darker extrusion (the "lip") below it, drawn as a hard
 	## shadow, so the button looks thick and pressable.

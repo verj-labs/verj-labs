@@ -19,7 +19,7 @@ func _run(b: Battle, seconds: float) -> void:
 
 func test_fortress_layout_grows_outward() -> void:
 	var b := _battle()
-	eq(b.slots.size(), 4 + 4 + 8 + 12)
+	eq(b.slots.size(), 4 + 4 + 6 + 8, "rings of 4, 4, 6 and 8 towers")
 	eq(b.rings_unlocked, 1)
 	check(b.slot_open(0), "ring 1 is open")
 	check(not b.slot_open(4), "ring 2 starts locked")
@@ -489,3 +489,67 @@ func test_keep_regeneration_is_a_capped_share_of_health() -> void:
 	b.levels["regen"] = Upgrades.LIST["regen"]["max"]
 	near(b.keep_regen(), b.keep_max_hp() * Defs.KEEP_REGEN_MAX / 100.0, 0.01, "capped however much is bought")
 	check(Upgrades.maxed("regen", Upgrades.LIST["regen"]["max"]), "the in-run upgrade has a last level")
+
+
+
+func test_towers_need_add_ons_for_the_keeps_effects() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	b.levels["crit_chance"] = 80
+	b.build(0, "musket")
+	var tower := b.slots[0].tower
+	var e := b.spawn("footman", 0.0)
+	e.max_hp = 1e12
+	e.hp = 1e12
+	e.dist = 20.0
+	b.record_events = true
+	for i in 40:
+		BattleCombat._shoot(b, e, 1.0, Defs.DamageType.PHYSICAL, 0.0, "test", tower.addons)
+	check(not b.drain_events().any(func(ev: Dictionary) -> bool: return ev["type"] == "crit"), "no crits without the add-on")
+	check(b.buy_addon(0, "crit"), "bought")
+	check(not b.buy_addon(0, "crit"), "only once per tower")
+	for i in 40:
+		BattleCombat._shoot(b, e, 1.0, Defs.DamageType.PHYSICAL, 0.0, "test", tower.addons)
+	check(b.drain_events().any(func(ev: Dictionary) -> bool: return ev["type"] == "crit"), "the add-on uses the Keep's crit chance")
+
+
+func test_each_add_on_costs_more_the_more_towers_have_it() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	b.build(0, "musket")
+	b.build(1, "musket")
+	var first := b.addon_cost(0, "bounce")
+	b.buy_addon(0, "bounce")
+	near(b.addon_cost(1, "bounce"), first * Defs.ADDON_GROWTH, 0.01)
+	eq(b.addon_cost(0, "bounce"), -1.0, "already has it")
+	var invested := b.slots[0].tower.invested
+	check(invested > b.build_cost("musket"), "add-ons count towards the sell refund")
+
+
+func test_upgrade_all_and_add_ons_for_all() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	for i in 4:
+		b.build(i, "musket")
+	var total := b.upgrade_all_cost()
+	var before := b.cash
+	check(b.upgrade_all_towers(), "upgraded")
+	near(before - b.cash, total, 0.01, "one level each costs the shown total")
+	for i in 4:
+		eq(b.slots[i].tower.level, 2)
+	check(b.addon_all_cost("multishot") > 0.0, "priced")
+	check(b.buy_addon_all("multishot"), "bought for all")
+	eq(b.addon_count("multishot"), 4)
+	eq(b.addon_all_cost("multishot"), -1.0, "nothing left to buy")
+	b.set_focus_all("strong")
+	check(b.slots.filter(func(s: Entities.Slot) -> bool: return s.tower != null).all(func(s: Entities.Slot) -> bool: return s.tower.focus == "strong"), "targeting set for all")
+
+
+func test_buy_all_stops_when_cash_runs_out() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	for i in 4:
+		b.build(i, "musket")
+	b.cash = b.addon_cost(0, "crit") * 1.5
+	check(b.buy_addon_all("crit"), "bought what it could")
+	eq(b.addon_count("crit"), 1, "only one was affordable")
