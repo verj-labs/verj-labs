@@ -25,7 +25,7 @@ const LIST := {
 	"push_dist": {"tab": "Attack", "name": "Pushback distance", "kind": "add", "start": 2.0, "step": 0.75, "base": 25.0, "growth": 1.18, "max": 24},
 	# --- Defense
 	"health": {"tab": "Defense", "name": "Health", "kind": "mult", "start": 150.0, "step": 1.1, "base": 6.0, "growth": 1.13, "max": 0},
-	"regen": {"tab": "Defense", "name": "Regeneration", "kind": "mult", "start": 0.5, "step": 1.1, "base": 8.0, "growth": 1.13, "max": 0},
+	"regen": {"tab": "Defense", "name": "Regeneration", "kind": "add", "start": 0.5, "step": 0.05, "base": 8.0, "growth": 1.13, "max": 70},
 	"armor": {"tab": "Defense", "name": "Armour", "kind": "add", "start": 0.0, "step": 0.01, "base": 12.0, "growth": 1.1, "max": 75},
 	"absolute": {"tab": "Defense", "name": "Absolute defense", "kind": "mult", "start": 1.0, "step": 1.1, "base": 20.0, "growth": 1.13, "max": 0},
 	"thorns": {"tab": "Defense", "name": "Thorns", "kind": "add", "start": 0.0, "step": 0.02, "base": 25.0, "growth": 1.14, "max": 40, "unlock": 400.0},

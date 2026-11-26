@@ -114,6 +114,9 @@ static func wave_size(wave: int) -> int:
 # --- The Keep ----------------------------------------------------------------------------------
 
 ## regen is a share of max health per second (0.005 = 0.5%/s).
+## Most the Keep can heal, in % of max health per second (upgrades, workshop and perks together).
+## Regeneration is a share of health, and health already grows, so the share must stay bounded.
+const KEEP_REGEN_MAX := 8.0
 const KEEP := {"hp": 100.0, "regen": 0.005, "dmg": 6.0, "rate": 1.2, "range": 58.0}
 
 ## The Keep's cash upgrades now live in core/upgrades.gd (five tabs).

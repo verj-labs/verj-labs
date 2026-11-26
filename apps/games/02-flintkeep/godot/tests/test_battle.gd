@@ -481,3 +481,11 @@ func test_walls_can_be_repaired_once_per_wave() -> void:
 	b.step(0.05)
 	b.walls[1].segments[0] = 1.0
 	check(b.repair_wall(1), "a new wave allows another repair")
+
+
+
+func test_keep_regeneration_is_a_capped_share_of_health() -> void:
+	var b := Battle.new({}, 1, 1, {"regen": 200})
+	b.levels["regen"] = Upgrades.LIST["regen"]["max"]
+	near(b.keep_regen(), b.keep_max_hp() * Defs.KEEP_REGEN_MAX / 100.0, 0.01, "capped however much is bought")
+	check(Upgrades.maxed("regen", Upgrades.LIST["regen"]["max"]), "the in-run upgrade has a last level")

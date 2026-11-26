@@ -165,7 +165,7 @@ func keep_max_hp() -> float:
 
 
 func keep_regen() -> float:
-	return keep_max_hp() * stat("regen") / 100.0 * _ws("regen")
+	return keep_max_hp() * minf(stat("regen") * _ws("regen"), Defs.KEEP_REGEN_MAX) / 100.0
 
 
 func keep_armor() -> float:
