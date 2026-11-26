@@ -17,6 +17,7 @@ var blasts: Array = []  ## {at, radius, t, life}
 var particles: Array = []  ## {pos, vel, color, t, life, size, gravity}
 var texts: Array = []  ## {pos, text, color, t, life, size}
 var glows: Array = []  ## steady lights set every frame by the view: [pos, radius, color]
+var glow_boost := 1.0  ## brighter shot glows at dawn, dusk and night (set by the view)
 
 var _glow_layer: Node2D
 var _glow_tex: Texture2D
@@ -196,20 +197,21 @@ static func _draw_zigzag(g: Geo, from: Vector2, to: Vector2, c: Color, seed_valu
 func _draw_glow() -> void:
 	for g in glows:
 		_glow(g[0], g[1], g[2])
+	var boost := sqrt(glow_boost)  # shots light up the field more after dark
 	for s in shots:
 		var k: float = s["t"] / s["life"]
 		var c: Color = s["color"]
-		c.a = 0.6 * (1.0 - k)
+		c.a = minf(0.6 * (1.0 - k) * glow_boost, 1.0)
 		if s["kind"] == "cannon":
-			_glow(s["from"], 12.0, Color(1, 0.6, 0.2, 0.55 * (1.0 - k)))
+			_glow(s["from"], 12.0 * boost, Color(1, 0.6, 0.2, minf(0.55 * (1.0 - k) * glow_boost, 1.0)))
 		else:
-			_glow(s["from"], 7.0, c)
-			_glow(s["to"], 5.0, c)
+			_glow(s["from"], 7.0 * boost, c)
+			_glow(s["to"], 5.0 * boost, c)
 		if s["kind"] in ["arcane", "chain", "sniper", "keep"]:
-			_glow(s["from"].lerp(s["to"], 0.35), 10.0, Color(c.r, c.g, c.b, c.a * 0.45))
+			_glow(s["from"].lerp(s["to"], 0.35), 10.0 * boost, Color(c.r, c.g, c.b, c.a * 0.45))
 	for b in blasts:
 		var k: float = b["t"] / b["life"]
-		_glow(b["at"], b["radius"] * 1.8, Color(1.0, 0.55, 0.15, 0.85 * (1.0 - k)))
+		_glow(b["at"], b["radius"] * 1.8 * boost, Color(1.0, 0.55, 0.15, minf(0.85 * (1.0 - k) * glow_boost, 1.0)))
 
 
 func _glow(at: Vector2, radius: float, color: Color) -> void:

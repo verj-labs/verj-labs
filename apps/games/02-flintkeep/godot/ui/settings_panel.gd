@@ -1,6 +1,6 @@
 class_name SettingsPanel
 extends RefCounted
-## Music and sound switches, and resetting progress (with a second tap to confirm).
+## Music and sound switches, the time of day, and resetting progress (with a second tap to confirm).
 
 
 static func build(on_close: Callable, allow_reset: bool = true) -> Control:
@@ -9,6 +9,7 @@ static func build(on_close: Callable, allow_reset: bool = true) -> Control:
 	var sound := Sfx.node()
 	body.add_child(_toggle("Music", func() -> bool: return sound.music_on, func(on: bool) -> void: sound.set_music(on)))
 	body.add_child(_toggle("Sound effects", func() -> bool: return sound.sfx_on, func(on: bool) -> void: sound.set_sfx(on)))
+	body.add_child(DayPicker.card())
 	if allow_reset:
 		var reset := Kit.button("Reset progress", Kit.Btn.DANGER, 22, 58)
 		var armed := [false]

@@ -40,6 +40,7 @@ func _initialize() -> void:
 	profile.data.missions[0]["progress"] = profile.data.missions[0]["target"]
 	profile.data.missions[1]["progress"] = int(profile.data.missions[1]["target"]) / 2
 	profile.data.gems = 60
+	profile.data.day_mode = opts.get("day", "day")  # day=cycle|clock|sunrise|day|sunset|night
 	if opts["offline"] == "1":
 		profile.offline_pending = 240.0
 	var main: Control = load("res://scenes/main.tscn").instantiate()
@@ -62,6 +63,9 @@ func _initialize() -> void:
 			bs.battle.levels["thorns"] = int(opts["thorns"])
 		if opts["tab"] != "":
 			bs.get("_panel").call("_set_tab", opts["tab"])
+		if opts.get("picker", "0") == "1":
+			await create_timer(float(opts["wait"]) - 0.3).timeout
+			bs.call("_open_day_picker")
 		if opts["perk"] == "1":
 			await create_timer(float(opts["wait"]) - 0.3).timeout
 			bs.battle.perk_offer = Perks.pick_three(bs.battle.rng)

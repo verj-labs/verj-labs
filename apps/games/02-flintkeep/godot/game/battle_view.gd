@@ -26,11 +26,19 @@ var paused := false
 var selected_slot := -1
 var selected_section := Vector2i(-1, -1)
 var hint_slot := -1  ## The tutorial points a bouncing arrow at this slot.
+var day_mode := "cycle"  ## time of day, see DayNight.MODES (the screen sets it from the profile)
 var zoom := 3.0
 var field_size := Vector2(180, 200)  ## Visible area in (screen) field units.
 
 var fx: FieldFx
 var _ground: Node2D
+var _shadows: Node2D  ## sun shadows of the Keep and towers (flat, squashed like the ground)
+var _haze: Node2D  ## a coloured haze at the field's edges at dawn, dusk and night
+var _look: Dictionary = DayNight.look(0.3)
+var _shadow_key: Array = []
+var _visible_rect := Rect2()
+var _haze_tex: Texture2D
+var _fireflies: Array = []  ## [field position, speed, phase] for night sparkles
 var _marks: Node2D  ## pulsing selection marks on the ground (drawn only while something is selected)
 var _things: Node2D  ## y-sorted: Stands and EnemySprites
 var _top: Node2D  ## the tutorial arrow
@@ -69,6 +77,11 @@ func _ready() -> void:
 	_ground.scale = Vector2(1.0, TILT)  # the ground is drawn flat and squashed by the camera tilt
 	_ground.draw.connect(_draw_ground)
 	add_child(_ground)
+	_shadows = Node2D.new()
+	_shadows.scale = Vector2(1.0, TILT)
+	_shadows.draw.connect(_draw_shadows)
+	add_child(_shadows)
+	_haze_tex = _make_haze()
 	_marks = Node2D.new()
 	_marks.scale = Vector2(1.0, TILT)
 	_marks.draw.connect(_draw_marks)
@@ -82,6 +95,13 @@ func _ready() -> void:
 	_top = Node2D.new()
 	_top.draw.connect(_draw_hint)
 	add_child(_top)
+	_haze = Node2D.new()
+	_haze.draw.connect(_draw_haze)
+	add_child(_haze)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	for i in 26:
+		_fireflies.append([Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)), rng.randf_range(0.2, 0.6), rng.randf() * TAU])
 	fx = FieldFx.new()
 	add_child(fx)
 
@@ -100,6 +120,10 @@ func layout(area: Vector2) -> void:
 	_base_position = area / 2.0 + Vector2(0, HEADROOM * 0.35 * zoom)
 	position = _base_position + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake * zoom
 	var size := area / zoom
+	var visible := Rect2(-_base_position / zoom, area / zoom)
+	if visible != _visible_rect:
+		_visible_rect = visible
+		_haze.queue_redraw()
 	if size != field_size or _decor.is_empty():
 		field_size = size
 		_scatter_decor()
@@ -125,8 +149,73 @@ func _process(delta: float) -> void:
 		for e in battle.drain_events():
 			_on_event(e)
 	fx.tick(0.0 if paused else delta)
+	_update_day()
 	_update_lights()
 	_refresh_field()
+
+
+## Time of day: tints the ground and everything standing (effects stay untinted, so shots and
+## lights glow brighter at night), tints the edge haze, and redraws shadows when the sun moves.
+func _update_day() -> void:
+	var now := Time.get_unix_time_from_system()
+	var clock := Time.get_time_dict_from_system()
+	var hour := float(clock["hour"]) + float(clock["minute"]) / 60.0
+	_look = DayNight.look(DayNight.phase(day_mode, now, hour))
+	var tint: Color = _look["tint"]
+	_ground.modulate = tint
+	_things.modulate = tint
+	_shadows.modulate = Color(1, 1, 1, 1)
+	var haze: Color = _look["haze"]
+	_haze.modulate = haze
+	_haze.visible = haze.a > 0.01
+	if battle == null:
+		return
+	var sun: Dictionary = _look["sun"]
+	var dir: Vector2 = sun["dir"]
+	var towers: Array = []
+	for slot in battle.slots:
+		if slot.tower != null and battle.slot_open(slot.index):
+			towers.append(slot.index)
+	var key := [snappedf(dir.angle(), 0.02), snappedf(sun["height"], 0.03), sun["strength"], towers]
+	if key != _shadow_key:
+		_shadow_key = key
+		_shadows.queue_redraw()
+
+
+## Long soft shadows on the ground, pointing away from the sun (short at noon, long at dawn and
+## dusk, faint under the moon).
+func _draw_shadows() -> void:
+	if battle == null:
+		return
+	var sun: Dictionary = _look["sun"]
+	var away: Vector2 = -(sun["dir"] as Vector2)
+	var reach := 0.6 + 2.4 * (1.0 - float(sun["height"]))
+	var color := Color(0.02, 0.12, 0.05, 0.34 * float(sun["strength"]))
+	_shadow(Vector2.ZERO, 15.0, reach, away, color)
+	for slot in battle.slots:
+		if slot.tower != null and battle.slot_open(slot.index):
+			_shadow(slot.pos, 7.0, reach, away, color)
+
+
+func _shadow(at: Vector2, size: float, reach: float, away: Vector2, color: Color) -> void:
+	var length := size * (1.0 + reach)
+	_shadows.draw_set_transform(at + away * (length * 0.5 - size * 0.4), away.angle(), Vector2.ONE)
+	_shadows.draw_texture_rect(_soft, Rect2(Vector2(-length / 2.0, -size * 0.55), Vector2(length, size * 1.1)), false, color)
+	_shadows.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_haze() -> void:
+	_haze.draw_texture_rect(_haze_tex, _visible_rect, false)
+
+
+func night_amount() -> float:
+	return _look["night"]
+
+
+## How warm the light is (dawn and dusk), 0-1, for the sun icon.
+func warmth() -> float:
+	var tint: Color = _look["tint"]
+	return clampf((tint.r - tint.b) * 2.5, 0.0, 1.0) if float(_look["night"]) < 0.5 else 0.0
 
 
 ## Redraws only what changed since the last frame (see the class comment).
@@ -309,12 +398,41 @@ func _update_lights() -> void:
 	if battle == null:
 		return
 	var pulse := 0.8 + 0.2 * sin(_time * 3.0)
+	var glow: float = _look["glow"]
+	var night: float = _look["night"]
+	fx.glow_boost = glow
 	var keep := Art.rect("keep", Vector2.ZERO)
-	fx.glows.append([keep.position + keep.size * Vector2(0.5, 0.12), 14.0 * pulse, Color(1.0, 0.75, 0.3, 0.45)])
+	fx.glows.append([keep.position + keep.size * Vector2(0.5, 0.12), 14.0 * pulse * sqrt(glow), Color(1.0, 0.75, 0.3, minf(0.45 * glow, 0.9))])
+	if night > 0.05:
+		# lamplight: a warm pool around the Keep, lit windows and door, a lantern on every tower
+		fx.glows.append([Vector2(0, -6), 38.0, Color(1.0, 0.7, 0.35, 0.22 * night)])
+		for spot in [Vector2(0.33, 0.55), Vector2(0.67, 0.55), Vector2(0.5, 0.84)]:
+			fx.glows.append([keep.position + keep.size * spot, 5.0, Color(1.0, 0.78, 0.35, 0.8 * night)])
 	for slot in battle.slots:
-		if slot.tower != null and slot.tower.weapon == "arcane":
-			var r := Art.rect("arcane", proj(slot.pos) + Vector2(0, 1.5 - WallDrawer.HEIGHT))
-			fx.glows.append([r.position + r.size * Vector2(0.5, 0.19), 9.0 * pulse, Color(0.78, 0.6, 1.0, 0.55)])
+		if slot.tower == null or not battle.slot_open(slot.index):
+			continue
+		var name := tower_sprite(slot.tower)
+		var r := Art.rect(name, proj(slot.pos) + Vector2(0, 1.5 - WallDrawer.HEIGHT))
+		if slot.tower.weapon == "arcane":
+			fx.glows.append([r.position + r.size * Vector2(0.5, 0.19), 9.0 * pulse * sqrt(glow), Color(0.78, 0.6, 1.0, minf(0.55 * glow, 0.9))])
+		if night > 0.05:
+			fx.glows.append([r.position + r.size * Vector2(0.5, 0.55), 6.0, Color(1.0, 0.75, 0.35, 0.65 * night)])
+			fx.glows.append([proj(slot.pos), 14.0, Color(1.0, 0.7, 0.35, 0.14 * night)])
+	var tint: Color = _look["tint"]
+	var golden := clampf((tint.r - tint.b) * 3.0, 0.0, 1.0) * (1.0 - night)
+	if golden > 0.02:  # golden hour: warm light washing in from the sun's side
+		var towards: Vector2 = proj(_look["sun"]["dir"])
+		var w := _visible_rect.size.x
+		fx.glows.append([_visible_rect.get_center() + towards * w * 0.4, w * 0.85, Color(1.0, 0.5, 0.22, 0.7 * golden)])
+	if night > 0.3:  # fireflies drifting over the meadow
+		var half := _visible_rect.size / 2.0
+		var centre := _visible_rect.get_center()
+		for f in _fireflies:
+			var base: Vector2 = f[0]
+			var t: float = _time * f[1] + f[2]
+			var p := centre + Vector2(base.x * half.x + sin(t * 1.3) * 10.0, base.y * half.y + cos(t) * 8.0)
+			var blink := maxf(sin(t * 4.0), 0.0)
+			fx.glows.append([p, 2.2, Color(0.85, 1.0, 0.45, 0.9 * blink * (night - 0.3) / 0.7)])
 
 
 # --- Ground (drawn flat; the layer is squashed by TILT) ----------------------------------------------
@@ -529,6 +647,22 @@ static func _make_vignette() -> Texture2D:
 	tex.fill = GradientTexture2D.FILL_RADIAL
 	tex.fill_from = Vector2(0.5, 0.5)
 	tex.fill_to = Vector2(1.05, 0.5)
+	tex.width = 128
+	tex.height = 128
+	return tex
+
+
+## The edge haze: clear in the middle, white towards the corners (tinted by the time of day).
+static func _make_haze() -> Texture2D:
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0))
+	g.set_color(1, Color(1, 1, 1, 1))
+	g.add_point(0.45, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.1, 0.5)
 	tex.width = 128
 	tex.height = 128
 	return tex

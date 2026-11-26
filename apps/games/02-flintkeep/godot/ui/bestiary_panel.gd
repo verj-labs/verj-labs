@@ -10,7 +10,7 @@ static func build(on_close: Callable) -> Control:
 	var body := Kit.vbox(12)
 	body.add_child(Kit.heading("Bestiary", 40, Pal.WHITE))
 	var met := Defs.ENEMY_ORDER.filter(func(kind: String) -> bool: return data.enemy_seen(kind)).size()
-	body.add_child(Kit.label("%d of %d raiders met. Stats are at wave 1; they grow every wave." % [met, Defs.ENEMY_ORDER.size()],
+	body.add_child(Kit.para("%d of %d raiders met. Stats are at wave 1; they grow every wave." % [met, Defs.ENEMY_ORDER.size()],
 		18, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
 	var scroll := TouchScroll.new()
 	scroll.custom_minimum_size.y = 600
@@ -42,9 +42,9 @@ static func _card(kind: String, met: bool) -> Control:
 	row.add_child(v)
 	v.add_child(Kit.label(info["name"] if met else "???", 24, Pal.TEXT, Fonts.heading()))
 	if not met:
-		v.add_child(Kit.label(arrival(kind), 18, Pal.TEXT_DIM, Fonts.semibold(), HORIZONTAL_ALIGNMENT_LEFT, true))
+		v.add_child(Kit.para(arrival(kind), 18, Pal.TEXT_DIM, Fonts.semibold()))
 		return card
-	v.add_child(Kit.label(info["about"], 16, Pal.TEXT_DIM, Fonts.semibold(), HORIZONTAL_ALIGNMENT_LEFT, true))
+	v.add_child(Kit.para(info["about"], 16, Pal.TEXT_DIM, Fonts.semibold()))
 	var lines: Array[String] = []
 	lines.append("Health %s  ·  %s" % [Num.fmt(stats["hp"]), speed_word(stats["speed"])])
 	if float(stats.get("burst", 0.0)) > 0.0:
@@ -64,7 +64,7 @@ static func _card(kind: String, met: bool) -> Control:
 	lines.append("  ·  ".join(traits))
 	lines.append(arrival(kind))
 	for line in lines:
-		v.add_child(Kit.label(line, 17, Pal.TEXT, Fonts.bold(), HORIZONTAL_ALIGNMENT_LEFT, true))
+		v.add_child(Kit.para(line, 17, Pal.TEXT, Fonts.bold()))
 	return card
 
 

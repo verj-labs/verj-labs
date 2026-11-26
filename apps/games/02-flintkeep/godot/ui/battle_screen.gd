@@ -29,6 +29,7 @@ var _early_button: Button
 var _boss_meter: Meter
 var _perk_overlay: Control
 var _hud_style: StyleBoxFlat
+var _sky: SkyButton
 var _panel_style: StyleBoxFlat
 var _perk_label: Label
 
@@ -146,6 +147,7 @@ func _build_field() -> Control:
 	view = BattleView.new()
 	_field.add_child(view)
 	view.setup(battle)
+	view.day_mode = Profile.data.day_mode
 	view.event.connect(_on_battle_event)
 	_field.gui_input.connect(_on_field_input)
 	_boss_meter = Meter.new(Color("#ff7a2a"), 30, 16)
@@ -157,7 +159,29 @@ func _build_field() -> Control:
 	_boss_meter.offset_bottom = 38
 	_boss_meter.visible = false
 	_field.add_child(_boss_meter)
+	_sky = SkyButton.new()
+	_sky.anchor_left = 1.0
+	_sky.anchor_right = 1.0
+	_sky.offset_left = -60
+	_sky.offset_right = -8
+	_sky.offset_top = 8
+	_sky.offset_bottom = 60
+	_sky.pressed.connect(_open_day_picker)
+	_field.add_child(_sky)
 	return _field
+
+
+func _open_day_picker() -> void:
+	var holder := [null]
+	var body := Kit.vbox(14)
+	body.add_child(Kit.heading("Time of day", 40, Pal.WHITE))
+	body.add_child(Kit.para("Auto loops sunrise, day, sunset and night every 5 minutes. My clock follows your phone's time.",
+		18, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
+	body.add_child(DayPicker.build(func(mode: String) -> void: view.day_mode = mode))
+	var close := Kit.button("Close", Kit.Btn.PRIMARY, 28, 66)
+	close.pressed.connect(func() -> void: holder[0].queue_free())
+	body.add_child(close)
+	holder[0] = Kit.modal(self, body)
 
 
 func _build_panel() -> Control:
@@ -180,6 +204,8 @@ func _build_panel() -> Control:
 
 func _process(delta: float) -> void:
 	view.layout(_field.size)
+	_sky.night = view.night_amount()
+	_sky.warmth = view.warmth()
 	_update_boss_bar()
 	if _perk_overlay != null:
 		if battle.perk_offer.is_empty():

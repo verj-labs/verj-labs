@@ -2,7 +2,7 @@ extends SceneTree
 ## Developer tool: a late-run battle (wave 60, three rings full of upgraded towers, a crowded
 ## field) to measure where frame time goes. Needs a window (not --headless):
 ##
-##   godot --path godot --resolution 540x1170 -s ../tools/bench.gd [-- enemies=70 seconds=5]
+##   godot --path godot --resolution 540x1170 -s ../tools/bench.gd [-- enemies=70 seconds=5 day=night]
 ##
 ## Prints the average frame time with everything on, with the battlefield hidden (so the
 ## difference is drawing), and the battle simulation alone.
@@ -26,6 +26,7 @@ func _initialize() -> void:
 	profile.data.research = {"musket": 10, "cannon": 10, "volley": 8, "sniper": 6, "arcane": 4, "ring_2": 1, "ring_3": 1}
 	profile.data.workshop = {"damage": 10, "health": 10, "towers": 10}
 	profile.data.tutorial_done = true
+	profile.data.day_mode = _opts.get("day", "night")  # night has the most lights to draw
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
