@@ -3,6 +3,50 @@
 Product and design decisions, newest first, with the reasons. The code is the source of truth for
 numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `perks.gd`, `powers.gd`).
 
+## 0.5: day and night, a bestiary, planned enemy arrivals
+
+### Day and night (visual only)
+
+- **A loop of sunrise, day, sunset and night.** Modes: **Auto** (a full loop every 5 minutes of
+  real time, so 3x game speed does not spin it), **My clock** (follows the phone's time; a free
+  dark mode for night players) or a fixed **Sunrise, Day, Sunset or Night**. Picked from a
+  sun/moon button in the battlefield's corner or in Settings, and saved.
+- **It never changes the rules.** Players can pick a fixed time, so a harder night would only
+  make everyone pick Day.
+- **How it is drawn, and why it is cheap:** the ground and everything standing are tinted with
+  one colour each (no extra drawing). Effects stay untinted, so shots light up the night. Dawn
+  and dusk add a golden light from the sun's side and a coloured edge haze. Night adds a lamplit
+  pool round the Keep, lit windows, tower lanterns, brighter glows and fireflies, all with the
+  existing additive glow sprites. The Keep and towers cast soft shadows that swing with the sun.
+  The benchmark shows no measurable cost (night ~25 ms a frame, the same as day, on the
+  software renderer).
+- **Not 3D:** 3D would mean new models for everything, a heavier renderer and worse battery
+  life for real light and shadow; tint plus glow gets most of the mood in 2D.
+
+### Enemies
+
+- **Planned arrivals:** a new kind arrives only on a wave ending in 5 (never with a boss on the
+  10s), one at a time, with a banner: Sprinters at 15, Armoured brutes at 25, War balloons at
+  35, Sappers at 45, so all of tier 1 has arrived by wave 45. Wyverns raid from tier 2 and
+  Shamans from tier 3 (from wave 5). One roster (`Defs.ENEMY_ROSTER`) drives the waves, the
+  banner and the bestiary.
+- **Speeds:** raiders were too slow. Raiders now move at 16 (was 11), Sprinters (the renamed
+  runners) at 32 (was 19), heavies at 9-12 and the Juggernaut at 6.
+- **Bestiary** ("Enemies" on the menu): each raider you have met, with what it does and its
+  wave-1 health, speed, damage, armour, ward, flying, healing and bounty. Unmet ones are dark
+  silhouettes that say when they arrive. Older saves are credited from their best waves.
+
+### iPhone safe areas
+
+- The battle screen is edge to edge: the wood top bar runs up under the status bar and the
+  wood panel down to the bottom edge; only their contents keep clear of the notch and home
+  bar. (The green strips above and below were the grass background showing through.)
+
+### Balance (simulated player, 4 seeds)
+
+- Fresh 31-32 waves, light ~40, mid ~480-510, late reaches the 1,000 cap. Workshop levels:
+  5 ~295, 10 ~325, 20 ~380, 30 ~430. The jump between 3 and 5 levels is still there.
+
 ## 0.4: performance, tower add-ons, a Towers tab
 
 ### Performance (late runs slowed to a crawl on an iPhone 15 Pro, even at 1x)

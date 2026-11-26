@@ -16,7 +16,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
       between towers are bought one at a time, and a finished ring is fortified
 - [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright
 - [x] 5 weapons (musket, cannon, volley gun, rifle nest, arcane spire), armour and ward
-- [x] 8 enemies (raider, runner, brute, sapper, shaman, war balloon, wyvern, juggernaut), with
+- [x] 8 enemies (raider, sprinter, brute, sapper, shaman, war balloon, wyvern, juggernaut), with
       walking animations; towers look grander at levels 5 and 10
 - [x] Cash upgrades during a run: Keep, walls, economy (bounty, coin bounty, interest)
 - [x] Coins and research with 2 timed labs that keep running while the game is closed
@@ -39,7 +39,10 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] 0.4: smooth late runs (only what changes is redrawn; one mesh per wall piece; capped effects;
       60 fps cap); tower add-ons (crit, multishot, bounce, pushback); a Towers tab to upgrade
       or kit out every tower at once; wall add-ons (thorns, absolute defense) per ring
-- [x] Settings: music, sound effects, reset progress
+- [x] 0.5: day and night (auto loop, your clock, or a fixed time) with lamplight, fireflies
+      and moving shadows; a bestiary; new enemies on planned waves (15, 25, 35, 45; tier 2 and 3
+      exclusives); faster raiders and sprinters; edge-to-edge battle screen on notched phones
+- [x] Settings: music, sound effects, time of day, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers
 - [ ] More content (see "Not built yet" in the design doc)
