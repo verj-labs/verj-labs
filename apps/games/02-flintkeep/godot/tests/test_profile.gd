@@ -1,0 +1,111 @@
+extends TestCase
+## Research, labs and saving.
+
+
+func _rich() -> ProfileData:
+	var p := ProfileData.new()
+	p.coins = 100000.0
+	return p
+
+
+func test_research_costs_and_times_grow_with_level() -> void:
+	check(Research.cost("keep_damage", 3) > Research.cost("keep_damage", 2), "cost grows")
+	check(Research.seconds("keep_damage", 3) > Research.seconds("keep_damage", 2), "time grows")
+	check(Research.seconds("keep_damage", 59) <= Research.MAX_SECONDS, "time is capped")
+
+
+func test_starting_research_takes_coins_and_a_lab() -> void:
+	var p := ProfileData.new()
+	p.coins = 50.0
+	check(p.start("keep_damage", 1000.0), "affordable research starts")
+	near(p.coins, 30.0, 0.001, "price paid")
+	eq(p.lab_of("keep_damage"), 0)
+	eq(p.level("keep_damage"), 0, "level only rises when the lab finishes")
+
+
+func test_cannot_start_without_coins() -> void:
+	var p := ProfileData.new()
+	p.coins = 5.0
+	eq(p.blocker("keep_damage"), "NEED COINS")
+	check(not p.start("keep_damage", 0.0), "refused")
+	near(p.coins, 5.0)
+
+
+func test_labs_limit_parallel_research() -> void:
+	var p := _rich()
+	check(p.start("keep_damage", 0.0), "lab 1")
+	check(p.start("keep_health", 0.0), "lab 2")
+	eq(p.blocker("keep_regen"), "LABS BUSY")
+	eq(p.blocker("keep_damage"), "IN LAB", "the same research cannot run twice")
+
+
+func test_research_finishes_when_time_is_up() -> void:
+	var p := _rich()
+	p.start("keep_damage", 0.0)
+	var seconds := Research.seconds("keep_damage", 0)
+	eq(p.finish_due(seconds - 1.0).size(), 0, "not yet")
+	var done := p.finish_due(seconds)
+	eq(done, ["keep_damage"] as Array[String])
+	eq(p.level("keep_damage"), 1)
+	eq(p.free_lab(), 0, "the lab is free again")
+
+
+func test_rings_must_be_unlocked_in_order() -> void:
+	var p := _rich()
+	check(p.blocker("ring_3").begins_with("NEEDS"), "ring 3 needs ring 2")
+	p.research["ring_2"] = 1
+	eq(p.blocker("ring_3"), "")
+	eq(p.blocker("ring_2"), "MAX", "a ring is a single unlock")
+
+
+func test_best_wave_and_tier_unlock() -> void:
+	var p := ProfileData.new()
+	check(p.record_run(1, 12, 100), "first run is a record")
+	check(not p.record_run(1, 10, 80), "a worse run is not")
+	eq(p.best(1), 12)
+	eq(p.unlocked_tier, 1)
+	p.record_run(1, Defs.TIER_UNLOCK_WAVE, 300)
+	eq(p.unlocked_tier, 2, "reaching the unlock wave opens the next tier")
+	eq(p.total_kills, 480)
+
+
+func test_save_round_trip() -> void:
+	var p := _rich()
+	p.research = {"keep_damage": 4, "ring_2": 1}
+	p.start("cannon", 500.0)
+	p.record_run(2, 30, 10)
+	var copy := ProfileData.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	eq(copy.level("keep_damage"), 4)
+	eq(copy.level("ring_2"), 1)
+	eq(copy.lab_of("cannon"), 0)
+	eq(copy.best(2), 30)
+	near(copy.coins, p.coins)
+
+
+func test_load_ignores_unknown_and_broken_fields() -> void:
+	var copy := ProfileData.from_dict({"coins": "12", "research": {"laser_beams": 3}, "labs": [{"id": "nope"}], "unlocked_tier": 99})
+	near(copy.coins, 12.0)
+	eq(copy.level("laser_beams"), 0)
+	eq(copy.free_lab(), 0, "an unknown lab job is dropped")
+	eq(copy.unlocked_tier, Defs.MAX_TIER)
+
+
+func test_weapon_research_raises_start_level_and_discount() -> void:
+	check(Research.weapon_unlocked("musket", 0), "musket is free")
+	check(not Research.weapon_unlocked("cannon", 0), "cannon starts locked")
+	eq(Research.weapon_start_level("cannon", 1), 1, "first level only unlocks")
+	eq(Research.weapon_start_level("cannon", 3), 3)
+	eq(Research.weapon_start_level("musket", 2), 3)
+	near(Research.weapon_discount("cannon", 3), 2 * Research.WEAPON_DISCOUNT_STEP)
+
+
+func test_offline_coins_need_time_away_and_are_capped() -> void:
+	var p := ProfileData.new()
+	eq(p.offline_coins(10000.0), 0.0, "first launch pays nothing")
+	p.last_seen = 10000.0
+	eq(p.offline_coins(10000.0 + 60.0), 0.0, "a minute away pays nothing")
+	near(p.offline_coins(10000.0 + 3600.0), p.offline_rate(), 1.0, "an hour pays the hourly rate")
+	near(p.offline_coins(10000.0 + 100 * 3600.0), p.offline_rate() * ProfileData.OFFLINE_MAX_HOURS, 1.0, "capped at 8 hours")
+	var slow := p.offline_rate()
+	p.best_wave["1"] = 30
+	check(p.offline_rate() > slow, "better players earn more while away")
