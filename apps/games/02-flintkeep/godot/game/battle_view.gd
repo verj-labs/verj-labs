@@ -4,7 +4,12 @@ extends Node2D
 ## ground (and every circle on it) is squashed vertically into ellipses, while towers, walls and
 ## enemies stand upright, so the flat battlefield reads as a 3D scene.
 ## Battle works in flat field units (origin = the Keep); proj() turns those into the tilted
-## view. Layers, back to front: ground, everything standing (sorted by depth), effects.
+## view. Layers, back to front: ground, selection marks, everything standing (y-sorted Stand
+## and EnemySprite nodes), the tutorial arrow, effects.
+##
+## Drawing is the expensive part on phones, so nothing is redrawn every frame unless it moves:
+## the ground redraws when the fortress or a selection changes, each wall piece and tower when it
+## changes, and enemies are sprites that only move.
 
 signal event(data: Dictionary)
 
@@ -26,7 +31,19 @@ var field_size := Vector2(180, 200)  ## Visible area in (screen) field units.
 
 var fx: FieldFx
 var _ground: Node2D
-var _things: Node2D
+var _marks: Node2D  ## pulsing selection marks on the ground (drawn only while something is selected)
+var _things: Node2D  ## y-sorted: Stands and EnemySprites
+var _top: Node2D  ## the tutorial arrow
+var _ground_key: Array = []
+var _wall_key: Array = []
+var _wall_pieces: Array = []  ## [ring, segment, Stand]
+var _slot_stands: Dictionary = {}  ## slot index -> Stand
+var _slot_rings := -1
+var _keep_stand: Stand
+var _decor_stands: Array[Stand] = []
+var _enemy_sprites: Dictionary = {}  ## enemy id -> EnemySprite
+var _spare_sprites: Array[EnemySprite] = []
+var _seen_frame := 0
 var _time := 0.0
 var _soft: Texture2D
 var _rim: Texture2D  ## clear centre, whitish towards the edge (range circles)
@@ -52,10 +69,19 @@ func _ready() -> void:
 	_ground.scale = Vector2(1.0, TILT)  # the ground is drawn flat and squashed by the camera tilt
 	_ground.draw.connect(_draw_ground)
 	add_child(_ground)
+	_marks = Node2D.new()
+	_marks.scale = Vector2(1.0, TILT)
+	_marks.draw.connect(_draw_marks)
+	add_child(_marks)
 	_things = Node2D.new()
 	_things.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_things.draw.connect(_draw_things)
+	_things.y_sort_enabled = true
 	add_child(_things)
+	_keep_stand = Stand.new(0.0, _draw_keep)
+	_things.add_child(_keep_stand)
+	_top = Node2D.new()
+	_top.draw.connect(_draw_hint)
+	add_child(_top)
 	fx = FieldFx.new()
 	add_child(fx)
 
@@ -100,8 +126,91 @@ func _process(delta: float) -> void:
 			_on_event(e)
 	fx.tick(0.0 if paused else delta)
 	_update_lights()
-	_ground.queue_redraw()
-	_things.queue_redraw()
+	_refresh_field()
+
+
+## Redraws only what changed since the last frame (see the class comment).
+func _refresh_field() -> void:
+	if battle == null:
+		return
+	var wall_key := WallDrawer.layout_key(battle)
+	if wall_key != _wall_key:
+		_wall_key = wall_key
+		for item in _wall_pieces:
+			(item[2] as Stand).queue_free()
+		_wall_pieces = WallDrawer.build(battle, _things)
+	var ground_key := _make_ground_key()
+	if ground_key != _ground_key:
+		_ground_key = ground_key
+		_ground.queue_redraw()
+	if selected_slot >= 0 or selected_section.x >= 0:
+		_marks.queue_redraw()
+	elif _marks.visible:
+		_marks.queue_redraw()  # once more, to clear the last mark
+	_marks.visible = selected_slot >= 0 or selected_section.x >= 0
+	_top.visible = hint_slot >= 0 and hint_slot != selected_slot
+	if _top.visible:
+		_top.queue_redraw()
+	WallDrawer.refresh(battle, _wall_pieces)
+	_refresh_slots()
+	_keep_stand.refresh([battle.stat("thorns") > 0.0, battle.keep_fired < 0.08])
+	_refresh_enemies()
+
+
+func _make_ground_key() -> Array:
+	var affordable: Array = []
+	for ring in range(1, battle.rings_unlocked + 1):
+		affordable.append(battle.cash >= battle.section_cost(ring))
+	var reach := battle.tower_range(battle.slots[selected_slot].tower) if selected_slot >= 0 and battle.slots[selected_slot].tower != null else 0.0
+	return [battle.rings_unlocked, _wall_key, affordable, battle.keep_range(), selected_slot, reach, field_size]
+
+
+func _refresh_slots() -> void:
+	if _slot_rings != battle.rings_unlocked:
+		_slot_rings = battle.rings_unlocked
+		for stand in _slot_stands.values():
+			(stand as Stand).queue_free()
+		_slot_stands.clear()
+		for slot in battle.slots:
+			if battle.slot_open(slot.index):
+				var stand := Stand.new(slot.pos.y * TILT + 2.5, Callable())
+				stand.painter = _draw_slot.bind(slot)
+				_things.add_child(stand)
+				_slot_stands[slot.index] = stand
+	var cheapest := _cheapest_build()
+	for index in _slot_stands:
+		var slot: Entities.Slot = battle.slots[index]
+		var lit := slot.index == selected_slot or (slot.tower == null and battle.cash >= cheapest)
+		var key: Array
+		if slot.tower == null:
+			key = [lit]
+		else:
+			key = [lit, slot.tower.weapon, slot.tower.level, slot.tower.fired < 0.08]
+		(_slot_stands[index] as Stand).refresh(key)
+
+
+func _refresh_enemies() -> void:
+	_seen_frame += 1
+	var frozen := battle.freeze_left > 0.0
+	var seen := {}
+	for e in battle.enemies:
+		var sprite: EnemySprite = _enemy_sprites.get(e.id)
+		if sprite == null:
+			sprite = _spare_sprites.pop_back() if not _spare_sprites.is_empty() else null
+			if sprite == null:
+				sprite = EnemySprite.new(_soft)
+				_things.add_child(sprite)
+			sprite.visible = true
+			_enemy_sprites[e.id] = sprite
+		sprite.show_enemy(e, frozen)
+		seen[e.id] = true
+	if _enemy_sprites.size() != seen.size():
+		for id in _enemy_sprites.keys():
+			if not seen.has(id):
+				var gone: EnemySprite = _enemy_sprites[id]
+				gone.visible = false
+				_spare_sprites.append(gone)
+				_enemy_sprites.erase(id)
 
 
 ## The open build slot under a local point, or -1. Compares on screen, where towers stand.
@@ -255,10 +364,6 @@ func _draw_wall_plan(ring: int) -> void:
 	var affordable := battle.cash >= battle.section_cost(ring)
 	for seg in count:
 		var a0 := Defs.ring_angle_offset(ring) + step * seg
-		var selected := selected_section == Vector2i(ring, seg)
-		if selected:
-			var pulse := 0.6 + 0.4 * sin(_time * 6.0)
-			_ground.draw_arc(Vector2.ZERO, r, a0 + 0.06, a0 + step - 0.06, 32, Color(1.0, 0.95, 0.5, 0.75 * pulse), 9.0, true)
 		if wall.sections[seg]:
 			continue
 		var dashes := maxi(int(step * r / 4.0), 3)
@@ -275,35 +380,27 @@ func _draw_range() -> void:
 	if selected_slot < 0:
 		return
 	var slot: Entities.Slot = battle.slots[selected_slot]
-	var pulse := 0.7 + 0.3 * sin(_time * 5.0)
 	if slot.tower != null:
-		var reach := battle.tower_range(slot.tower)
-		_draw_reach(slot.pos, reach, 0.9)
-	_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(14, 14), Vector2(28, 28)), false, Color(1.0, 0.95, 0.5, 0.8 * pulse))
+		_draw_reach(slot.pos, battle.tower_range(slot.tower), 0.9)
 
 
-# --- Everything standing, sorted back to front -------------------------------------------------------
-
-func _draw_things() -> void:
+## The pulsing marks under a selected slot or wall section (flat, squashed like the ground).
+func _draw_marks() -> void:
 	if battle == null:
 		return
-	var items: Array = []  # [depth, Callable]
-	items.append([0.0, _draw_keep])
-	var cheapest := _cheapest_build()
-	for slot in battle.slots:
-		if battle.slot_open(slot.index):
-			items.append([slot.pos.y * TILT + 2.5, _draw_slot.bind(slot, cheapest)])
-	WallDrawer.add(items, battle, _things)
-	for d in _decor:
-		var p: Vector2 = d[0]
-		items.append([p.y * TILT, _draw_decor.bind(p, d[1])])
-	for e in battle.enemies:
-		items.append([e.pos().y * TILT + (60.0 if e.air else 0.5), _draw_enemy.bind(e)])
-	items.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	for item in items:
-		(item[1] as Callable).call()
-	_draw_hint()
+	if selected_slot >= 0:
+		var slot: Entities.Slot = battle.slots[selected_slot]
+		var pulse := 0.7 + 0.3 * sin(_time * 5.0)
+		_marks.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(14, 14), Vector2(28, 28)), false, Color(1.0, 0.95, 0.5, 0.8 * pulse))
+	if selected_section.x >= 1 and selected_section.x <= battle.rings_unlocked:
+		var ring := selected_section.x
+		var step: float = TAU / Defs.SLOT_COUNTS[ring]
+		var a0: float = Defs.ring_angle_offset(ring) + step * selected_section.y
+		var pulse := 0.6 + 0.4 * sin(_time * 6.0)
+		_marks.draw_arc(Vector2.ZERO, battle.wall_radius(ring), a0 + 0.06, a0 + step - 0.06, 32, Color(1.0, 0.95, 0.5, 0.75 * pulse), 9.0, true)
 
+
+# --- Everything standing (Stands under the y-sorted layer) -----------------------------------------
 
 func _scatter_decor() -> void:
 	_decor.clear()
@@ -318,22 +415,29 @@ func _scatter_decor() -> void:
 		if p.length() < keep_clear:
 			continue
 		_decor.append([p, names[rng.randi() % names.size()]])
+	for stand in _decor_stands:
+		stand.queue_free()
+	_decor_stands.clear()
+	for d in _decor:
+		var stand := Stand.new((d[0] as Vector2).y * TILT, _draw_decor.bind(d[0], d[1]))
+		_things.add_child(stand)
+		_decor_stands.append(stand)
 
 
-func _draw_decor(p: Vector2, name: String) -> void:
-	_things.draw_texture_rect(Art.tex(name), Art.rect(name, proj(p)), false)
+func _draw_decor(ci: CanvasItem, p: Vector2, name: String) -> void:
+	ci.draw_texture_rect(Art.tex(name), Art.rect(name, proj(p)), false)
 
 
 func _draw_hint() -> void:
-	if hint_slot < 0 or hint_slot == selected_slot:
+	if battle == null or hint_slot < 0 or hint_slot == selected_slot:
 		return
 	var tip: Vector2 = proj(battle.slots[hint_slot].pos) + Vector2(0, -WallDrawer.HEIGHT - 6.0 - absf(sin(_time * 4.0)) * 4.0)
 	var arrow := PackedVector2Array([tip, tip + Vector2(-4, -5), tip + Vector2(-1.6, -5), tip + Vector2(-1.6, -10),
 		tip + Vector2(1.6, -10), tip + Vector2(1.6, -5), tip + Vector2(4, -5)])
 	var outline := arrow.duplicate()
 	outline.append(tip)
-	_things.draw_colored_polygon(arrow, Pal.GOLD)
-	_things.draw_polyline(outline, Pal.INK, 0.7, true)
+	_top.draw_colored_polygon(arrow, Pal.GOLD)
+	_top.draw_polyline(outline, Pal.INK, 0.7, true)
 
 
 func _cheapest_build() -> float:
@@ -344,38 +448,41 @@ func _cheapest_build() -> float:
 	return best
 
 
-func _draw_keep() -> void:
+func _draw_keep(ci: CanvasItem) -> void:
+	if battle == null:
+		return
 	if battle.stat("thorns") > 0.0:  # a ring of iron spikes around the Keep's foot
+		var g := Geo.new()
 		for k in 14:
 			var a := PI * (k + 0.5) / 14.0
 			var out := Vector2.from_angle(a)
-			WallDrawer.spike(_things, proj(out * 13.0) + Vector2(0, -1.0), (proj(out) + Vector2(0, -0.3)).normalized(), 3.0)
+			WallDrawer.spike(g, proj(out * 13.0) + Vector2(0, -1.0), (proj(out) + Vector2(0, -0.3)).normalized(), 3.0)
+		g.submit(ci)
 	var r := Art.rect("keep", Vector2.ZERO)
 	if battle.keep_fired < 0.08:
 		r.position.y += 0.5
-	_things.draw_texture_rect(Art.tex("keep"), r, false)
+	ci.draw_texture_rect(Art.tex("keep"), r, false)
 
 
 ## Every slot is a stone pedestal as tall as the walls; its tower stands on top.
-func _draw_slot(slot: Entities.Slot, cheapest: float) -> void:
+func _draw_slot(ci: CanvasItem, slot: Entities.Slot) -> void:
 	var at := proj(slot.pos)
 	var plate := Art.rect("slot", at)
 	var top := at + Vector2(0, -WallDrawer.HEIGHT)
-	var lit := slot.index == selected_slot or (slot.tower == null and battle.cash >= cheapest)
-	_things.draw_texture_rect(Art.tex("slot"), plate, false, Color(1.12, 1.07, 0.92) if lit else Color.WHITE)
+	var lit: bool = (ci as Stand).key[0]
+	ci.draw_texture_rect(Art.tex("slot"), plate, false, Color(1.12, 1.07, 0.92) if lit else Color.WHITE)
 	if slot.tower == null:
-		if battle.cash >= cheapest and slot.index != selected_slot:
-			var a := 0.4 + 0.3 * sin(_time * 3.0 + slot.index)
-			_things.draw_set_transform(top, 0.0, Vector2(1.0, TILT))
-			_things.draw_arc(Vector2.ZERO, 9.0, 0, TAU, 40, Color(1.0, 1.0, 0.7, a), 1.0, true)
-			_things.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if lit and slot.index != selected_slot:  # an empty plate you can afford to build on
+			ci.draw_set_transform(top - Vector2(0, ci.position.y), 0.0, Vector2(1.0, TILT))
+			ci.draw_arc(Vector2.ZERO, 9.0, 0, TAU, 40, Color(1.0, 1.0, 0.7, 0.55), 1.0, true)
+			ci.draw_set_transform(Vector2(0, -ci.position.y))
 		return
 	var name := tower_sprite(slot.tower)
 	var r := Art.rect(name, top + Vector2(0, 1.5))
 	if slot.tower.fired < 0.08:
 		r.position.y += 0.6
-	_things.draw_texture_rect(Art.tex(name), r, false)
-	_draw_badge(top + Vector2(8, 1), str(slot.tower.level))
+	ci.draw_texture_rect(Art.tex(name), r, false)
+	_draw_badge(ci, top + Vector2(8, 1), str(slot.tower.level))
 
 
 ## Towers look grander as they level: a new detail at level 5 and again at level 10.
@@ -387,13 +494,13 @@ static func tower_sprite(tower: Entities.Tower) -> String:
 	return tower.weapon
 
 
-func _draw_badge(at: Vector2, text: String) -> void:
+func _draw_badge(ci: CanvasItem, at: Vector2, text: String) -> void:
 	var font := Fonts.field()
 	var fs := 5
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var box := Rect2(at - Vector2(w / 2.0 + 1.6, 3.2), Vector2(w + 3.2, 5.0))
-	_things.draw_style_box(_badge_box(), box)
-	_things.draw_string(font, Vector2(at.x - w / 2.0, at.y + 0.9), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.INK)
+	ci.draw_style_box(_badge_box(), box)
+	ci.draw_string(font, Vector2(at.x - w / 2.0, at.y + 0.9), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.INK)
 
 
 var _badge: StyleBoxFlat
@@ -408,37 +515,6 @@ func _badge_box() -> StyleBoxFlat:
 		_badge.set_corner_radius_all(3)
 		_badge.anti_aliasing = true
 	return _badge
-
-
-func _draw_enemy(e: Entities.Enemy) -> void:
-	var name := e.kind
-	if e.kind == "wyvern":
-		name = "wyvern_b" if int(e.age * 6.0) % 2 == 1 else "wyvern"
-	elif not e.air and e.attacking == -1 and Art.WALKERS.has(e.kind) and int(e.age * 6.0) % 2 == 1:
-		name = e.kind + "_b"  # second walking frame
-	var p := proj(e.pos())
-	var lift := 0.0
-	if e.air:
-		lift = 16.0 + sin(e.age * 3.0) * 1.5
-		_things.draw_texture_rect(_soft, Rect2(p + Vector2(-4, -1.2), Vector2(8, 2.6)), false, Color(0.05, 0.25, 0.1, 0.45))
-	else:
-		_things.draw_texture_rect(_soft, Rect2(p + Vector2(-3.5, -1.0), Vector2(7, 2.2)), false, Color(0.05, 0.25, 0.1, 0.35))
-		if e.attacking == -1:
-			lift = absf(sin(e.age * 9.0)) * 0.7
-	var r := Art.rect(name, p + Vector2(0, 0.5 - lift))
-	if e.attacking >= 0:
-		r.position += Vector2.from_angle(e.angle + PI) * (0.6 if int(e.age * 8.0) % 2 == 0 else 0.0)
-	var tint := Color(2.2, 2.2, 2.2) if e.hit_flash > 0.0 else (Color(0.7, 0.9, 1.4) if battle.freeze_left > 0.0 else Color.WHITE)
-	if p.x > 0.0:  # face the Keep
-		r.position.x += r.size.x
-		r.size.x = -r.size.x
-	_things.draw_texture_rect(Art.tex(name), r, false, tint)
-	if e.hp < e.max_hp:
-		var w := maxf(absf(r.size.x) * 0.8, 6.0)
-		var top := minf(r.position.y, r.end.y) - 2.0
-		var bar := Rect2(Vector2(p.x - w / 2.0, top), Vector2(w, 1.1))
-		_things.draw_rect(bar.grow(0.4), Pal.INK)
-		_things.draw_rect(Rect2(bar.position, Vector2(w * e.hp / e.max_hp, 1.1)), Pal.RED if not e.boss else Pal.ORANGE)
 
 
 # --- Textures ---------------------------------------------------------------------------------
