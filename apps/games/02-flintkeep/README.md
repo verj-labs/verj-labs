@@ -12,7 +12,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 ## Status
 
 - [x] Endless runs: waves every 24 s, a boss every 10th wave, tiers unlocked at wave 25
-- [x] The Keep plus 4 rings of towers (4 / 6 / 8 / 12) standing on their walls; wall sections
+- [x] The Keep plus 4 rings of towers (4 / 4 / 8 / 12; ring 1 an X, ring 2 a plus) on their walls; wall sections
       between towers are bought one at a time, and a finished ring is fortified
 - [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright
 - [x] 5 weapons (musket, cannon, volley gun, rifle nest, arcane spire), armour and ward
@@ -28,6 +28,10 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] First-run tutorial with a pointer to the first foundation
 - [x] Daily missions: three goals a day that pay coins
 - [x] Offline earnings (up to 8 hours) and calling the next wave early for bonus cash
+- [x] 0.2: waves to 1,000; five upgrade tabs in two columns with auto-buy (crits, multishot,
+      bounce, pushback, thorns, lifesteal ...); coin workshop; researched game speed; four
+      powers; perks every 50 waves (auto-picked after 20 s); targeting modes; run report.
+      Decisions and reasons: [`docs/DECISIONS.md`](docs/DECISIONS.md)
 - [x] Settings: music, sound effects, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers

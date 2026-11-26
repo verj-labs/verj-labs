@@ -44,7 +44,7 @@ func _initialize() -> void:
 	battle_screen.finished.emit("research")
 	await create_timer(0.3).timeout
 	profile.data.coins += 100.0
-	_expect(profile.start_research("keep_damage"), "start research")
+	_expect(profile.start_research("coin_bonus"), "start research")
 	await create_timer(1.2).timeout
 	await _shot(out_dir, "flow_research")
 	_screen(main).back.emit()

@@ -24,6 +24,7 @@ class Enemy:
 	var age: float = 0.0
 	var burst: float = 0.0  ## sappers: damage when they blow up
 	var heal: float = 0.0  ## shamans: share of max health healed per second around them
+	var push_cd: float = 0.0  ## seconds until this enemy can be pushed back again
 
 	func pos() -> Vector2:
 		return Vector2(cos(angle), sin(angle)) * dist
@@ -35,6 +36,8 @@ class Enemy:
 class Tower:
 	var weapon: String
 	var level: int
+	var start_level: int = 1  ## the level it was built at (upgrades are priced from here)
+	var focus: String = ""  ## targeting mode: "" = the weapon's default, or "first", "strong", "close", "air"
 	var cooldown: float = 0.0
 	var invested: float = 0.0  ## Cash spent on it, for the sell refund.
 	var fired: float = 0.0  ## Seconds since it last fired (for the recoil animation).

@@ -1,5 +1,9 @@
 # Flintkeep: game design
 
+> **0.2 changed progression a lot** (waves to 1,000, workshop, five upgrade tabs, perks,
+> powers, game speed research, ring 1 as an X and ring 2 as a plus). The reasons and the
+> current rules are in [`DECISIONS.md`](DECISIONS.md), which wins where this file disagrees.
+
 **One line:** an endless fortress defense for phones. Hold a central Keep against goblin
 raiders, build a castle around it ring by ring during the run, and research permanent upgrades
 between runs so the next one goes further.
@@ -79,7 +83,7 @@ average about 8 minutes). Research timers are a reason to check back in a few ho
 
 | | Cash | Coins |
 |---|---|---|
-| Earned | every kill (grows 7.5% per wave) | kills (roughly a fifth of the cash) + a bonus each wave (wave number × multiplier) |
+| Earned | every kill, plus cash per wave | a few per kill and a few per wave (Economy upgrades raise both) |
 | Spent on | towers, walls, Keep upgrades, economy upgrades | research |
 | Lasts | this run only | forever |
 
@@ -93,14 +97,14 @@ multiplier).
 ```
               . . . ring 4: 12 slots (every 30°)
           . . ring 3: 8 slots (every 45°)
-        . ring 2: 6 slots (hexagon)
+        . ring 2: 4 towers (plus: N, E, S, W)
       ring 1: 4 slots (N, E, S, W)
           [ KEEP ]
 ```
 
 - **The Keep** sits in the centre. It always shoots (cyan arcane bolts) and has its own
   upgrades: damage, fire rate, range, health, regen and armour. If it falls, the run ends.
-- **Rings 1–4** hold build slots: 4 / 6 / 8 / 12, so 30 at most. Ring 1 is open from the
+- **Rings 1–4** hold towers: 4 / 4 / 8 / 12, so 28 at most (ring 1 an X, ring 2 a plus). Ring 1 is open from the
   start; rings 2–4 are unlocked by research, in order. Slots grow with ring size, so a new
   player has 4 decisions and a veteran has 30. We used 4 rather than 2 for ring 1 because
   enemies come from every side.
@@ -143,8 +147,8 @@ towers **start one level higher** and makes their in-run upgrades 4% cheaper (up
 | Shaman | 15 | heals raiders within reach by 4% of their health a second |
 | Juggernaut | every 10th wave | boss: huge health, armour and ward |
 
-Enemy health grows 11.5% per wave, damage 7% per wave. Each tier multiplies enemy stats
-by 2.2× and coins by +75%.
+Enemy strength follows one smooth curve (`Upgrades.enemy_scale`). Each tier is the same curve
+raised: enemy health ×2.2 per tier (damage by its square root) and coins +75%.
 
 ## Damage types
 
@@ -152,27 +156,19 @@ Physical damage (muskets, cannons, rifles, the Keep) is reduced by **armour**; r
 60% of it. Magic damage (arcane) ignores armour but is reduced by **ward**. Mixing weapons
 beats stacking one.
 
-## Research (coins, in labs)
+## Workshop and research (coins)
 
-| Group | Items |
-|---|---|
-| Keep | damage, health, regen, fire rate |
-| Economy | cash bonus, coin bonus, starting cash, Quartermaster (cheaper cash upgrades) |
-| Arsenal | muskets, cannons, volley guns, rifle nests, arcane spires (unlock, then start level) |
-| Fortress | second / third / fourth ring, masonry (wall HP) |
-
-Prices grow about 1.55–1.8× per level and times about 1.45–1.55×, capped at 12 hours. Early
-levels take seconds to minutes, so the first sessions feel quick.
+- **Workshop** (instant, expensive, compounding): Keep damage, health, regeneration, fire rate,
+  critical chance, tower damage, cash bonus, starting cash, masonry.
+- **Labs** (timed): game speed (2x-5x), Siege lore (slower enemy growth), coin bonus,
+  Quartermaster, the five weapons, four powers, rings 2-4.
 
 ## Balance targets (checked by `tests/test_balance.gd`)
 
-- A brand-new player reaches about wave 12 (about 5 minutes) and earns enough coins for
-  several early researches.
-- A handful of research levels pushes that past wave 30. Mid-game research reaches 50+.
-- Higher tiers end sooner for the same research.
-
-`tools/balance.gd` prints waves and coins for several research setups; run it after
-changing numbers.
+- A brand-new player falls within a few minutes (the simulated player reaches wave ~20-25).
+- Workshop and research multiply how far runs go; strong setups reach the hundreds, and wave
+  1,000 is the long-term goal.
+- Higher tiers end sooner for the same upgrades.
 
 ## Not built yet (next steps)
 

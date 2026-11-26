@@ -10,8 +10,8 @@ signal event(data: Dictionary)
 
 const TILT := 0.6  ## How much the ground is squashed vertically (cos of the camera angle).
 const MAX_STEP := 1.0 / 30.0
-const TAP_RADIUS := 12.0
-const SECTION_TAP := 8.0  ## How close (field units) to a wall line a tap must land.
+const TAP_RADIUS := 16.0
+const SECTION_TAP := 11.0  ## How close (field units) to a wall line a tap must land.
 const MARGIN := 26.0  ## Field units of open ground kept around the outermost wall.
 const HEADROOM := 34.0  ## Room above the fortress for tall towers (screen field units).
 
@@ -32,6 +32,8 @@ var _soft: Texture2D
 var _vignette: Texture2D
 var _grass: Texture2D
 var _decor: Array = []  ## [field position, sprite name], scattered once per layout
+var _shake := 0.0  ## screen shake strength, decays quickly
+var _base_position := Vector2.ZERO
 
 
 static func proj(p: Vector2) -> Vector2:
@@ -67,7 +69,8 @@ func layout(area: Vector2) -> void:
 	var outer := battle.wall_radius(battle.rings_unlocked) + MARGIN
 	zoom = clampf(minf(area.x / (2.0 * outer), area.y / (2.0 * outer * TILT + HEADROOM)), 1.4, 4.5)
 	scale = Vector2(zoom, zoom)
-	position = area / 2.0 + Vector2(0, HEADROOM * 0.35 * zoom)
+	_base_position = area / 2.0 + Vector2(0, HEADROOM * 0.35 * zoom)
+	position = _base_position + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake * zoom
 	var size := area / zoom
 	if size != field_size or _decor.is_empty():
 		field_size = size
@@ -76,12 +79,13 @@ func layout(area: Vector2) -> void:
 
 ## Local (screen) point to flat field coordinates.
 func to_field(local: Vector2) -> Vector2:
-	var p := (local - position) / zoom
+	var p := (local - _base_position) / zoom
 	return Vector2(p.x, p.y / TILT)
 
 
 func _process(delta: float) -> void:
 	_time += delta
+	_shake = maxf(_shake - delta * 6.0, 0.0)
 	if battle != null:
 		battle.spawn_extents = Vector2(field_size.x / 2.0, field_size.y / 2.0 / TILT)
 		if not paused:
@@ -100,7 +104,7 @@ func _process(delta: float) -> void:
 
 ## The open build slot under a local point, or -1. Compares on screen, where towers stand.
 func slot_at(local: Vector2) -> int:
-	var screen := (local - position) / zoom
+	var screen := (local - _base_position) / zoom
 	var best := -1
 	var best_d := TAP_RADIUS
 	for slot in battle.slots:
@@ -132,6 +136,12 @@ func _on_event(e: Dictionary) -> void:
 			fx.shot(proj(e["from"]) + Vector2(0, -3), proj(e["to"]) + Vector2(0, -3), "chain")
 		"blast":
 			fx.blast(proj(e["at"]), e["radius"])
+			_shake = maxf(_shake, 0.8)
+		"crit":
+			if randf() < 0.35:  # not every crit, or the field fills with numbers
+				fx.float_text(proj(e["pos"]) + Vector2(randf_range(-3, 3), -12), Num.fmt(e["amount"]) + "!", Pal.ORANGE, 0.7, 6)
+		"power":
+			_power_fx(e["id"])
 		"kill":
 			Sfx.play("coin" if e["boss"] else "kill", 0.1)
 			var at := proj(e["pos"])
@@ -139,6 +149,7 @@ func _on_event(e: Dictionary) -> void:
 			fx.float_text(at + Vector2(0, -10), "+" + Num.cash(e["cash"]), Pal.CASH)
 			if e["boss"]:
 				fx.float_text(at + Vector2(0, -20), "+%s coins" % Num.fmt(e["coins"]), Pal.GOLD, 1.8, 9)
+				_shake = 2.0
 		"wall_broken":
 			Sfx.play("wall_break")
 			var at := proj(Vector2.from_angle(Battle.section_angle(e["ring"], e["segment"])) * battle.wall_radius(e["ring"]))
@@ -157,6 +168,19 @@ func _on_event(e: Dictionary) -> void:
 			var slot: Entities.Slot = battle.slots[e["slot"]]
 			fx.burst(proj(slot.pos) + Vector2(0, -WallDrawer.HEIGHT - 8.0), Pal.GOLD, 12, 28.0)
 	event.emit(e)
+
+
+func _power_fx(id: String) -> void:
+	_shake = 1.5
+	match id:
+		"rain":
+			for e in battle.enemies:
+				fx.shot(proj(e.pos()) + Vector2(randf_range(-6, 6), -40), proj(e.pos()), "musket")
+		"freeze":
+			for e in battle.enemies:
+				fx.burst(proj(e.pos()) + Vector2(0, -3), Pal.CYAN, 4, 15.0)
+		"gold":
+			fx.burst(Vector2(0, -30), Pal.GOLD, 30, 50.0)
 
 
 ## Where a shot leaves: near the top of the tower (or the Keep's crystal).
@@ -202,8 +226,19 @@ func _draw_ground() -> void:
 			_draw_wall_plan(ring)
 		else:
 			_ground.draw_arc(Vector2.ZERO, r, 0, TAU, 128, Color(1, 1, 1, 0.12), 0.8, true)
+	_draw_keep_range()
 	_draw_range()
 	_ground.draw_texture_rect(_vignette, area, false)
+
+
+## The Keep's reach is always shown: a soft fill strongest at the Keep and a dashed edge.
+func _draw_keep_range() -> void:
+	var reach := battle.keep_range()
+	_ground.draw_texture_rect(_soft, Rect2(Vector2(-reach, -reach), Vector2(reach, reach) * 2.0), false, Color(0.45, 0.85, 1.0, 0.18))
+	var dashes := 48
+	for k in dashes:
+		if k % 2 == 0:
+			_ground.draw_arc(Vector2.ZERO, reach, TAU * k / dashes, TAU * (k + 1) / dashes, 4, Color(0.3, 0.75, 1.0, 0.75), 1.2, true)
 
 
 ## Unbuilt wall sections show as dashed foundations; the selected one glows.
@@ -385,7 +420,7 @@ func _draw_enemy(e: Entities.Enemy) -> void:
 	var r := Art.rect(name, p + Vector2(0, 0.5 - lift))
 	if e.attacking >= 0:
 		r.position += Vector2.from_angle(e.angle + PI) * (0.6 if int(e.age * 8.0) % 2 == 0 else 0.0)
-	var tint := Color(2.2, 2.2, 2.2) if e.hit_flash > 0.0 else Color.WHITE
+	var tint := Color(2.2, 2.2, 2.2) if e.hit_flash > 0.0 else (Color(0.7, 0.9, 1.4) if battle.freeze_left > 0.0 else Color.WHITE)
 	if p.x > 0.0:  # face the Keep
 		r.position.x += r.size.x
 		r.size.x = -r.size.x

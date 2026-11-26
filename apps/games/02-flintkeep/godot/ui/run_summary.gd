@@ -15,6 +15,7 @@ static func build(b: Battle, tier: int, record: bool, coins: float, goto: Callab
 	stats.add_child(_stat("Best wave", str(Profile.data.best(tier))))
 	stats.add_child(_stat("Enemies slain", Num.fmt(b.kills)))
 	stats.add_child(_stat("Coins earned", Num.fmt(coins), Color("#b7791f")))
+	_add_report(stats, b)
 	var box := Kit.panel_container(Kit.card())
 	box.add_child(stats)
 	body.add_child(box)
@@ -37,6 +38,23 @@ static func build(b: Battle, tier: int, record: bool, coins: float, goto: Callab
 	row.add_child(menu)
 	body.add_child(row)
 	return body
+
+
+const ENEMY_NAMES := {"footman": "Raiders", "runner": "Runners", "brute": "Brutes", "balloon": "War balloons",
+	"wyvern": "Wyverns", "sapper": "Sappers", "shaman": "Shamans", "juggernaut": "the Juggernaut"}
+
+
+## What did the damage, and what finally broke the Keep: so players know what to research next.
+static func _add_report(stats: VBoxContainer, b: Battle) -> void:
+	var total := 0.0
+	for src in b.damage_by:
+		total += float(b.damage_by[src])
+	var sources: Array = b.damage_by.keys()
+	sources.sort_custom(func(x: String, y: String) -> bool: return b.damage_by[x] > b.damage_by[y])
+	for src in sources.slice(0, 3):
+		stats.add_child(_stat("Damage: " + src, Num.pct(b.damage_by[src] / maxf(total, 1.0))))
+	if b.keep_hp <= 0.0 and b.killed_by != "":
+		stats.add_child(_stat("Keep broken by", ENEMY_NAMES.get(b.killed_by, b.killed_by), Pal.RED))
 
 
 static func _stat(name: String, value: String, color: Color = Pal.TEXT) -> Control:

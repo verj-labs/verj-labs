@@ -5,6 +5,8 @@ extends RefCounted
 
 const COMPASS := ["east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east"]
 const ARROW := "  →  "
+const FOCUS_ORDER := ["first", "strong", "close", "air"]
+const FOCUS_NAMES := {"first": "First", "near": "First", "strong": "Strongest", "close": "Closest", "air": "Flyers"}
 
 
 static func _cash_action(b: Battle, label: Callable, price: Callable, run: Callable, kind: Kit.Btn = Kit.Btn.BUY) -> Dictionary:
@@ -19,61 +21,43 @@ static func _price_label(prefix: String, price: Callable) -> Callable:
 		return (prefix + " " if prefix != "" else "") + Num.price(p)
 
 
-# --- Keep -------------------------------------------------------------------------------------
+# --- Upgrade tabs (two-column cards) ----------------------------------------------------------
 
-static func keep_rows(b: Battle) -> Array[UpgradeRow]:
-	var rows: Array[UpgradeRow] = []
-	for id in Defs.KEEP_ORDER:
-		var price := func() -> float: return -1.0 if b.keep_upgrade_maxed(id) else b.keep_upgrade_cost(id)
-		var detail := func() -> String:
-			var now := _keep_stat(b, id)
-			if b.keep_upgrade_maxed(id):
+static func upgrade_cards(b: Battle, tab: String) -> Array[Control]:
+	var cards: Array[Control] = []
+	for id in Upgrades.ids_in(tab):
+		var price := func() -> float: return -1.0 if b.upgrade_maxed(id) else b.upgrade_cost(id)
+		var value := func() -> String:
+			var now := Upgrades.show(id, b.stat(id))
+			if b.upgrade_maxed(id):
 				return now + "  (max)"
-			b.keep_levels[id] = b.upgrade_level(b.keep_levels, id) + 1
-			var next := _keep_stat(b, id)
-			b.keep_levels[id] -= 1
-			return now + ARROW + next
-		rows.append(UpgradeRow.make(Defs.KEEP_UPGRADES[id]["name"], detail,
-			[_cash_action(b, _price_label("", price), price, b.buy_keep_upgrade.bind(id))]))
-	return rows
+			return now + ARROW + Upgrades.show(id, Upgrades.value(id, b.level(id) + 1))
+		var label := func() -> String: return "Max" if b.upgrade_maxed(id) else Num.price(b.upgrade_cost(id))
+		cards.append(UpgradeCard.make(Upgrades.LIST[id]["name"], value, label, price, func() -> float: return b.cash, b.buy_upgrade.bind(id)))
+	return cards
 
 
-static func _keep_stat(b: Battle, id: String) -> String:
-	match id:
-		"damage": return Num.fmt(b.keep_damage())
-		"rate": return "%.2f/s" % b.keep_rate()
-		"range": return str(int(b.keep_range()))
-		"health": return Num.fmt(b.keep_max_hp())
-		"regen": return Num.fmt(b.keep_regen()) + "/s"
-		"armor": return Num.pct(b.keep_armor())
-	return ""
-
-
-# --- Economy ------------------------------------------------------------------------------------
-
-static func econ_rows(b: Battle) -> Array[UpgradeRow]:
-	var rows: Array[UpgradeRow] = []
-	for id in Defs.ECON_ORDER:
-		var price := func() -> float: return -1.0 if b.econ_upgrade_maxed(id) else b.econ_upgrade_cost(id)
-		var detail := func() -> String:
-			var now := _econ_stat(b, id)
-			if b.econ_upgrade_maxed(id):
-				return now + "  (max)"
-			b.econ_levels[id] = b.upgrade_level(b.econ_levels, id) + 1
-			var next := _econ_stat(b, id)
-			b.econ_levels[id] -= 1
-			return now + ARROW + next
-		rows.append(UpgradeRow.make(Defs.ECON_UPGRADES[id]["name"], detail,
-			[_cash_action(b, _price_label("", price), price, b.buy_econ_upgrade.bind(id))], Color("#b7791f") if id == "coin_bounty" else Pal.TEXT))
-	return rows
-
-
-static func _econ_stat(b: Battle, id: String) -> String:
-	match id:
-		"bounty": return "Cash ×%.2f" % b.cash_mult()
-		"coin_bounty": return "Coins ×%.2f" % b.coin_mult()
-		"interest": return Num.pct(b.interest_rate()) + " a wave"
-	return ""
+## The Powers tab: cast now, or let a power cast itself.
+static func power_cards(b: Battle) -> Array[Control]:
+	var cards: Array[Control] = []
+	for id in Powers.ORDER:
+		var p: Dictionary = Powers.LIST[id]
+		var status := func() -> String:
+			if b.power_level(id) < 1:
+				return "Unlock it in the labs"
+			var cd: float = b.power_cd[id]
+			return ("Ready" if cd <= 0.0 else "Ready in %ds" % int(ceil(cd))) + ("  ·  auto" if b.power_auto[id] else "")
+		var label := func() -> String: return "Locked" if b.power_level(id) < 1 else "Cast"
+		var price := func() -> float: return 0.0 if b.power_ready(id) else -1.0
+		cards.append(UpgradeCard.make(p["name"], status, label, price, func() -> float: return 1.0, b.cast.bind(id), Kit.Btn.SECONDARY))
+		var auto_label := func() -> String: return "Auto: on" if b.power_auto[id] else "Auto: off"
+		var toggle := func() -> bool:
+			b.power_auto[id] = not b.power_auto[id]
+			return true
+		var unlocked := func() -> float: return 0.0 if b.power_level(id) >= 1 else -1.0
+		cards.append(UpgradeCard.make(p["about"], func() -> String: return "Cooldown %ds" % int(Powers.cooldown(id, maxi(b.power_level(id), 1))),
+			auto_label, unlocked, func() -> float: return 1.0, toggle, Kit.Btn.PRIMARY))
+	return cards
 
 
 # --- Walls --------------------------------------------------------------------------------------
@@ -182,6 +166,16 @@ static func slot_rows(b: Battle, index: int, rebuild: Callable) -> Array[Upgrade
 			rebuild.call_deferred()
 		return ok
 	rows.append(UpgradeRow.make("Upgrade", up_detail, [_cash_action(b, _price_label("", up_price), up_price, upgrade)], Pal.TEXT, tower.weapon))
+	var focus_label := func() -> String:
+		var f: String = tower.focus if tower.focus != "" else Defs.WEAPONS[tower.weapon]["focus"]
+		return FOCUS_NAMES.get(f, "First")
+	var cycle := func() -> bool:
+		var cur: String = tower.focus if tower.focus != "" else Defs.WEAPONS[tower.weapon]["focus"]
+		var i := FOCUS_ORDER.find("first" if cur == "near" else cur)
+		tower.focus = FOCUS_ORDER[(i + 1) % FOCUS_ORDER.size()]
+		return true
+	rows.append(UpgradeRow.make("Target", func() -> String: return "Which enemy this tower shoots first",
+		[{"label": focus_label, "price": func() -> float: return 0.0, "run": cycle, "kind": Kit.Btn.SECONDARY, "wallet": func() -> float: return 1.0}]))
 	var stats := func() -> String:
 		return "%.2f shots/s  ·  range %d" % [b.tower_rate(tower), int(b.tower_range(tower))]
 	var about := func() -> String: return Defs.WEAPONS[tower.weapon]["about"]

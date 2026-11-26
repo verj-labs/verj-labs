@@ -68,7 +68,7 @@ func _ready() -> void:
 	play_button.pressed.connect(func() -> void: play.emit(_tier))
 	col.add_child(play_button)
 	var row := Kit.hbox(12)
-	var research_button := Kit.button("Research", Kit.Btn.PRIMARY, 30, 74)
+	var research_button := Kit.button("Upgrades", Kit.Btn.PRIMARY, 30, 74)
 	research_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	research_button.pressed.connect(func() -> void: research.emit())
 	row.add_child(research_button)
