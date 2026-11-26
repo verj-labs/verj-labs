@@ -1,6 +1,7 @@
 class_name Workshop
 extends RefCounted
-## The coin workshop: permanent stat upgrades bought instantly with coins between runs.
+## The coin workshop: permanent stat upgrades, bought instantly with coins, or researched in a
+## lab for 40% of the price (and finished early by paying the rest, shrinking over time).
 ## Deliberately expensive (prices grow 16-20% a level) so coins stay precious; the effects
 ## compound, so they keep mattering deep into a 1,000-wave run.
 
@@ -22,6 +23,18 @@ const ORDER := ["damage", "health", "regen", "rate", "crit", "towers", "cash", "
 static func cost(id: String, level: int) -> float:
 	var item: Dictionary = ITEMS[id]
 	return roundf(item["cost"] * pow(item["growth"], level))
+
+
+## Researching a level in a lab costs 40% of buying it, but takes time.
+const RESEARCH_SHARE := 0.4
+
+
+static func research_cost(id: String, level: int) -> float:
+	return roundf(cost(id, level) * RESEARCH_SHARE)
+
+
+static func seconds(id: String, level: int) -> float:
+	return minf(roundf(90.0 * pow(1.25, level)), Research.MAX_SECONDS)
 
 
 static func maxed(id: String, level: int) -> bool:

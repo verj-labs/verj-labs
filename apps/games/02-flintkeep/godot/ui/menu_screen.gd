@@ -14,6 +14,7 @@ var _time := 0.0
 var _hero: Control
 var _glow: Texture2D
 var _missions_button: Button
+var _gems_label: Label
 
 
 func _init() -> void:
@@ -34,6 +35,9 @@ func _ready() -> void:
 	gear.pressed.connect(_open_settings)
 	top.add_child(gear)
 	top.add_child(Kit.spacer(true))
+	var gem_pill: Array = Kit.pill("gem", Pal.ARCANE)
+	_gems_label = gem_pill[1]
+	top.add_child(gem_pill[0])
 	var pill: Array = Kit.pill("coin", Pal.GOLD)
 	_coins_label = pill[1]
 	top.add_child(pill[0])
@@ -136,6 +140,7 @@ func _change_tier(step: int) -> void:
 
 func _refresh() -> void:
 	_coins_label.text = Num.fmt(Profile.data.coins)
+	_gems_label.text = str(Profile.data.gems)
 	Profile.data.refresh_missions(Missions.today())
 	var ready := Profile.data.claimable()
 	_missions_button.text = "Missions (%d)" % ready if ready > 0 else "Missions"

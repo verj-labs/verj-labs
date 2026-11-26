@@ -12,6 +12,7 @@ func _ready() -> void:
 
 
 func show_menu() -> void:
+	Sfx.music("menu")
 	var menu := MenuScreen.new()
 	menu.play.connect(show_battle)
 	menu.research.connect(show_research)
@@ -20,6 +21,7 @@ func show_menu() -> void:
 
 func show_battle(tier: int) -> void:
 	_last_tier = tier
+	Sfx.music("battle")
 	var battle := BattleScreen.new(tier)
 	battle.finished.connect(_after_battle)
 	_swap(battle)

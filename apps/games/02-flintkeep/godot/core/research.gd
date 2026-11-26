@@ -4,7 +4,12 @@ extends RefCounted
 ## (and keep running while the game is closed): game speed, weapons, powers, rings, and Siege
 ## lore, which slows how fast enemies grow. Plain stat boosts live in the Workshop instead.
 
-const LAB_COUNT := 2
+## You start with one lab; slots 2, 3 and 4 cost gems.
+const LAB_SLOT_GEMS := [150, 500, 1500]
+const GEM_SECONDS := 600.0  ## finishing research early costs one gem per 10 minutes left
+## First time reaching these waves in a tier pays these gems.
+const MILESTONE_WAVES := [50, 100, 250, 500, 1000]
+const MILESTONE_GEMS := [10, 20, 40, 80, 150]
 const MAX_SECONDS := 12.0 * 3600.0
 
 ## group: section on the research screen. max: level cap. cost/growth: coin price and its

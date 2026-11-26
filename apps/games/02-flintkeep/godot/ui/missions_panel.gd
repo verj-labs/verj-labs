@@ -30,6 +30,9 @@ static func _card(data: ProfileData, index: int) -> Control:
 	top.add_child(title)
 	top.add_child(Kit.icon("coin", 26))
 	top.add_child(Kit.label(str(m["reward"]), 22, Color("#b7791f"), Fonts.heading()))
+	if int(m.get("gems", 0)) > 0:
+		top.add_child(Kit.icon("gem", 24))
+		top.add_child(Kit.label(str(m["gems"]), 22, Color("#7e22ce"), Fonts.heading()))
 	var bottom := Kit.hbox(10)
 	v.add_child(bottom)
 	var meter := Meter.new(Pal.CASH, 30, 17)

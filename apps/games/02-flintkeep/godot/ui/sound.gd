@@ -1,6 +1,11 @@
 extends Node
-## Autoload "Sound": plays the music loop and the sound effects, and remembers the music and
-## sound switches. Call it through Sfx.play("coin") so scripts compile without the autoload.
+## Autoload "Sound": plays the music and the sound effects, and remembers the music and sound
+## switches. Call it through Sfx.play("coin") / Sfx.music("battle") so scripts compile without
+## the autoload.
+##
+## Music: a menu theme, a battle theme with a drum layer that fades in as the battle gets
+## tougher (set_intensity), and a boss theme that takes over while a boss is on the field.
+## Tracks crossfade; the battle theme and its drums always play in sync.
 
 const DIR := "res://assets/audio/"
 const SETTINGS_PATH := "user://settings.cfg"
@@ -20,7 +25,13 @@ const SOUNDS := {
 var music_on := true
 var sfx_on := true
 
-var _music: AudioStreamPlayer
+var _tracks := {}  ## "menu", "battle", "drums", "boss" -> AudioStreamPlayer
+var _want := {}  ## track -> target volume 0..1
+var _level := {}  ## track -> current volume 0..1
+var _scene := "menu"
+var _intensity := 0.0
+var _boss := false
+const FADE_PER_SECOND := 0.8
 var _pool: Array[AudioStreamPlayer] = []
 var _streams := {}
 var _last := {}
@@ -29,14 +40,14 @@ var _last := {}
 func _ready() -> void:
 	for name in SOUNDS:
 		_streams[name] = load(DIR + name + ".wav")
-	var song: AudioStreamWAV = load(DIR + "music.wav")
-	song.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	song.loop_begin = 0
-	song.loop_end = song.data.size() / 2  # 16-bit mono
-	_music = AudioStreamPlayer.new()
-	_music.stream = song
-	_music.volume_db = MUSIC_DB
-	add_child(_music)
+	for track in ["menu", "battle", "drums", "boss"]:
+		var player := AudioStreamPlayer.new()
+		player.stream = load(DIR + "music_%s.wav" % track)  # looping is set at import
+		player.volume_db = -80.0
+		add_child(player)
+		_tracks[track] = player
+		_want[track] = 0.0
+		_level[track] = 0.0
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -49,8 +60,9 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	_music.stop()
-	_music.stream = null
+	for player in _tracks.values():
+		player.stop()
+		player.stream = null
 	for p in _pool:
 		p.stop()
 		p.stream = null
@@ -78,7 +90,7 @@ func play(name: String, jitter: float = 0.04) -> void:
 
 func set_music(on: bool) -> void:
 	music_on = on
-	_apply_music()
+	_update_targets()
 	_save()
 
 
@@ -87,13 +99,72 @@ func set_sfx(on: bool) -> void:
 	_save()
 
 
+## Which music fits: "menu" or "battle".
+func music(scene: String) -> void:
+	_scene = scene
+	if scene != "battle":
+		_intensity = 0.0
+		_boss = false
+	_update_targets()
+
+
+## 0..1: how tense the battle is (the drum layer follows it).
+func set_intensity(value: float) -> void:
+	_intensity = clampf(value, 0.0, 1.0)
+	_update_targets()
+
+
+func set_boss(on: bool) -> void:
+	if on != _boss:
+		_boss = on
+		_update_targets()
+
+
+func _update_targets() -> void:
+	for track in _want:
+		_want[track] = 0.0
+	if _scene == "battle":
+		_want["battle"] = 0.0 if _boss else 1.0
+		_want["drums"] = 0.0 if _boss else _intensity
+		_want["boss"] = 1.0 if _boss else 0.0
+	else:
+		_want["menu"] = 1.0
+	_apply_music()
+
+
+func _process(delta: float) -> void:
+	for track in _tracks:
+		var target: float = _want[track] if music_on else 0.0
+		_level[track] = move_toward(_level[track], target, delta * FADE_PER_SECOND)
+		var player: AudioStreamPlayer = _tracks[track]
+		player.volume_db = linear_to_db(maxf(_level[track], 0.0001)) + MUSIC_DB
+		if _level[track] <= 0.0001 and target <= 0.0 and player.playing and track != "drums":
+			player.stop()
+
+
 func _apply_music() -> void:
 	if DisplayServer.get_name() == "headless":
 		return  # tests and tools: nothing to hear
-	if music_on and not _music.playing:
-		_music.play()
-	elif not music_on:
-		_music.stop()
+	if not music_on:
+		return
+	for track in _tracks:
+		var player: AudioStreamPlayer = _tracks[track]
+		if _want[track] > 0.0 and not player.playing:
+			if track == "battle" or track == "drums":
+				_start_in_sync()
+			else:
+				player.play()
+
+
+## The battle theme and its drum layer start together so they stay in time.
+func _start_in_sync() -> void:
+	var battle: AudioStreamPlayer = _tracks["battle"]
+	var drums: AudioStreamPlayer = _tracks["drums"]
+	if battle.playing and drums.playing:
+		return
+	var at := battle.get_playback_position() if battle.playing else 0.0
+	battle.play(at)
+	drums.play(at)
 
 
 func _save() -> void:

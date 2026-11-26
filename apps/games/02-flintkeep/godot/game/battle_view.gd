@@ -29,6 +29,7 @@ var _ground: Node2D
 var _things: Node2D
 var _time := 0.0
 var _soft: Texture2D
+var _rim: Texture2D  ## clear centre, whitish towards the edge (range circles)
 var _vignette: Texture2D
 var _grass: Texture2D
 var _decor: Array = []  ## [field position, sprite name], scattered once per layout
@@ -42,6 +43,7 @@ static func proj(p: Vector2) -> Vector2:
 
 func _ready() -> void:
 	_soft = FieldFx.soft_disc()
+	_rim = _make_rim()
 	_vignette = _make_vignette()
 	_grass = _make_grass()
 	_ground = Node2D.new()
@@ -137,6 +139,8 @@ func _on_event(e: Dictionary) -> void:
 		"blast":
 			fx.blast(proj(e["at"]), e["radius"])
 			_shake = maxf(_shake, 0.8)
+		"thorns":
+			fx.burst(proj(e["pos"]) + Vector2(0, -3), Color("#ff6a4a"), 4, 18.0)
 		"crit":
 			if randf() < 0.35:  # not every crit, or the field fills with numbers
 				fx.float_text(proj(e["pos"]) + Vector2(randf_range(-3, 3), -12), Num.fmt(e["amount"]) + "!", Pal.ORANGE, 0.7, 6)
@@ -197,7 +201,7 @@ func _update_lights() -> void:
 		return
 	var pulse := 0.8 + 0.2 * sin(_time * 3.0)
 	var keep := Art.rect("keep", Vector2.ZERO)
-	fx.glows.append([keep.position + keep.size * Vector2(0.5, 0.12), 14.0 * pulse, Color(0.44, 0.89, 1.0, 0.5)])
+	fx.glows.append([keep.position + keep.size * Vector2(0.5, 0.12), 14.0 * pulse, Color(1.0, 0.75, 0.3, 0.45)])
 	for slot in battle.slots:
 		if slot.tower != null and slot.tower.weapon == "arcane":
 			var r := Art.rect("arcane", proj(slot.pos) + Vector2(0, 1.5 - WallDrawer.HEIGHT))
@@ -231,14 +235,15 @@ func _draw_ground() -> void:
 	_ground.draw_texture_rect(_vignette, area, false)
 
 
-## The Keep's reach is always shown: a soft fill strongest at the Keep and a dashed edge.
+## The Keep's reach is always shown: a solid whitish edge with a subtle gradient that is clear
+## in the middle and brightens towards the edge.
 func _draw_keep_range() -> void:
-	var reach := battle.keep_range()
-	_ground.draw_texture_rect(_soft, Rect2(Vector2(-reach, -reach), Vector2(reach, reach) * 2.0), false, Color(0.45, 0.85, 1.0, 0.18))
-	var dashes := 48
-	for k in dashes:
-		if k % 2 == 0:
-			_ground.draw_arc(Vector2.ZERO, reach, TAU * k / dashes, TAU * (k + 1) / dashes, 4, Color(0.3, 0.75, 1.0, 0.75), 1.2, true)
+	_draw_reach(Vector2.ZERO, battle.keep_range(), 0.8)
+
+
+func _draw_reach(at: Vector2, reach: float, strength: float) -> void:
+	_ground.draw_texture_rect(_rim, Rect2(at - Vector2(reach, reach), Vector2(reach, reach) * 2.0), false, Color(1, 1, 1, strength))
+	_ground.draw_arc(at, reach, 0, TAU, 128, Color(1, 1, 1, 0.7 * strength + 0.25), 1.5, true)
 
 
 ## Unbuilt wall sections show as dashed foundations; the selected one glows.
@@ -273,9 +278,7 @@ func _draw_range() -> void:
 	var pulse := 0.7 + 0.3 * sin(_time * 5.0)
 	if slot.tower != null:
 		var reach := battle.tower_range(slot.tower)
-		# strongest at the tower, fading towards the edge of its reach
-		_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(reach, reach), Vector2(reach, reach) * 2.0), false, Color(1.0, 1.0, 1.0, 0.45))
-		_ground.draw_arc(slot.pos, reach, 0, TAU, 96, Color(1, 1, 1, 0.9), 1.0, true)
+		_draw_reach(slot.pos, reach, 0.9)
 	_ground.draw_texture_rect(_soft, Rect2(slot.pos - Vector2(14, 14), Vector2(28, 28)), false, Color(1.0, 0.95, 0.5, 0.8 * pulse))
 
 
@@ -342,6 +345,11 @@ func _cheapest_build() -> float:
 
 
 func _draw_keep() -> void:
+	if battle.stat("thorns") > 0.0:  # a ring of iron spikes around the Keep's foot
+		for k in 14:
+			var a := PI * (k + 0.5) / 14.0
+			var out := Vector2.from_angle(a)
+			WallDrawer.spike(_things, proj(out * 13.0) + Vector2(0, -1.0), (proj(out) + Vector2(0, -0.3)).normalized(), 3.0)
 	var r := Art.rect("keep", Vector2.ZERO)
 	if battle.keep_fired < 0.08:
 		r.position.y += 0.5
@@ -447,6 +455,23 @@ static func _make_vignette() -> Texture2D:
 	tex.fill_to = Vector2(1.05, 0.5)
 	tex.width = 128
 	tex.height = 128
+	return tex
+
+
+## A range circle's fill: transparent in the middle, a faint white haze growing to the edge.
+static func _make_rim() -> Texture2D:
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0.0))
+	g.set_color(1, Color(1, 1, 1, 0.0))
+	g.add_point(0.55, Color(1, 1, 1, 0.0))
+	g.add_point(0.985, Color(1, 1, 1, 0.32))
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 256
+	tex.height = 256
 	return tex
 
 

@@ -39,6 +39,7 @@ func _initialize() -> void:
 	profile.data.refresh_missions(Missions.today())
 	profile.data.missions[0]["progress"] = profile.data.missions[0]["target"]
 	profile.data.missions[1]["progress"] = int(profile.data.missions[1]["target"]) / 2
+	profile.data.gems = 60
 	if opts["offline"] == "1":
 		profile.offline_pending = 240.0
 	var main: Control = load("res://scenes/main.tscn").instantiate()
@@ -56,6 +57,8 @@ func _initialize() -> void:
 		bs.view.speed = float(opts["speed"])
 		if opts["auto"] == "1":
 			_autoplay(bs)
+		if opts.has("thorns"):
+			bs.battle.levels["thorns"] = int(opts["thorns"])
 		if opts["tab"] != "":
 			bs.get("_panel").call("_set_tab", opts["tab"])
 		if opts["perk"] == "1":

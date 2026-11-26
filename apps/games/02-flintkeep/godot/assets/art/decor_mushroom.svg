@@ -10,6 +10,8 @@
 <linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#e6d3b0"/><stop offset="1" stop-color="#e6d3b0"/></linearGradient>
 <radialGradient id="crystal" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#aefbff"/><stop offset="0.7" stop-color="#2fd6ff"/><stop offset="1" stop-color="#1c8fe0"/></radialGradient>
 <radialGradient id="violet" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#f6c8ff"/><stop offset="0.7" stop-color="#c158ff"/><stop offset="1" stop-color="#8a2be2"/></radialGradient>
+<radialGradient id="ember" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#fff2a0"/><stop offset="0.7" stop-color="#ffb020"/><stop offset="1" stop-color="#e5531a"/></radialGradient>
+<radialGradient id="glowEmber"><stop offset="0" stop-color="#ffcf5a" stop-opacity="0.85"/><stop offset="1" stop-color="#ffcf5a" stop-opacity="0"/></radialGradient>
 <radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#7ff6ff" stop-opacity="0"/></radialGradient>
 <radialGradient id="glowViolet"><stop offset="0" stop-color="#e3a6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#e3a6ff" stop-opacity="0"/></radialGradient>
 <radialGradient id="shadow"><stop offset="0" stop-color="#103a1a" stop-opacity="0.45"/><stop offset="1" stop-color="#103a1a" stop-opacity="0"/></radialGradient>

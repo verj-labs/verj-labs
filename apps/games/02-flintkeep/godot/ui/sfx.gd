@@ -10,6 +10,24 @@ static func play(name: String, jitter: float = 0.04) -> void:
 		node.play(name, jitter)
 
 
+static func music(scene: String) -> void:
+	var node := _node()
+	if node != null:
+		node.music(scene)
+
+
+static func intensity(value: float) -> void:
+	var node := _node()
+	if node != null:
+		node.set_intensity(value)
+
+
+static func boss(on: bool) -> void:
+	var node := _node()
+	if node != null:
+		node.set_boss(on)
+
+
 static func node() -> Node:
 	return _node()
 

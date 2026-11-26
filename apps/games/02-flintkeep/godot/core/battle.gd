@@ -10,6 +10,8 @@ const Slot = Entities.Slot
 const Wall = Entities.Wall
 
 const BASE_START_CASH := 60.0
+const BOSS_GEM_CHANCE := 0.15  ## a Juggernaut sometimes drops a gem
+const REROLL_GEMS := 10  ## gems to swap the three perks on offer for three new ones
 const SPAWN_MARGIN := 10.0
 const MAX_ARMOR := 0.6
 
@@ -26,6 +28,7 @@ var wave := 0
 var wave_timer := 0.0
 var cash := 0.0
 var coins_earned := 0.0
+var gems_earned := 0  ## rare boss drops, banked into the profile by the screen
 var kills := 0
 var over := false
 
@@ -72,17 +75,23 @@ func _init(p_research: Dictionary = {}, p_tier: int = 1, seed_value: int = 0, p_
 		rng.seed = seed_value
 	else:
 		rng.randomize()
-	rings_unlocked = 1
-	for ring in range(2, Defs.MAX_RING + 1):
-		if _r("ring_%d" % ring) >= 1:
-			rings_unlocked = ring
 	_build_layout()
+	refresh_unlocks()
 	cash = BASE_START_CASH + Workshop.effect("start_cash", _w("start_cash"))
 	keep_hp = keep_max_hp()
 	for id in Powers.ORDER:
 		power_cd[id] = 0.0
 		power_auto[id] = false
 	_next_wave()
+
+
+## Research and workshop levels are read live from the profile, so anything finished during a
+## run applies at once. Rings are the one thing that needs a nudge when they unlock.
+func refresh_unlocks() -> void:
+	rings_unlocked = 1
+	for ring in range(2, Defs.MAX_RING + 1):
+		if _r("ring_%d" % ring) >= 1:
+			rings_unlocked = ring
 
 
 func _r(id: String) -> int:
@@ -502,6 +511,15 @@ func choose_perk(id: String) -> bool:
 	return true
 
 
+## New perks on offer (the screen charges the gems). The timer starts again.
+func reroll_perks() -> bool:
+	if perk_offer.is_empty():
+		return false
+	perk_offer = Perks.pick_three(rng)
+	perk_time = Defs.PERK_SECONDS
+	return true
+
+
 # --- Powers --------------------------------------------------------------------------------
 
 func power_level(id: String) -> int:
@@ -670,6 +688,9 @@ func _collect_dead() -> void:
 		coins_earned += coin_gain
 		kills += 1
 		kills_by[e.kind] = int(kills_by.get(e.kind, 0)) + 1
+		if e.boss and rng.randf() < BOSS_GEM_CHANCE:
+			gems_earned += 1
+			_event({"type": "gem", "pos": e.pos()})
 		_event({"type": "kill", "pos": e.pos(), "cash": cash_gain, "coins": coin_gain, "kind": e.kind, "boss": e.boss})
 		enemies.remove_at(i)
 
