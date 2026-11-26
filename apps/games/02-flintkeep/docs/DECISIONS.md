@@ -3,7 +3,44 @@
 Product and design decisions, newest first, with the reasons. The code is the source of truth for
 numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `perks.gd`, `powers.gd`).
 
-## 0.3: research anywhere, gems, lab slots, thorns, music, polish
+## 0.4: performance, tower add-ons, a Towers tab
+
+### Performance (late runs slowed to a crawl on an iPhone 15 Pro, even at 1x)
+
+- **Measured first.** `tools/bench.gd` builds a wave-60 battle (three full rings of upgraded
+  towers, 70 raiders) and times the simulation and the drawing separately. Drawing took ~37 ms
+  a frame; the simulation 0.5 ms. So the fix was drawing, not game rules.
+- **Nothing redraws every frame unless it moves.** Everything standing (wall pieces, towers, the
+  Keep, bushes) is its own node under a y-sorted layer, so the engine sorts it, and it redraws
+  only when it changes. Enemies are pooled sprites that only move. The ground redraws when the
+  fortress or a selection changes.
+- **Wall pieces are one mesh each.** A piece used to be dozens of polygons, outlines, battlement
+  rectangles and spikes; three rings were ~6,500 draw commands a frame. Now ~200.
+- **A bug that logged errors every frame:** the wall face polygon folded over itself where a
+  ring runs up the screen, so Godot logged "triangulation failed" (and skipped the face) a
+  couple of times a frame. Faces are now drawn as quads.
+- **Effects are capped** (90 tracers, 24 floating numbers, 300 sparks; the oldest go first) and
+  drawn as one mesh.
+- **60 fps cap.** 120 Hz iPhones were drawing everything twice as often.
+- **Result** on the benchmark (software renderer): 46.9 ms -> about 24 ms a frame. A phone's
+  GPU does the remaining fill work much faster than the software renderer.
+
+### Towers
+
+- **Add-ons:** towers no longer get the Keep's critical hits, bounce and pushback for free. Each
+  tower can buy **Critical hits, Multishot, Bounce and Pushback**; a tower with an add-on uses the
+  Keep's values from the Attack tab. Price: the build price x 4 (crit), 8 (multishot, bounce)
+  or 5 (pushback), x1.35 for every tower that already has that add-on.
+- **Towers tab** (sixth tab): upgrade every tower one level, give an add-on to every tower (as
+  many as cash allows, cheapest first), set targeting for all, and auto-buy.
+- **Smaller outer rings:** ring 3 holds **6** towers (was 8) and ring 4 holds **8** (was 12).
+
+### Balance after the change (simulated player, 3-4 seeds)
+
+- Fresh profile waves 22-33; a light profile ~40; a mid profile ~490-550. Workshop levels add
+  waves steadily past the first few (5 levels ~310, 10 ~320, 20 ~390, 30 ~450).
+
+
 
 ### Research and the workshop
 

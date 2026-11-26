@@ -12,7 +12,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 ## Status
 
 - [x] Endless runs: waves every 24 s, a boss every 10th wave, tiers unlocked at wave 25
-- [x] The Keep plus 4 rings of towers (4 / 4 / 8 / 12; ring 1 an X, ring 2 a plus) on their walls; wall sections
+- [x] The Keep plus 4 rings of towers (4 / 4 / 6 / 8; ring 1 an X, ring 2 a plus) on their walls; wall sections
       between towers are bought one at a time, and a finished ring is fortified
 - [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright
 - [x] 5 weapons (musket, cannon, volley gun, rifle nest, arcane spire), armour and ward
@@ -36,6 +36,9 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
       finished early with coins or gems; gems (missions, milestones, boss drops) for lab slots
       (start with one), instant finishes and perk re-rolls; thorns on walls with spikes;
       solid gradient range rings; Keep firebolts; three adaptive music tracks
+- [x] 0.4: smooth late runs (only what changes is redrawn; one mesh per wall piece; capped effects;
+      60 fps cap); tower add-ons (crit, multishot, bounce, pushback); a Towers tab to upgrade
+      or kit out every tower at once
 - [x] Settings: music, sound effects, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers
@@ -68,6 +71,7 @@ Developer tools (run from `godot/`):
 godot --headless --path . -s ../tools/balance.gd     # waves and coins per research setup
 godot --path . -s ../tools/flow_check.gd             # clicks through menu > battle > summary > research
 godot --path . --resolution 540x1170 -s ../tools/screenshot.gd -- battle /tmp/b.png wait=20 auto=1 speed=3 research=late
+godot --path . --resolution 540x1170 -s ../tools/bench.gd       # frame time in a crowded wave-60 battle
 ```
 
 ## Phone builds
