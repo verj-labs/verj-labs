@@ -359,6 +359,8 @@ func _bank_coins() -> void:
 	if battle.gems_earned > 0:
 		Profile.data.gems += battle.gems_earned
 		battle.gems_earned = 0
+	for kind in battle.kinds_seen:
+		Profile.data.seen_enemies[kind] = true
 	Profile.save_game()
 
 

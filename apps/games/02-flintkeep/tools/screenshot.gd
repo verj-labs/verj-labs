@@ -4,7 +4,7 @@ extends SceneTree
 ##
 ##   godot --path godot --resolution 540x1170 -s ../tools/screenshot.gd -- battle out.png wait=20 research=mid auto=1 speed=3
 ##
-## Screens: menu, battle, research, missions, settings. tutorial=1 shows the first-run tips,
+## Screens: menu, battle, research, missions, settings, bestiary. tutorial=1 shows the first-run tips,
 ## offline=1 the welcome-back coins, section=RING,SEG selects a wall section, tab=Attack|Defense|
 ## Walls|Economy|Powers opens a panel tab, perk=1 shows the perk choice. research=fresh|mid|late fakes a profile (nothing is saved).
 ## auto=1 lets the AutoPlayer spend cash during the battle. slot=N selects a build slot.
@@ -50,6 +50,7 @@ func _initialize() -> void:
 		"research": main.show_research()
 		"missions": main.get_child(main.get_child_count() - 1).call("_open_missions")
 		"settings": main.get_child(main.get_child_count() - 1).call("_open_settings")
+		"bestiary": main.get_child(main.get_child_count() - 1).call("_open_bestiary")
 	await process_frame
 	var screen_node: Node = main.get_child(main.get_child_count() - 1)
 	if screen == "battle":

@@ -34,6 +34,9 @@ func _ready() -> void:
 	var gear := Kit.button("Settings", Kit.Btn.SECONDARY, 20, 50)
 	gear.pressed.connect(_open_settings)
 	top.add_child(gear)
+	var bestiary := Kit.button("Enemies", Kit.Btn.SECONDARY, 20, 50)
+	bestiary.pressed.connect(_open_bestiary)
+	top.add_child(bestiary)
 	top.add_child(Kit.spacer(true))
 	var gem_pill: Array = Kit.pill("gem", Pal.ARCANE)
 	_gems_label = gem_pill[1]
@@ -123,6 +126,11 @@ func _open_missions() -> void:
 	holder[0] = Kit.modal(self, MissionsPanel.build(func() -> void:
 		holder[0].queue_free()
 		_refresh()), 480)
+
+
+func _open_bestiary() -> void:
+	var holder := [null]
+	holder[0] = Kit.modal(self, BestiaryPanel.build(func() -> void: holder[0].queue_free()), 490)
 
 
 func _open_settings() -> void:

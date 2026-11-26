@@ -29,6 +29,7 @@ var wave_timer := 0.0
 var heal_timer := 0.0  ## next shaman healing pulse
 var cash := 0.0
 var coins_earned := 0.0
+var kinds_seen := {}  ## enemy kinds that raided this run (the profile's bestiary learns them)
 var gems_earned := 0  ## rare boss drops, banked into the profile by the screen
 var kills := 0
 var over := false
@@ -842,6 +843,7 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.ward = def["ward"]
 	e.air = def["air"]
 	e.boss = kind == "juggernaut"
+	kinds_seen[kind] = true
 	e.cash = def["cash"] * Upgrades.cash_scale(wave, siege())
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
 	e.size = def["size"]
