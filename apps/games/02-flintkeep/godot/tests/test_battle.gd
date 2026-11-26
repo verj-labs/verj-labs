@@ -588,3 +588,46 @@ func test_buy_all_stops_when_cash_runs_out() -> void:
 	b.cash = b.addon_cost(0, "crit") * 1.5
 	check(b.buy_addon_all("crit"), "bought what it could")
 	eq(b.addon_count("crit"), 1, "only one was affordable")
+
+
+func test_new_enemies_arrive_on_planned_waves() -> void:
+	var seen := {}
+	for kind in Defs.ENEMY_ORDER:
+		if kind == "footman" or kind == "juggernaut":
+			continue
+		for tier in range(1, Defs.MAX_TIER + 1):
+			var wave := Defs.enemy_arrives(kind, tier)
+			if wave < 0:
+				continue
+			eq(wave % 5, 0, kind + " arrives on a wave ending in 5")
+			check(wave % Defs.BOSS_EVERY != 0, kind + " never arrives with a boss")
+			var key := "%d:%d" % [tier, wave]
+			check(not seen.has(key) or wave < 15, "one newcomer per wave (%s)" % key)
+			seen[key] = true
+	for kind in Defs.ENEMY_ORDER:
+		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1:
+			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1 has arrived by wave 45")
+	eq(Defs.enemy_arrives("wyvern", 1), -1, "wyverns only raid from tier 2")
+	check(Defs.enemy_arrives("wyvern", 2) > 0, "and do raid in tier 2")
+
+
+func test_waves_only_send_enemies_that_have_arrived() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = SEED
+	for wave in [1, 14]:
+		for entry in BattleWaves.plan(wave, rng, 1):
+			check(entry[1] in ["footman", "juggernaut"], "only raiders before wave 15 (got %s)" % entry[1])
+	var kinds := {}
+	for i in 20:
+		for entry in BattleWaves.plan(60, rng, 1):
+			kinds[entry[1]] = true
+	check(kinds.has("sapper") and not kinds.has("wyvern"), "tier 1 wave 60: all tier-1 kinds, no wyverns")
+	eq(BattleWaves.newcomer(15, 1), "runner", "sprinters are the first newcomer")
+	eq(BattleWaves.newcomer(10, 1), "", "boss waves bring no newcomer")
+
+
+func test_sprinters_are_fast_and_bosses_slow() -> void:
+	var footman: float = Defs.ENEMIES["footman"]["speed"]
+	check(Defs.ENEMIES["runner"]["speed"] >= footman * 1.8, "sprinters are much faster than raiders")
+	check(Defs.ENEMIES["juggernaut"]["speed"] < footman * 0.5, "the boss is slow")
+	check(Defs.ENEMIES["brute"]["speed"] < footman, "heavies are slow")

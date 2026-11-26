@@ -809,7 +809,7 @@ func _next_wave() -> void:
 		_event({"type": "perk_offer"})
 	wave_timer += Defs.WAVE_SECONDS
 	coins_earned += wave_coins()
-	_spawn_queue = BattleWaves.plan(wave, rng)
+	_spawn_queue = BattleWaves.plan(wave, rng, tier)
 	_event({"type": "wave", "wave": wave, "boss": wave % Defs.BOSS_EVERY == 0})
 
 

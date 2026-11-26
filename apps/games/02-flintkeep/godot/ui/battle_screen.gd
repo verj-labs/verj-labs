@@ -28,6 +28,8 @@ var _tutorial: Tutorial
 var _early_button: Button
 var _boss_meter: Meter
 var _perk_overlay: Control
+var _hud_style: StyleBoxFlat
+var _panel_style: StyleBoxFlat
 var _perk_label: Label
 
 
@@ -41,13 +43,14 @@ func _ready() -> void:
 	battle = Battle.new(Profile.data.research, tier, 0, Profile.data.workshop)
 	Profile.changed.connect(battle.refresh_unlocks)
 	Profile.data.refresh_missions(Missions.today())
-	var bg := Kit.color_rect(Pal.GRASS)
+	var bg := Kit.color_rect(Pal.WOOD)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var margin := SafeMargin.new(0)
-	add_child(margin)
+	# Edge to edge: the wood bar runs up under the status bar / Dynamic Island and the wood panel
+	# down under the home bar; only their contents keep clear of those (see _apply_insets).
 	var column := Kit.vbox(0)
-	margin.add_child(column)
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(column)
 	column.add_child(_build_hud())
 	column.add_child(_build_field())
 	column.add_child(_build_panel())
@@ -68,6 +71,19 @@ func _ready() -> void:
 		_tutorial.offset_bottom = -12
 		_tutorial.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_update_hud()
+	_apply_insets()
+	get_viewport().size_changed.connect(_apply_insets)
+
+
+## Pads the top bar and bottom panel by the phone's unsafe areas (notch, home bar, corners).
+func _apply_insets() -> void:
+	var insets := SafeMargin.insets(get_viewport())
+	_hud_style.content_margin_top = 8 + insets.y
+	_hud_style.content_margin_left = 14 + insets.x
+	_hud_style.content_margin_right = 14 + insets.z
+	_panel_style.content_margin_bottom = 10 + insets.w
+	_panel_style.content_margin_left = 14 + insets.x
+	_panel_style.content_margin_right = 14 + insets.z
 
 
 func _build_hud() -> Control:
@@ -79,6 +95,7 @@ func _build_hud() -> Control:
 	style.content_margin_top = 8
 	style.content_margin_bottom = 10
 	hud.add_theme_stylebox_override("panel", style)
+	_hud_style = style
 	var v := Kit.vbox(8)
 	hud.add_child(v)
 	var top := Kit.hbox(8)
@@ -153,6 +170,7 @@ func _build_panel() -> Control:
 	style.corner_radius_bottom_right = 0
 	style.content_margin_top = 12
 	box.add_theme_stylebox_override("panel", style)
+	_panel_style = style
 	box.custom_minimum_size.y = PANEL_HEIGHT
 	_panel = BattlePanel.new(battle)
 	_panel.close_slot.connect(_select_slot.bind(-1))
@@ -307,15 +325,9 @@ func _on_battle_event(e: Dictionary) -> void:
 			_end_run()
 
 
-const ENEMY_NAMES := {"runner": "Runners", "balloon": "War balloons (flyers)", "brute": "Armoured brutes",
-	"sapper": "Sappers (blow up walls)", "wyvern": "Wyverns (flyers)", "shaman": "Shamans (heal others)"}
-
-
 func _new_enemy(wave: int) -> String:
-	for kind in Defs.ENEMY_WAVES:
-		if int(Defs.ENEMY_WAVES[kind][0]) == wave and ENEMY_NAMES.has(kind):
-			return ENEMY_NAMES[kind]
-	return ""
+	var kind := BattleWaves.newcomer(wave, battle.tier)
+	return "" if kind == "" else Defs.ENEMY_ROSTER[kind]["name"]
 
 
 func _track_missions(e: Dictionary) -> void:
@@ -353,6 +365,8 @@ func _bank_coins() -> void:
 func _exit_tree() -> void:
 	if Profile.changed.is_connected(battle.refresh_unlocks):
 		Profile.changed.disconnect(battle.refresh_unlocks)
+	if get_viewport().size_changed.is_connected(_apply_insets):
+		get_viewport().size_changed.disconnect(_apply_insets)
 
 
 func _notification(what: int) -> void:
