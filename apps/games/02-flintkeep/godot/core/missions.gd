@@ -36,7 +36,8 @@ static func generate(day: String, best: int) -> Array:
 		var target := int(spec[1] + spec[2] * best)
 		if kind == "wave":
 			target = maxi(int(spec[1]), int(best * 0.8))
-		out.append({"kind": kind, "target": target, "progress": 0, "reward": reward(best, spec[3]), "claimed": false})
+		out.append({"kind": kind, "target": target, "progress": 0, "reward": reward(best, spec[3]),
+			"gems": 3 if spec[3] >= 1.5 else 2, "claimed": false})
 	return out
 
 

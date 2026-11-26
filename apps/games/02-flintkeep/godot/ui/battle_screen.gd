@@ -37,7 +37,9 @@ func _init(p_tier: int) -> void:
 
 
 func _ready() -> void:
-	battle = Battle.new(Profile.data.research.duplicate(), tier, 0, Profile.data.workshop.duplicate())
+	# live references: research and workshop levels finished mid-run apply at once
+	battle = Battle.new(Profile.data.research, tier, 0, Profile.data.workshop)
+	Profile.changed.connect(battle.refresh_unlocks)
 	Profile.data.refresh_missions(Missions.today())
 	var bg := Kit.color_rect(Pal.GRASS)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -93,6 +95,10 @@ func _build_hud() -> Control:
 	_speed_button.custom_minimum_size.x = 64
 	_speed_button.pressed.connect(_cycle_speed)
 	top.add_child(_speed_button)
+	var lab := Kit.button("Lab", Kit.Btn.PRIMARY, 20, 50)
+	lab.custom_minimum_size.x = 62
+	lab.pressed.connect(_open_lab)
+	top.add_child(lab)
 	var pause := Kit.button("II", Kit.Btn.PRIMARY, 22, 50)
 	pause.custom_minimum_size.x = 56
 	pause.pressed.connect(_pause)
@@ -228,6 +234,11 @@ func _update_boss_bar() -> void:
 			boss = e
 			break
 	_boss_meter.visible = boss != null
+	Sfx.boss(boss != null)
+	# drums come in as the run gets going and when the Keep is hurt
+	var tension := clampf((battle.wave - 3) / 20.0, 0.0, 1.0)
+	tension = maxf(tension, 1.0 - battle.keep_hp / battle.keep_max_hp())
+	Sfx.intensity(tension)
 	if boss != null:
 		_boss_meter.set_state(boss.hp / boss.max_hp, "Juggernaut  %s" % Num.fmt(maxf(boss.hp, 0.0)))
 
@@ -246,12 +257,25 @@ func _offer_perks() -> void:
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func() -> void: battle.choose_perk(id))
 		body.add_child(b)
+	var reroll := Kit.button("New choices: %d gems" % Battle.REROLL_GEMS, Kit.Btn.SECONDARY, 18, 50)
+	reroll.disabled = Profile.data.gems < Battle.REROLL_GEMS
+	reroll.pressed.connect(func() -> void:
+		if Profile.data.gems >= Battle.REROLL_GEMS and battle.reroll_perks():
+			Profile.data.gems -= Battle.REROLL_GEMS
+			Profile.save_game()
+			_perk_overlay.queue_free()
+			_perk_overlay = null
+			_offer_perks())
+	body.add_child(reroll)
 	_perk_overlay = Kit.modal(self, body, 480)
 
 
 func _on_battle_event(e: Dictionary) -> void:
 	_track_missions(e)
 	match e["type"]:
+		"gem":
+			Sfx.play("coin", 0.0)
+			view.fx.float_text(BattleView.proj(e["pos"]) + Vector2(0, -26), "+1 gem", Pal.ARCANE, 1.8, 9)
 		"perk_offer":
 			_offer_perks()
 		"perk_chosen":
@@ -260,6 +284,10 @@ func _on_battle_event(e: Dictionary) -> void:
 			_show_banner(Powers.LIST[e["id"]]["name"] + "!", Pal.CYAN, 1.2)
 		"wave":
 			_bank_coins()
+			var gems := Profile.data.reach_wave(tier, e["wave"])
+			if gems > 0:
+				Sfx.play("research_done", 0.0)
+				view.fx.float_text(Vector2(0, -56), "Milestone! +%d gems" % gems, Pal.ARCANE, 2.4, 9)
 			Sfx.play("boss" if e["boss"] else "wave", 0.0)
 			var fresh := _new_enemy(e["wave"])
 			if fresh != "" and not e["boss"]:
@@ -304,10 +332,26 @@ func _track_missions(e: Dictionary) -> void:
 		"wall_built": Missions.track(list, "walls", 1)
 
 
+## The workshop and labs over the running battle: research while you fight.
+func _open_lab() -> void:
+	_bank_coins()
+	var screen := ResearchScreen.new()
+	screen.back.connect(func() -> void: screen.queue_free())
+	add_child(screen)
+
+
 func _bank_coins() -> void:
 	Profile.add_coins(battle.coins_earned - _banked)
 	_banked = battle.coins_earned
+	if battle.gems_earned > 0:
+		Profile.data.gems += battle.gems_earned
+		battle.gems_earned = 0
 	Profile.save_game()
+
+
+func _exit_tree() -> void:
+	if Profile.changed.is_connected(battle.refresh_unlocks):
+		Profile.changed.disconnect(battle.refresh_unlocks)
 
 
 func _notification(what: int) -> void:

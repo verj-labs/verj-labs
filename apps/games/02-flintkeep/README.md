@@ -32,6 +32,10 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
       bounce, pushback, thorns, lifesteal ...); coin workshop; researched game speed; four
       powers; perks every 50 waves (auto-picked after 20 s); targeting modes; run report.
       Decisions and reasons: [`docs/DECISIONS.md`](docs/DECISIONS.md)
+- [x] 0.3: research during battles (applies at once); workshop items bought or researched,
+      finished early with coins or gems; gems (missions, milestones, boss drops) for lab slots
+      (start with one), instant finishes and perk re-rolls; thorns on walls with spikes;
+      solid gradient range rings; Keep firebolts; three adaptive music tracks
 - [x] Settings: music, sound effects, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers
@@ -90,7 +94,8 @@ godot --headless --export-debug "iOS" builds/ios/Flintkeep.ipa    # writes an Xc
   `game/battle_view.gd`, `game/field_fx.gd`).
 - Fonts are in `godot/assets/fonts/`: Lilita One for titles, buttons and numbers, Fredoka for
   everything else. Both are under the SIL Open Font License, and the licence files are next to them.
-- Sounds and music are synthesised by `python3 tools/make_audio.py` into `godot/assets/audio/`
+- Sounds and the music (menu, battle + drum layer, boss) are synthesised by
+  `python3 tools/make_audio.py` into `godot/assets/audio/`
   (standard library only, nothing downloaded). The `Sound` autoload plays them; call `Sfx.play("coin")`.
 
 ## Layout

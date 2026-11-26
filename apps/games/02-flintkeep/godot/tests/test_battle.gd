@@ -427,3 +427,57 @@ func test_higher_tiers_are_the_same_curve_raised() -> void:
 	var a := t1.spawn("footman", 0.0)
 	var c := t2.spawn("footman", 0.0)
 	near(c.max_hp / a.max_hp, Defs.tier_enemy_mult(2), 0.001, "tier 2 multiplies every wave by the same factor")
+
+
+
+func test_thorns_cost_a_lot_to_unlock_and_spike_walls_too() -> void:
+	check(Upgrades.price("thorns", 0) > Upgrades.price("thorns", 1) * 5.0, "the first level is the expensive unlock")
+	var b := _battle()
+	b.cash = 1000.0
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	b.levels["thorns"] = 10
+	var e := b.spawn("brute", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1) + 4.0
+	e.hp = 1e6
+	_run(b, 2.0)
+	eq(e.attacking, 1, "hacking at the wall")
+	check(e.hp < 1e6, "the spiked wall hurt it back")
+	check(b.damage_by.has("Thorns"), "and the run report counts it")
+
+
+func test_research_finished_mid_run_applies_at_once() -> void:
+	var research := {}
+	var workshop := {}
+	var b := Battle.new(research, 1, 5, workshop)
+	var before := b.keep_damage()
+	workshop["damage"] = 5  # the profile's dictionaries are shared with the battle
+	check(b.keep_damage() > before, "workshop level applies straight away")
+	research["ring_2"] = 1
+	b.refresh_unlocks()
+	eq(b.rings_unlocked, 2, "a ring researched mid-run opens")
+
+
+func test_perks_can_be_rerolled() -> void:
+	var b := _battle()
+	check(not b.reroll_perks(), "nothing to reroll")
+	b.perk_offer = Perks.pick_three(b.rng)
+	b.perk_time = 3.0
+	check(b.reroll_perks(), "rerolled")
+	eq(b.perk_offer.size(), 3)
+	near(b.perk_time, Defs.PERK_SECONDS, 0.001, "the timer starts again")
+
+
+
+func test_walls_can_be_repaired_once_per_wave() -> void:
+	var b := _battle()
+	b.cash = 100000.0
+	b.build_wall(1)
+	b.walls[1].segments[0] = 1.0
+	check(b.repair_wall(1), "first repair this wave")
+	b.walls[1].segments[0] = 1.0
+	check(not b.repair_wall(1), "not again in the same wave")
+	b.wave_timer = 0.01
+	b.step(0.05)
+	b.walls[1].segments[0] = 1.0
+	check(b.repair_wall(1), "a new wave allows another repair")

@@ -3,6 +3,69 @@
 Product and design decisions, newest first, with the reasons. The code is the source of truth for
 numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `perks.gd`, `powers.gd`).
 
+## 0.3: research anywhere, gems, lab slots, thorns, music, polish
+
+### Research and the workshop
+
+- **Upgrades can be opened during a battle** (the **Lab** button on the battle bar). The battle
+  keeps running behind it, and anything finished applies **immediately**: the battle reads the
+  profile's research and workshop levels live, and a ring researched mid-run opens at once.
+- **Workshop items can be bought or researched.** "Buy" is instant at full price. "Lab" costs
+  **40%** of the price and takes lab time (90 s × 1.25 per level, capped at 12 h).
+  - A workshop research can be **finished early with coins**: the rest of the difference to the
+    full price, shrinking as the timer runs down.
+  - **Any** research can be finished early with **gems**: one gem per 10 minutes left.
+
+### Gems (premium currency, earned in play for now)
+
+- **You start with one lab.** Slots 2, 3 and 4 cost **150, 500 and 1,500 gems**. Saves from
+  before this change keep the two labs they had.
+- **Earned (rarely):**
+  - 2–3 gems per daily mission;
+  - first-time milestones in each tier (wave 50, 100, 250, 500 and 1,000 pay 10, 20, 40, 80
+    and 150);
+  - a 15% chance from each Juggernaut.
+- **Spent on:** lab slots, instant finishes, and re-rolling a perk choice (10 gems).
+- **Later:** in-app purchases and ads are deliberately not built yet.
+
+### Thorns
+
+- **The first Thorns level is an expensive unlock** ($400; later levels are cheap).
+- **It works on walls as well as the Keep:** anything hacking at a wall takes a share of the
+  damage it deals.
+- **It is visible:** walls grow iron spikes along their outer face, a ring of spikes appears
+  around the Keep's foot, and red sparks fly when thorns bite.
+
+### Look
+
+- **Range rings are a solid line** with a subtle gradient: clear in the middle, a faint white
+  haze growing towards a whitish edge. The Keep's ring is always shown.
+- **The Keep throws yellow-orange firebolts** (hot core, orange trail), and its crystal is now an
+  ember to match.
+- **Towers sit flush on the walls:** walls are as tall as the tower pedestals (they were 2.5
+  units lower, which made towers look perched above them).
+
+### Music
+
+- **Three tracks instead of one 34-second loop:** a calm menu theme (76 bpm), a battle theme
+  with an A and a B section (112 bpm, about a minute), and a driving boss theme (132 bpm).
+- **Adaptive:** a drum layer fades in as the run goes on and when the Keep is hurt, and the boss
+  theme crossfades in while a Juggernaut is on the field.
+- **Richer sound:** plucked-string lute arpeggios (Karplus-Strong), a detuned lead spread left
+  and right, soft strings, bass, shaker, and a small reverb. The loops are seamless.
+- **Still generated in code** by `tools/make_audio.py`, so it is free to change.
+- **Size:** stereo WAVs in the repo, compressed (QOA) when imported, about 1.2 MB a track in
+  the game.
+
+### Balance
+
+- Cash per kill now grows with enemy strength to the power 0.6 (was 0.7), so late runs fall
+  behind more steadily instead of either dying early or running for ever.
+- **Each wall ring can be repaired once per wave.** Late in a run repairs had become cheap next
+  to the cash income, so walls never fell: one simulated run reached wave 830 with 1,200
+  raiders piled outside an untouched Keep. Now a heavy wave can break a wall, and
+  reinforcing (+HP) and wall regeneration matter more.
+
 ## 0.2: progression rework (for a long, idle-friendly run)
 
 ### The goal: a run you can leave running

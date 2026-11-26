@@ -6,7 +6,7 @@ extends RefCounted
 ## else. Hurt sections turn brown; broken ones fall to rubble.
 
 const THICKNESS := 4.0
-const HEIGHT := 5.5  ## How tall the wall stands on screen (field units).
+const HEIGHT := 8.0  ## How tall the wall stands on screen; matches the tower pedestals' top.
 const PIECE := deg_to_rad(5.0)
 const MERLON_EVERY := 2.8
 const GAP := 0.0  ## Angle trimmed at each end so sections meet under the towers.
@@ -28,6 +28,7 @@ static func add(items: Array, b: Battle, ci: CanvasItem) -> void:
 		var count: int = Defs.SLOT_COUNTS[ring]
 		var step := TAU / count
 		var pieces := maxi(int(ceil(step / PIECE)), 2)
+		var spiked := b.stat("thorns") > 0.0
 		for seg in count:
 			if not wall.sections[seg]:
 				continue
@@ -37,7 +38,7 @@ static func add(items: Array, b: Battle, ci: CanvasItem) -> void:
 				var a0 := start + step * i / pieces
 				var a1 := start + step * (i + 1) / pieces
 				var mid := BattleView.proj(Vector2.from_angle((a0 + a1) / 2.0) * radius)
-				items.append([mid.y + 0.3, _piece.bind(ci, radius, a0, a1, share, seg * 31 + i, i == 0, i == pieces - 1)])
+				items.append([mid.y + 0.3, _piece.bind(ci, radius, a0, a1, share, seg * 31 + i, i == 0, i == pieces - 1, spiked)])
 
 
 static func _arc(r: float, a0: float, a1: float, lift: float, steps: int = 3) -> PackedVector2Array:
@@ -47,7 +48,7 @@ static func _arc(r: float, a0: float, a1: float, lift: float, steps: int = 3) ->
 	return out
 
 
-static func _piece(ci: CanvasItem, r: float, a0: float, a1: float, share: float, seed_value: int, first: bool, last: bool) -> void:
+static func _piece(ci: CanvasItem, r: float, a0: float, a1: float, share: float, seed_value: int, first: bool, last: bool, spiked: bool = false) -> void:
 	if share <= 0.0:
 		_rubble(ci, r, a0, a1, seed_value)
 		return
@@ -83,9 +84,31 @@ static func _piece(ci: CanvasItem, r: float, a0: float, a1: float, share: float,
 	if last:
 		ci.draw_line(base[base.size() - 1], top[top.size() - 1], INK, 0.45, true)
 	_merlons(ci, r + THICKNESS / 2.0 - 0.6, a0, a1, height, face_color)
+	if spiked:
+		_spikes(ci, r + THICKNESS / 2.0, a0, a1, near_side)
 	if hurt > 0.3:
 		var c := BattleView.proj(Vector2.from_angle(mid) * face_r) + Vector2(0, -height * 0.5)
 		ci.draw_polyline(PackedVector2Array([c + Vector2(-1, -1.5), c + Vector2(0, -0.3), c + Vector2(-0.4, 0.6), c + Vector2(0.8, 1.6)]), INK, 0.35, true)
+
+
+## Iron spikes jutting out of the wall's foot (bought with the Thorns upgrade).
+static func spike(ci: CanvasItem, base: Vector2, dir: Vector2, length: float) -> void:
+	var side := Vector2(-dir.y, dir.x) * 0.6
+	var tip := base + dir * length
+	var pts := PackedVector2Array([base + side, tip, base - side])
+	ci.draw_colored_polygon(pts, Color("#5b6582"))
+	ci.draw_polyline(PackedVector2Array([base + side, tip, base - side]), INK, 0.35, true)
+	ci.draw_line(base + side * 0.4, tip, Color("#c3c8d8"), 0.25, true)
+
+
+static func _spikes(ci: CanvasItem, r: float, a0: float, a1: float, near_side: bool) -> void:
+	var count := maxi(int((a1 - a0) * r / 2.4), 1)
+	for k in count:
+		var a := lerpf(a0, a1, (k + 0.5) / count)
+		var out := Vector2.from_angle(a)
+		var base := BattleView.proj(out * (r - 0.2)) + Vector2(0, -2.2 if near_side else -4.5)
+		var dir := (BattleView.proj(out) + Vector2(0, -0.35)).normalized()
+		spike(ci, base, dir, 2.4)
 
 
 static func _merlons(ci: CanvasItem, r: float, a0: float, a1: float, height: float, face: Color) -> void:

@@ -24,6 +24,8 @@ DEFS = """
 <linearGradient id="floor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#fff4dc"/><stop offset="0.5" stop-color="#e6d3b0"/><stop offset="1" stop-color="#e6d3b0"/></linearGradient>
 <radialGradient id="crystal" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#aefbff"/><stop offset="0.7" stop-color="#2fd6ff"/><stop offset="1" stop-color="#1c8fe0"/></radialGradient>
 <radialGradient id="violet" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#f6c8ff"/><stop offset="0.7" stop-color="#c158ff"/><stop offset="1" stop-color="#8a2be2"/></radialGradient>
+<radialGradient id="ember" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#fff2a0"/><stop offset="0.7" stop-color="#ffb020"/><stop offset="1" stop-color="#e5531a"/></radialGradient>
+<radialGradient id="glowEmber"><stop offset="0" stop-color="#ffcf5a" stop-opacity="0.85"/><stop offset="1" stop-color="#ffcf5a" stop-opacity="0"/></radialGradient>
 <radialGradient id="glowCyan"><stop offset="0" stop-color="#7ff6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#7ff6ff" stop-opacity="0"/></radialGradient>
 <radialGradient id="glowViolet"><stop offset="0" stop-color="#e3a6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#e3a6ff" stop-opacity="0"/></radialGradient>
 <radialGradient id="shadow"><stop offset="0" stop-color="#103a1a" stop-opacity="0.45"/><stop offset="1" stop-color="#103a1a" stop-opacity="0"/></radialGradient>
@@ -121,9 +123,9 @@ def keep_body():
     b += cylinder(12, 108, 42, 54, "url(#stone)", 13)
     b += '<path d="M12 42 A48 13 0 0 0 108 42" stroke="#e6e0d2" stroke-width="1.2" fill="none"/>'
     # arcane crystal on its pedestal
-    b += '<circle cx="60" cy="18" r="20" fill="url(#glowCyan)" stroke="none"/>'
+    b += '<circle cx="60" cy="18" r="20" fill="url(#glowEmber)" stroke="none"/>'
     b += cylinder(53, 67, 30, 44, "url(#stoneDark)", 3)
-    b += '<polygon points="60,2 69,18 60,34 51,18" fill="url(#crystal)" stroke="#0e5f7d" stroke-width="1"/>'
+    b += '<polygon points="60,2 69,18 60,34 51,18" fill="url(#ember)" stroke="#8a3a0a" stroke-width="1"/>'
     b += '<polygon points="60,2 60,34 51,18" fill="#ffffff" opacity="0.35" stroke="none"/>'
     b += gloss(56, 13, 1.6, 4, 30, 0.8)
     b += merlons(60, 42, 46, 12, 7, 9, 10, "url(#stone)")
@@ -428,6 +430,15 @@ def cash():
     return svg(36, 30, b)
 
 
+def gem():
+    b = '<polygon points="16,3 27,11 16,29 5,11" fill="url(#violet)"/>'
+    b += '<polygon points="16,3 27,11 16,13 5,11" fill="#f3d9ff" opacity="0.7" stroke="none"/>'
+    b += '<polyline points="5,11 16,13 27,11" fill="none" stroke="#6d24c9" stroke-width="1"/>'
+    b += '<line x1="16" y1="13" x2="16" y2="29" stroke="#6d24c9" stroke-width="1"/>'
+    b += gloss(11, 8, 1.6, 2.6, 40, 0.8)
+    return svg(32, 32, b, 2.6)
+
+
 def heart():
     b = '<path d="M16 28 C4 19 2 12 6 7 C10 2 15 5 16 9 C17 5 22 2 26 7 C30 12 28 19 16 28 Z" fill="#e5534b" stroke="#7d2522" stroke-width="1.5"/>'
     b += '<ellipse cx="10" cy="10" rx="3.5" ry="2.2" fill="#fff" opacity="0.6" stroke="none"/>'
@@ -447,7 +458,7 @@ ART = {
     "decor_bush": decor_bush, "decor_tuft": decor_tuft, "decor_flowers": decor_flowers,
     "decor_rock": decor_rock, "decor_mushroom": decor_mushroom,
     "wyvern": lambda: wyvern(True), "wyvern_b": lambda: wyvern(False), "juggernaut": juggernaut,
-    "coin": coin, "cash": cash, "heart": heart,
+    "coin": coin, "cash": cash, "heart": heart, "gem": gem,
 }
 
 def app_icon():

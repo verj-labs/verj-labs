@@ -50,6 +50,14 @@ func start_research(id: String) -> bool:
 	return true
 
 
+func start_workshop_research(id: String) -> bool:
+	if not data.start_workshop_research(id, now()):
+		return false
+	save_game()
+	changed.emit()
+	return true
+
+
 func add_coins(amount: float) -> void:
 	if amount <= 0.0:
 		return

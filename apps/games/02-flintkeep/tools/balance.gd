@@ -21,8 +21,8 @@ func _initialize() -> void:
 		var start := Time.get_ticks_msec()
 		var waves := []
 		var coins := []
-		for seed_value in [11, 22]:
-			var b := AutoPlayer.play(SETUPS[name][0], 1, seed_value, cap, SETUPS[name][1], 0.1)
+		for seed_value in [11, 22, 33]:
+			var b := AutoPlayer.play(SETUPS[name][0], 1, seed_value, cap, SETUPS[name][1], 0.2)
 			waves.append(b.wave)
 			coins.append(int(b.coins_earned))
 		print("%-6s waves %s  coins %s  (%d ms)" % [name, str(waves), str(coins), Time.get_ticks_msec() - start])

@@ -31,12 +31,19 @@ func test_cannot_start_without_coins() -> void:
 	near(p.coins, 5.0)
 
 
-func test_labs_limit_parallel_research() -> void:
+func test_one_lab_to_start_and_more_bought_with_gems() -> void:
 	var p := _rich()
+	eq(p.labs.size(), 1, "a new player has one lab")
 	check(p.start("coin_bonus", 0.0), "lab 1")
-	check(p.start("siege", 0.0), "lab 2")
-	eq(p.blocker("discount"), "LABS BUSY")
+	eq(p.blocker("siege"), "LABS BUSY")
 	eq(p.blocker("coin_bonus"), "IN LAB", "the same research cannot run twice")
+	check(not p.buy_lab_slot(), "no gems, no slot")
+	p.gems = 200
+	check(p.buy_lab_slot(), "slot 2 for 150 gems")
+	eq(p.gems, 50)
+	eq(p.labs.size(), 2)
+	check(p.start("siege", 0.0), "the second lab works")
+	eq(p.next_slot_gems(), Research.LAB_SLOT_GEMS[1], "slot 3 costs more")
 
 
 func test_research_finishes_when_time_is_up() -> void:
@@ -129,3 +136,59 @@ func test_workshop_is_instant_and_expensive() -> void:
 	check(p.buy_workshop("damage"), "bought")
 	eq(p.workshop_level("damage"), 1)
 	check(p.workshop_cost("damage") > Workshop.cost("damage", 0), "and the next costs more")
+
+
+
+func test_old_saves_keep_both_labs() -> void:
+	var copy := ProfileData.from_dict({"version": 2, "labs": [{"id": "", "ends": 0.0}, {"id": "", "ends": 0.0}]})
+	eq(copy.labs.size(), 2, "players from before lab slots keep their two labs")
+	var fresh := ProfileData.from_dict(ProfileData.new().to_dict())
+	eq(fresh.labs.size(), 1)
+
+
+func test_workshop_items_can_be_researched_for_less() -> void:
+	var p := ProfileData.new()
+	p.coins = 1000.0
+	var full := Workshop.cost("damage", 0)
+	check(p.start_workshop_research("damage", 0.0), "researching")
+	near(p.coins, 1000.0 - Workshop.research_cost("damage", 0), 0.01, "40% of the price")
+	check(Workshop.research_cost("damage", 0) < full, "cheaper than buying")
+	check(not p.buy_workshop("damage"), "cannot also buy it while it is in the lab")
+	p.finish_due(Workshop.seconds("damage", 0))
+	eq(p.workshop_level("damage"), 1, "the level arrives when the lab finishes")
+
+
+func test_finishing_early_costs_less_as_time_runs_down() -> void:
+	var p := ProfileData.new()
+	p.coins = 10000.0
+	p.start_workshop_research("damage", 0.0)
+	var secs := Workshop.seconds("damage", 0)
+	var at_start := p.finish_coin_cost(0, 0.0)
+	var halfway := p.finish_coin_cost(0, secs / 2.0)
+	near(at_start, Workshop.cost("damage", 0) - Workshop.research_cost("damage", 0), 1.0, "right away: the rest of the price")
+	check(halfway < at_start, "cheaper later")
+	check(p.finish_with_coins(0, secs / 2.0), "finished with coins")
+	eq(p.workshop_level("damage"), 1)
+	p.start("coin_bonus", 0.0)
+	eq(p.finish_coin_cost(0, 0.0), -1.0, "lab research only finishes early with gems")
+	p.gems = 50
+	var gems := p.finish_gem_cost(0, 0.0)
+	check(p.finish_with_gems(0, 0.0), "finished with gems")
+	eq(p.gems, 50 - gems)
+	eq(p.level("coin_bonus"), 1)
+
+
+func test_milestones_pay_gems_once() -> void:
+	var p := ProfileData.new()
+	eq(p.reach_wave(1, 49), 0)
+	eq(p.reach_wave(1, 50), Research.MILESTONE_GEMS[0], "wave 50 pays")
+	eq(p.reach_wave(1, 60), 0, "only once")
+	eq(p.reach_wave(2, 120), Research.MILESTONE_GEMS[0] + Research.MILESTONE_GEMS[1], "each tier has its own")
+	eq(p.gems, Research.MILESTONE_GEMS[0] * 2 + Research.MILESTONE_GEMS[1])
+
+
+func test_missions_pay_a_few_gems() -> void:
+	var p := ProfileData.new()
+	p.missions = [{"kind": "kills", "target": 1, "progress": 1, "reward": 10, "gems": 3, "claimed": false}]
+	check(p.claim(0), "claimed")
+	eq(p.gems, 3)

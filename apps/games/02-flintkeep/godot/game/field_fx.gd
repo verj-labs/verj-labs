@@ -32,6 +32,7 @@ func shot(from: Vector2, to: Vector2, kind: String) -> void:
 	var life := 0.14
 	match kind:
 		"cannon": life = 0.24
+		"keep": life = 0.2
 		"sniper": life = 0.2
 		"arcane", "chain": life = 0.18
 	var color: Color = Pal.WEAPON_COLORS.get(kind, Pal.WEAPON_COLORS["arcane"])
@@ -132,6 +133,13 @@ func _draw_shot(s: Dictionary) -> void:
 		"sniper":
 			c.a = 1.0 - k
 			_gradient_line(from, to, c, 1.0)
+		"keep":
+			# a firebolt: a hot white-yellow core with an orange trail
+			var head := from.lerp(to, minf(k * 1.6, 1.0))
+			var tail := from.lerp(to, maxf(k * 1.6 - 0.45, 0.0))
+			draw_polyline_colors(PackedVector2Array([tail, head]), PackedColorArray([Color(1.0, 0.35, 0.05, 0.0), Color(1.0, 0.6, 0.1, 0.9)]), 1.6, true)
+			draw_circle(head, 1.3, Color(1.0, 0.55, 0.1, 0.95), true, -1.0, true)
+			draw_circle(head, 0.7, Color(1.0, 0.97, 0.75), true, -1.0, true)
 		_:
 			# a bright head flies to the target, trailing a fading line back to the muzzle
 			var head := from.lerp(to, minf(k * 1.8, 1.0))

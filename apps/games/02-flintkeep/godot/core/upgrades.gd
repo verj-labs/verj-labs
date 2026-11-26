@@ -4,7 +4,8 @@ extends RefCounted
 ##   price(level) = base * growth^level
 ##   "mult": value = start * step^level          (compounds: damage, health ...)
 ##   "add":  value = start + step * level, capped (chances, flat bonuses ...)
-## max is a level cap (0 = none). Values are read through Battle.stat(id).
+## max is a level cap (0 = none). "unlock" (optional) is the price of the first level, which
+## switches the feature on (thorns spikes the walls). Values are read through Battle.stat(id).
 ## Rule: every upgrade gets pricier faster than it gets stronger (and income upgrades much
 ## faster), so a run's power grows a little slower than the enemies and every run ends. How far
 ## it gets is set by research and the workshop, whose bonuses multiply (see docs/DECISIONS.md).
@@ -27,7 +28,7 @@ const LIST := {
 	"regen": {"tab": "Defense", "name": "Regeneration", "kind": "mult", "start": 0.5, "step": 1.1, "base": 8.0, "growth": 1.13, "max": 0},
 	"armor": {"tab": "Defense", "name": "Armour", "kind": "add", "start": 0.0, "step": 0.01, "base": 12.0, "growth": 1.1, "max": 75},
 	"absolute": {"tab": "Defense", "name": "Absolute defense", "kind": "mult", "start": 1.0, "step": 1.1, "base": 20.0, "growth": 1.13, "max": 0},
-	"thorns": {"tab": "Defense", "name": "Thorns", "kind": "add", "start": 0.0, "step": 0.02, "base": 25.0, "growth": 1.14, "max": 40},
+	"thorns": {"tab": "Defense", "name": "Thorns", "kind": "add", "start": 0.0, "step": 0.02, "base": 25.0, "growth": 1.14, "max": 40, "unlock": 400.0},
 	"lifesteal": {"tab": "Defense", "name": "Lifesteal", "kind": "add", "start": 0.0, "step": 0.001, "base": 30.0, "growth": 1.12, "max": 50},
 	# --- Walls (sections are bought on the field; these improve every wall)
 	"wall_regen": {"tab": "Walls", "name": "Wall regeneration", "kind": "add", "start": 0.0, "step": 0.001, "base": 20.0, "growth": 1.15, "max": 30},
@@ -57,6 +58,8 @@ static func value(id: String, level: int) -> float:
 
 static func price(id: String, level: int) -> float:
 	var u: Dictionary = LIST[id]
+	if level == 0 and u.has("unlock"):
+		return u["unlock"]  # the first level unlocks the feature and costs much more
 	return u["base"] * pow(u["growth"], level)
 
 
@@ -99,7 +102,7 @@ static func enemy_scale(wave: int, siege: float = 0.0) -> float:
 
 ## Cash per kill grows slower than health, so upgrades have to compound to keep up.
 static func cash_scale(wave: int, siege: float = 0.0) -> float:
-	return pow(enemy_scale(wave, siege), 0.7)
+	return pow(enemy_scale(wave, siege), 0.6)
 
 
 ## Enemy damage grows slower still: your defences are about outlasting them, not one-shots.

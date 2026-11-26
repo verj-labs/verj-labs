@@ -62,6 +62,16 @@ static func _heal(b: Battle, dt: float) -> void:
 				e.hp = minf(e.hp + e.max_hp * s.heal * dt, e.max_hp)
 
 
+## Spiked walls and Keep hand back a share of the damage an attacker deals.
+static func _thorns(b: Battle, e: Enemy, damage: float, dt: float) -> void:
+	var thorns := b.stat("thorns")
+	if thorns <= 0.0 or not e.alive():
+		return
+	b._deal(e, damage * thorns, Defs.DamageType.PHYSICAL, 1.0, "Thorns")
+	if b.rng.randf() < dt * 3.0:  # a few sparks a second, not every frame
+		b._event({"type": "thorns", "pos": e.pos()})
+
+
 static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> void:
 	var damage := e.dps * dt
 	if e.burst > 0.0:  # a sapper: one big blast, then he is gone (and pays nothing)
@@ -76,12 +86,11 @@ static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> 
 		var taken := (damage - blocked) * (1.0 - b.keep_armor())
 		b.keep_hp -= taken
 		b.killed_by = e.kind
-		var thorns := b.stat("thorns")
-		if thorns > 0.0 and e.alive():  # thorns hand back a share of the damage the Keep takes
-			b._deal(e, damage * thorns, Defs.DamageType.PHYSICAL, 1.0, "Thorns")
+		_thorns(b, e, damage, dt)
 		return
 	var wall := b.walls[ring]
 	wall.segments[segment] = maxf(wall.segments[segment] - damage, 0.0)
+	_thorns(b, e, damage, dt)
 	if wall.segments[segment] <= 0.0:
 		b._event({"type": "wall_broken", "ring": ring, "segment": segment})
 
