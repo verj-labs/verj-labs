@@ -57,11 +57,12 @@ static func build(b: Battle, parent: Node) -> Array:
 	return out
 
 
-## Redraws the pieces whose section changed health band (or when thorns are bought).
+## Redraws the pieces whose section changed health band (or when the ring gets Thorns).
 static func refresh(b: Battle, pieces: Array) -> void:
-	var spiked := 1 if b.stat("thorns") > 0.0 else 0
+	var thorns := b.stat("thorns") > 0.0
 	for item in pieces:
 		var wall: Entities.Wall = b.walls[item[0]]
+		var spiked := 1 if thorns and wall.addons.has("thorns") else 0
 		var share := wall.segments[item[1]] / wall.max_hp if wall.max_hp > 0.0 else 0.0
 		(item[2] as Stand).refresh(_band(share) * 2 + spiked)
 

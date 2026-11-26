@@ -171,7 +171,40 @@ static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 				reinforce_price, b.reinforce_wall.bind(ring), Kit.Btn.SECONDARY),
 		]
 		rows.append(UpgradeRow.make(title_fn, detail, actions))
+		rows.append(_wall_addon_row(b, ring))
 	return rows
+
+
+## A ring's add-ons: Thorns and Absolute defense, each bought once per ring.
+static func _wall_addon_row(b: Battle, ring: int) -> UpgradeRow:
+	var wall := b.walls[ring]
+	var detail := func() -> String:
+		var parts: Array[String] = []
+		for id in Defs.WALL_ADDON_ORDER:
+			if wall.addons.has(id):
+				parts.append(wall_addon_effect(b, id))
+		if not parts.is_empty():
+			return "  ·  ".join(parts)
+		var blocker := b.wall_addon_blocker(ring, "absolute")
+		return blocker if blocker != "" else "The Keep's defenses, for this wall"
+	var actions: Array = []
+	for id in Defs.WALL_ADDON_ORDER:
+		var short := "Thorns" if id == "thorns" else "Absolute"
+		var price := func() -> float: return b.wall_addon_cost(ring, id)
+		var label := func() -> String:
+			if wall.addons.has(id):
+				return short + " ✓"
+			var p := b.wall_addon_cost(ring, id)
+			return short if p < 0.0 else short + " " + Num.price(p)
+		actions.append(_cash_action(b, label, price, b.buy_wall_addon.bind(ring, id), Kit.Btn.SECONDARY))
+	return UpgradeRow.make("Ring %d add-ons" % ring, detail, actions, Pal.TEXT_DIM)
+
+
+static func wall_addon_effect(b: Battle, id: String) -> String:
+	match id:
+		"thorns": return "Thorns " + Num.pct(b.stat("thorns"))
+		"absolute": return "Blocks %s/s" % Num.fmt(b.stat("absolute"))
+	return ""
 
 
 ## Rows for one wall section, after tapping its arc on the battlefield.

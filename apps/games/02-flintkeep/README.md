@@ -38,7 +38,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
       solid gradient range rings; Keep firebolts; three adaptive music tracks
 - [x] 0.4: smooth late runs (only what changes is redrawn; one mesh per wall piece; capped effects;
       60 fps cap); tower add-ons (crit, multishot, bounce, pushback); a Towers tab to upgrade
-      or kit out every tower at once
+      or kit out every tower at once; wall add-ons (thorns, absolute defense) per ring
 - [x] Settings: music, sound effects, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers

@@ -35,6 +35,14 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
   many as cash allows, cheapest first), set targeting for all, and auto-buy.
 - **Smaller outer rings:** ring 3 holds **6** towers (was 8) and ring 4 holds **8** (was 12).
 
+### Walls
+
+- **Wall add-ons, ring by ring:** walls no longer get the Keep's thorns for free. Each ring buys
+  **Thorns** (needs Thorns unlocked in Defense) and **Absolute defense** separately, on the
+  Walls tab; they then use the Keep's values. Price: the ring's +HP base price x 6 (thorns) or
+  5 (absolute), x1.35 for every ring that already has it. Only rings with Thorns grow spikes.
+- Walls tab auto-buy also buys wall add-ons once the sections are built and repaired.
+
 ### Balance after the change (simulated player, 3-4 seeds)
 
 - Fresh profile waves 22-33; a light profile ~40; a mid profile ~490-550. Workshop levels add

@@ -454,6 +454,41 @@ func wall_reinforce_cost(ring: int) -> float:
 	return Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount()) * pow(Defs.WALL_REINFORCE_GROWTH, walls[ring].level + 1)
 
 
+func wall_addon_count(id: String) -> int:
+	var n := 0
+	for ring in range(1, walls.size()):
+		if walls[ring].addons.has(id):
+			n += 1
+	return n
+
+
+## Why add-on `id` cannot be bought for `ring` yet ("" if it can, or it is owned).
+func wall_addon_blocker(ring: int, id: String) -> String:
+	var needs: String = Defs.WALL_ADDONS[id]["needs"]
+	if needs != "" and level(needs) < 1:
+		return "Unlock %s in Defense" % Upgrades.LIST[needs]["name"]
+	if not walls[ring].built:
+		return "Build the wall first"
+	return ""
+
+
+## Price of wall add-on `id` for `ring`, or -1 if it is owned or cannot be bought yet.
+func wall_addon_cost(ring: int, id: String) -> float:
+	if walls[ring].addons.has(id) or wall_addon_blocker(ring, id) != "":
+		return -1.0
+	var base := Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount())
+	return base * Defs.WALL_ADDONS[id]["cost"] * pow(Defs.ADDON_GROWTH, wall_addon_count(id))
+
+
+func buy_wall_addon(ring: int, id: String) -> bool:
+	var price := wall_addon_cost(ring, id)
+	if price < 0.0 or over or not _pay(price):
+		return false
+	walls[ring].addons[id] = true
+	_event({"type": "wall_built", "ring": ring})
+	return true
+
+
 func wall_repair_cost(ring: int) -> float:
 	return ceilf(wall_reinforce_cost(ring) * Defs.WALL_REPAIR_SHARE * walls[ring].missing_share())
 
@@ -748,6 +783,10 @@ func _auto_walls() -> void:
 			return
 		if walls[ring].missing_share() > 0.3 and repair_wall(ring):
 			return
+	for ring in range(1, rings_unlocked + 1):
+		for id in Defs.WALL_ADDON_ORDER:
+			if buy_wall_addon(ring, id):
+				return
 
 
 func wave_elapsed() -> float:

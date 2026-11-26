@@ -96,8 +96,11 @@ static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> 
 		_thorns(b, e, damage, dt)
 		return
 	var wall := b.walls[ring]
+	if wall.addons.has("absolute") and e.burst <= 0.0:
+		damage -= minf(b.stat("absolute") * dt, damage * (1.0 - ABSOLUTE_FLOOR))
 	wall.segments[segment] = maxf(wall.segments[segment] - damage, 0.0)
-	_thorns(b, e, damage, dt)
+	if wall.addons.has("thorns"):
+		_thorns(b, e, damage, dt)
 	if wall.segments[segment] <= 0.0:
 		b._event({"type": "wall_broken", "ring": ring, "segment": segment})
 

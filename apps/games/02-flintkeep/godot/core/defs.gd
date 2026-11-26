@@ -92,6 +92,15 @@ const ADDONS := {
 	"push": {"name": "Pushback", "about": "Uses the Keep's pushback chance and distance", "cost": 5.0},
 }
 const ADDON_GROWTH := 1.35
+## Wall add-ons work the same way, per ring: a ring with Thorns hurts raiders hacking at it, and a
+## ring with Absolute defense blocks a flat amount of each attacker's damage, using the Keep's
+## values from the Defense tab. Price: the ring's +HP base price x `cost`, x ADDON_GROWTH for
+## every ring that already has that add-on.
+const WALL_ADDON_ORDER := ["thorns", "absolute"]
+const WALL_ADDONS := {
+	"thorns": {"name": "Thorns", "about": "Raiders hacking at this wall take the Keep's thorns", "cost": 6.0, "needs": "thorns"},
+	"absolute": {"name": "Absolute defense", "about": "Blocks the Keep's absolute defense from each attacker", "cost": 5.0, "needs": ""},
+}
 const WEAPON_COST_GROWTH := 1.12  ## Upgrade price multiplier per level bought in the run.
 const WEAPON_UPGRADE_BASE := 0.8  ## First upgrade costs 80% of the build price.
 const SELL_REFUND := 0.5

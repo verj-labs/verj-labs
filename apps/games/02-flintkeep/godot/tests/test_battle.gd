@@ -430,20 +430,55 @@ func test_higher_tiers_are_the_same_curve_raised() -> void:
 
 
 
-func test_thorns_cost_a_lot_to_unlock_and_spike_walls_too() -> void:
+func test_thorns_cost_a_lot_to_unlock_and_walls_need_the_add_on() -> void:
 	check(Upgrades.price("thorns", 0) > Upgrades.price("thorns", 1) * 5.0, "the first level is the expensive unlock")
 	var b := _battle()
-	b.cash = 1000.0
+	b.cash = 1e6
 	b.build_wall(1)
 	b.levels["damage"] = -200
+	eq(b.wall_addon_cost(1, "thorns"), -1.0, "wall thorns need Thorns unlocked first")
 	b.levels["thorns"] = 10
 	var e := b.spawn("brute", Battle.section_angle(1, 0))
 	e.dist = b.wall_radius(1) + 4.0
 	e.hp = 1e6
 	_run(b, 2.0)
 	eq(e.attacking, 1, "hacking at the wall")
-	check(e.hp < 1e6, "the spiked wall hurt it back")
+	near(e.hp, 1e6, 0.001, "a plain wall does not hurt back")
+	check(b.buy_wall_addon(1, "thorns"), "ring 1 bought thorns")
+	_run(b, 2.0)
+	check(e.hp < 1e6, "now the spiked wall hurts it back")
 	check(b.damage_by.has("Thorns"), "and the run report counts it")
+
+
+func test_wall_add_ons_are_bought_ring_by_ring() -> void:
+	var b := _battle({"ring_2": 1})
+	b.cash = 1e9
+	b.levels["thorns"] = 1
+	eq(b.wall_addon_cost(1, "absolute"), -1.0, "needs a wall")
+	b.build_wall(1)
+	b.build_wall(2)
+	var first := b.wall_addon_cost(1, "absolute")
+	check(b.buy_wall_addon(1, "absolute"), "ring 1")
+	check(not b.buy_wall_addon(1, "absolute"), "once per ring")
+	near(b.wall_addon_cost(2, "absolute"), first * Defs.WALL_RING_GROWTH * Defs.ADDON_GROWTH, 0.01, "the next ring costs more")
+	check(not b.walls[2].addons.has("absolute"), "ring 2 does not get it for free")
+
+
+func test_absolute_defense_on_a_wall_blocks_damage() -> void:
+	var plain := _battle()
+	var guarded := _battle()
+	for b: Battle in [plain, guarded]:
+		b.cash = 1e9
+		b.build_wall(1)
+		b.levels["damage"] = -200
+		b.levels["absolute"] = 20
+	guarded.buy_wall_addon(1, "absolute")
+	for b: Battle in [plain, guarded]:
+		var e: Entities.Enemy = b.spawn("brute", Battle.section_angle(1, 0))
+		e.dist = b.wall_radius(1) + 4.0
+		e.hp = 1e9
+		_run(b, 3.0)
+	check(guarded.walls[1].segments[0] > plain.walls[1].segments[0], "the guarded wall lost less")
 
 
 func test_research_finished_mid_run_applies_at_once() -> void:

@@ -37,6 +37,11 @@ static func _buy_one(b: Battle) -> bool:
 			options.append([b.section_cost(ring) * 0.8, b.build_section.bind(ring, gap)])
 		elif b.wave > 6:
 			options.append([b.wall_reinforce_cost(ring) * 1.5, b.reinforce_wall.bind(ring)])
+	for ring in range(1, b.rings_unlocked + 1):
+		for id in Defs.WALL_ADDON_ORDER:
+			var price := b.wall_addon_cost(ring, id)
+			if price >= 0.0:
+				options.append([price * 1.6, b.buy_wall_addon.bind(ring, id)])
 	for id in WEIGHTS:
 		if not b.upgrade_maxed(id):
 			options.append([b.upgrade_cost(id) * WEIGHTS[id], b.buy_upgrade.bind(id)])
