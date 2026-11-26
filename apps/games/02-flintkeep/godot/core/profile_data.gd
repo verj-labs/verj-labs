@@ -45,8 +45,8 @@ func enemy_seen(kind: String) -> bool:
 		return true
 	for tier in range(1, Defs.MAX_TIER + 1):
 		var arrives := Defs.enemy_arrives(kind, tier)
-		if arrives >= 1 and best(tier) >= arrives:
-			return true
+		if arrives >= 1 and (best(tier) >= arrives or (arrives == 1 and tier == 1)):
+			return true  # wave-1 raiders count as met from the start
 	return false
 
 
