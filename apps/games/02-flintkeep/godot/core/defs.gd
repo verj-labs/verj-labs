@@ -95,7 +95,7 @@ const ENEMIES := {
 	"runner": {"hp": 8.0, "dps": 2.0, "speed": 19.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 2.0, "coins": 0.4, "size": 3.5},
 	"brute": {"hp": 46.0, "dps": 8.0, "speed": 7.0, "armor": 0.35, "ward": 0.0, "air": false, "cash": 5.0, "coins": 1.2, "size": 6.0},
 	"balloon": {"hp": 22.0, "dps": 3.5, "speed": 8.0, "armor": 0.0, "ward": 0.0, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
-	"wyvern": {"hp": 20.0, "dps": 5.0, "speed": 16.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
+	"wyvern": {"hp": 18.0, "dps": 3.0, "speed": 13.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
 	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 15.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
 	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 8.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
 	"juggernaut": {"hp": 200.0, "dps": 7.0, "speed": 4.5, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
@@ -103,12 +103,12 @@ const ENEMIES := {
 ## [first wave it appears, spawn weight]
 const ENEMY_WAVES := {
 	"footman": [1, 1.0], "runner": [3, 0.5], "balloon": [5, 0.3], "brute": [6, 0.35], "sapper": [8, 0.2],
-	"wyvern": [12, 0.25], "shaman": [15, 0.12],
+	"wyvern": [15, 0.2], "shaman": [15, 0.12],
 }
 
 
 static func wave_size(wave: int) -> int:
-	return mini(6 + int(wave * 1.2), 70)
+	return mini(6 + int(wave * 0.7), 70)
 
 
 # --- The Keep ----------------------------------------------------------------------------------

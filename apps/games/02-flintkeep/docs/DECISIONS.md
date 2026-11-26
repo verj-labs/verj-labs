@@ -59,8 +59,28 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
 
 ### Balance
 
-- Cash per kill now grows with enemy strength to the power 0.6 (was 0.7), so late runs fall
-  behind more steadily instead of either dying early or running for ever.
+Simulated runs showed that, with the same research, one run would die at wave 12 and the next
+would never end. Three causes were found and fixed:
+
+- **Regeneration compounded on top of health.** It is a share of max health, but its upgrade
+  multiplied itself every level (×1.1), so late runs healed thousands of times their health a
+  second. Now each level adds 0.05% (up to 4%/s), and everything together is capped at 8%/s.
+- **The run could keep up with the enemies.** The player fell behind by only ~0.7% a wave, so a
+  good start lasted 900 waves and doubling your power was worth ~100 waves. Now:
+  - enemies grow ~3.6% a wave late (`SCALE_C` 0.02 → 0.035), with a gentler start
+    (`SCALE_A` 1.5 → 1.0, `SCALE_B` 10 → 20);
+  - cash per kill grows with enemy strength to the power 0.45 (was 0.7);
+  - Cash bounty and Cash per wave pay ×1.02 / ×1.025 a level (were ×1.03 / ×1.04) and cost
+    ×1.16 (was ×1.15). Income upgrades that pay for themselves were the hidden runaway.
+  - waves grow by 0.7 enemies a wave (was 1.2), so the first waves are less of a wall;
+  - wyverns arrive at wave 15 (was 12) and are weaker (3 dps, was 5; slower), since they fly
+    over walls and were ending most first runs.
+- **Results** (simulated player, 4 seeds): fresh profile waves 32–36. Past the first few
+  workshop levels each level adds a steady ~4 waves (10 levels ≈ 300, 20 ≈ 370), and runs with
+  the same setup end within ±20 waves of each other. Nothing reaches wave 1,000 for ever.
+- **Still to tune with real play:** a hump right after the start (3 workshop levels already
+  reach ~280). The capped upgrades (crit, armour, multishot, bounce) add up to about ×100 once a
+  run can afford them, which carries it a long way.
 - **Each wall ring can be repaired once per wave.** Late in a run repairs had become cheap next
   to the cash income, so walls never fell: one simulated run reached wave 830 with 1,200
   raiders piled outside an untouched Keep. Now a heavy wave can break a wall, and
