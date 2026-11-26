@@ -55,6 +55,7 @@ class Wall:
 	var ring: int
 	var level: int = 0
 	var max_hp: float = 0.0
+	var repaired_wave: int = -1  ## walls can be repaired once per wave, so a siege can break them
 	var sections: Array[bool] = []  ## which arcs between towers are built
 	var segments: Array[float] = []  ## health of each section (0 when not built or broken)
 

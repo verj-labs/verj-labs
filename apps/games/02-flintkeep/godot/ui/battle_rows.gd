@@ -75,7 +75,7 @@ static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 			return "Ring %d wall  ·  fortified!" % ring if wall.complete() else "Ring %d wall  ·  %d/%d" % [ring, wall.built_count(), count]
 		var reinforce_price := func() -> float: return b.wall_reinforce_cost(ring) if wall.built else -1.0
 		var repair_price := func() -> float:
-			return b.wall_repair_cost(ring) if wall.built and wall.missing_share() > 0.0 else -1.0
+			return b.wall_repair_cost(ring) if b.can_repair(ring) else -1.0
 		var main_price := func() -> float: return repair_price.call() if wall.complete() else b.wall_build_cost(ring)
 		var detail := func() -> String:
 			if not wall.complete():

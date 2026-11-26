@@ -61,6 +61,10 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
 
 - Cash per kill now grows with enemy strength to the power 0.6 (was 0.7), so late runs fall
   behind more steadily instead of either dying early or running for ever.
+- **Each wall ring can be repaired once per wave.** Late in a run repairs had become cheap next
+  to the cash income, so walls never fell: one simulated run reached wave 830 with 1,200
+  raiders piled outside an untouched Keep. Now a heavy wave can break a wall, and
+  reinforcing (+HP) and wall regeneration matter more.
 
 ## 0.2: progression rework (for a long, idle-friendly run)
 

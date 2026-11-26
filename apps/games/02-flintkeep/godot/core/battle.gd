@@ -393,10 +393,18 @@ func reinforce_wall(ring: int) -> bool:
 	return true
 
 
+## Repairs are limited to once per wave per ring: otherwise, late in a run, cheap repairs make
+## walls unbreakable and the run stalls with thousands of raiders piled outside.
+func can_repair(ring: int) -> bool:
+	var wall := walls[ring]
+	return wall.built and wall.missing_share() > 0.0 and wall.repaired_wave != wave
+
+
 func repair_wall(ring: int) -> bool:
 	var wall := walls[ring]
-	if not wall.built or wall.missing_share() <= 0.0 or not _pay(wall_repair_cost(ring)):
+	if not can_repair(ring) or not _pay(wall_repair_cost(ring)):
 		return false
+	wall.repaired_wave = wave
 	_heal_wall(wall)
 	return true
 

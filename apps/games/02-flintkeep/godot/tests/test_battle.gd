@@ -466,3 +466,18 @@ func test_perks_can_be_rerolled() -> void:
 	check(b.reroll_perks(), "rerolled")
 	eq(b.perk_offer.size(), 3)
 	near(b.perk_time, Defs.PERK_SECONDS, 0.001, "the timer starts again")
+
+
+
+func test_walls_can_be_repaired_once_per_wave() -> void:
+	var b := _battle()
+	b.cash = 100000.0
+	b.build_wall(1)
+	b.walls[1].segments[0] = 1.0
+	check(b.repair_wall(1), "first repair this wave")
+	b.walls[1].segments[0] = 1.0
+	check(not b.repair_wall(1), "not again in the same wave")
+	b.wave_timer = 0.01
+	b.step(0.05)
+	b.walls[1].segments[0] = 1.0
+	check(b.repair_wall(1), "a new wave allows another repair")

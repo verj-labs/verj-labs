@@ -22,7 +22,7 @@ static func think(b: Battle) -> void:
 static func _buy_one(b: Battle) -> bool:
 	for ring in range(1, b.rings_unlocked + 1):
 		var wall := b.walls[ring]
-		if wall.built and wall.missing_share() >= REPAIR_BELOW and b.cash >= b.wall_repair_cost(ring):
+		if b.can_repair(ring) and wall.missing_share() >= REPAIR_BELOW and b.cash >= b.wall_repair_cost(ring):
 			return b.repair_wall(ring)
 	var options: Array = []  # [cost, Callable]
 	var weapon := _next_weapon(b)
