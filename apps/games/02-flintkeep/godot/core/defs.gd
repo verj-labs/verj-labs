@@ -10,7 +10,7 @@ extends RefCounted
 const RING_RADII := [0.0, 32.0, 54.0, 75.0, 96.0]
 ## Towers per ring (index 0 = the Keep). Rings 1 and 2 have four each: ring 1 is an X (the
 ## diagonals, so no tower hides behind the Keep) and ring 2 a plus (N, E, S, W).
-const SLOT_COUNTS := [0, 4, 4, 8, 12]
+const SLOT_COUNTS := [0, 4, 4, 6, 8]
 ## Towers stand on their ring's wall; the wall sections are the arcs between them.
 const WALL_OFFSET := 0.0
 const MAX_RING := 4
@@ -80,6 +80,27 @@ const WEAPON_DMG_GROWTH := 1.10  ## Damage multiplier per tower level (compounds
 const WEAPON_RATE_GROWTH := 0.02  ## +2% fire rate per tower level.
 const WEAPON_RANGE_GROWTH := 0.5  ## +0.5 range per tower level (capped below).
 const WEAPON_RANGE_MAX := 20.0
+## Tower add-ons: a tower can buy the Keep's attack effects for itself, and then uses the Keep's
+## values from the Attack tab (crit chance and damage, multishot, bounce, pushback). Price: the
+## weapon's build price x `cost`, x ADDON_GROWTH for every tower that already has that add-on,
+## so the first few are affordable and kitting out a whole fortress is a long-term goal.
+const ADDON_ORDER := ["crit", "multishot", "bounce", "push"]
+const ADDONS := {
+	"crit": {"name": "Critical hits", "about": "Uses the Keep's critical chance and damage", "cost": 4.0},
+	"multishot": {"name": "Multishot", "about": "Uses the Keep's multishot: hits extra enemies", "cost": 8.0},
+	"bounce": {"name": "Bounce", "about": "Uses the Keep's bounce: shots jump to the next enemy", "cost": 8.0},
+	"push": {"name": "Pushback", "about": "Uses the Keep's pushback chance and distance", "cost": 5.0},
+}
+const ADDON_GROWTH := 1.35
+## Wall add-ons work the same way, per ring: a ring with Thorns hurts raiders hacking at it, and a
+## ring with Absolute defense blocks a flat amount of each attacker's damage, using the Keep's
+## values from the Defense tab. Price: the ring's +HP base price x `cost`, x ADDON_GROWTH for
+## every ring that already has that add-on.
+const WALL_ADDON_ORDER := ["thorns", "absolute"]
+const WALL_ADDONS := {
+	"thorns": {"name": "Thorns", "about": "Raiders hacking at this wall take the Keep's thorns", "cost": 6.0, "needs": "thorns"},
+	"absolute": {"name": "Absolute defense", "about": "Blocks the Keep's absolute defense from each attacker", "cost": 5.0, "needs": ""},
+}
 const WEAPON_COST_GROWTH := 1.12  ## Upgrade price multiplier per level bought in the run.
 const WEAPON_UPGRADE_BASE := 0.8  ## First upgrade costs 80% of the build price.
 const SELL_REFUND := 0.5
@@ -91,29 +112,51 @@ const SELL_REFUND := 0.5
 ## Sappers have no dps: they blow up against the first wall (or the Keep) for `burst` damage.
 ## Shamans heal raiders near them by `heal` of their max health per second.
 const ENEMIES := {
-	"footman": {"hp": 14.0, "dps": 3.0, "speed": 11.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 4.0, "coins": 0.5, "size": 4.0},
-	"runner": {"hp": 8.0, "dps": 2.0, "speed": 19.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 2.0, "coins": 0.4, "size": 3.5},
-	"brute": {"hp": 46.0, "dps": 8.0, "speed": 7.0, "armor": 0.35, "ward": 0.0, "air": false, "cash": 5.0, "coins": 1.2, "size": 6.0},
-	"balloon": {"hp": 22.0, "dps": 3.5, "speed": 8.0, "armor": 0.0, "ward": 0.0, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
-	"wyvern": {"hp": 20.0, "dps": 5.0, "speed": 16.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
-	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 15.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
-	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 8.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
-	"juggernaut": {"hp": 200.0, "dps": 7.0, "speed": 4.5, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
+	"footman": {"hp": 14.0, "dps": 3.0, "speed": 16.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 4.0, "coins": 0.5, "size": 4.0},
+	"runner": {"hp": 8.0, "dps": 2.0, "speed": 32.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 2.0, "coins": 0.4, "size": 3.5},
+	"brute": {"hp": 46.0, "dps": 8.0, "speed": 9.0, "armor": 0.35, "ward": 0.0, "air": false, "cash": 5.0, "coins": 1.2, "size": 6.0},
+	"balloon": {"hp": 22.0, "dps": 3.5, "speed": 11.0, "armor": 0.0, "ward": 0.0, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
+	"wyvern": {"hp": 18.0, "dps": 3.0, "speed": 18.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
+	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 20.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
+	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 12.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
+	"juggernaut": {"hp": 200.0, "dps": 7.0, "speed": 6.0, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
 }
-## [first wave it appears, spawn weight]
-const ENEMY_WAVES := {
-	"footman": [1, 1.0], "runner": [3, 0.5], "balloon": [5, 0.3], "brute": [6, 0.35], "sapper": [8, 0.2],
-	"wyvern": [12, 0.25], "shaman": [15, 0.12],
+## Speeds (field units a second): bosses and heavies are slow (6-12), raiders steady (16-20),
+## sprinters very fast (32) so they slip past slow-firing towers.
+##
+## Who joins the raids, and when. A new kind arrives only on a wave ending in 5 (never with a
+## boss on the 10s), one at a time, so each arrival is a planned moment with a banner, and all of
+## tier 1's kinds have arrived by wave 45. Some kinds only raid from a higher tier, where they
+## arrive on wave 5. `weight` is how often it is picked once it has arrived.
+const ENEMY_ORDER := ["footman", "juggernaut", "runner", "brute", "balloon", "sapper", "wyvern", "shaman"]
+const ENEMY_ROSTER := {
+	"footman": {"name": "Raider", "about": "A goblin with an axe. Hacks at walls, then the Keep.", "wave": 1, "tier": 1, "weight": 1.0},
+	"juggernaut": {"name": "Juggernaut", "about": "The boss: slow, armoured and huge. Every 10th wave.", "wave": BOSS_EVERY, "tier": 1, "weight": 0.0},
+	"runner": {"name": "Sprinter", "about": "Very fast and fragile. Slips past slow towers.", "wave": 15, "tier": 1, "weight": 0.5},
+	"brute": {"name": "Armoured brute", "about": "Slow, tough, and armour shrugs off part of every hit.", "wave": 25, "tier": 1, "weight": 0.35},
+	"balloon": {"name": "War balloon", "about": "Flies over the walls. Only some towers can reach it.", "wave": 35, "tier": 1, "weight": 0.3},
+	"sapper": {"name": "Sapper", "about": "Runs at a wall and blows it up (and himself).", "wave": 45, "tier": 1, "weight": 0.2},
+	"wyvern": {"name": "Wyvern", "about": "A fast flyer, warded against magic.", "wave": 5, "tier": 2, "weight": 0.2},
+	"shaman": {"name": "Shaman", "about": "Heals the raiders around him. Shoot him first.", "wave": 5, "tier": 3, "weight": 0.12},
 }
+
+
+## The wave `kind` first raids in `tier`, or -1 if it never raids there.
+static func enemy_arrives(kind: String, tier: int) -> int:
+	var r: Dictionary = ENEMY_ROSTER[kind]
+	return int(r["wave"]) if tier >= int(r["tier"]) else -1
 
 
 static func wave_size(wave: int) -> int:
-	return mini(6 + int(wave * 1.2), 70)
+	return mini(6 + int(wave * 0.7), 70)
 
 
 # --- The Keep ----------------------------------------------------------------------------------
 
 ## regen is a share of max health per second (0.005 = 0.5%/s).
+## Most the Keep can heal, in % of max health per second (upgrades, workshop and perks together).
+## Regeneration is a share of health, and health already grows, so the share must stay bounded.
+const KEEP_REGEN_MAX := 8.0
 const KEEP := {"hp": 100.0, "regen": 0.005, "dmg": 6.0, "rate": 1.2, "range": 58.0}
 
 ## The Keep's cash upgrades now live in core/upgrades.gd (five tabs).

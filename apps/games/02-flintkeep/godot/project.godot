@@ -10,6 +10,7 @@ config/name="Flintkeep"
 config/description="Hold the Keep. An endless flintlock-fantasy fortress defense."
 config/features=PackedStringArray("4.7", "GL Compatibility")
 run/main_scene="res://scenes/main.tscn"
+run/max_fps=60
 config/icon="res://icon.svg"
 
 [autoload]

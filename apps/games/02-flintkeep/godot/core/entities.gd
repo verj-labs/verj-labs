@@ -40,6 +40,7 @@ class Tower:
 	var focus: String = ""  ## targeting mode: "" = the weapon's default, or "first", "strong", "close", "air"
 	var cooldown: float = 0.0
 	var invested: float = 0.0  ## Cash spent on it, for the sell refund.
+	var addons: Dictionary = {}  ## add-on id -> true (see Defs.ADDONS)
 	var fired: float = 0.0  ## Seconds since it last fired (for the recoil animation).
 
 
@@ -58,6 +59,7 @@ class Wall:
 	var repaired_wave: int = -1  ## walls can be repaired once per wave, so a siege can break them
 	var sections: Array[bool] = []  ## which arcs between towers are built
 	var segments: Array[float] = []  ## health of each section (0 when not built or broken)
+	var addons: Dictionary = {}  ## wall add-on id -> true (see Defs.WALL_ADDONS)
 
 	## True when at least one section stands.
 	var built: bool:

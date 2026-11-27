@@ -4,7 +4,7 @@ extends SceneTree
 ##
 ##   godot --path godot --resolution 540x1170 -s ../tools/screenshot.gd -- battle out.png wait=20 research=mid auto=1 speed=3
 ##
-## Screens: menu, battle, research, missions, settings. tutorial=1 shows the first-run tips,
+## Screens: menu, battle, research, missions, settings, bestiary. tutorial=1 shows the first-run tips,
 ## offline=1 the welcome-back coins, section=RING,SEG selects a wall section, tab=Attack|Defense|
 ## Walls|Economy|Powers opens a panel tab, perk=1 shows the perk choice. research=fresh|mid|late fakes a profile (nothing is saved).
 ## auto=1 lets the AutoPlayer spend cash during the battle. slot=N selects a build slot.
@@ -40,6 +40,7 @@ func _initialize() -> void:
 	profile.data.missions[0]["progress"] = profile.data.missions[0]["target"]
 	profile.data.missions[1]["progress"] = int(profile.data.missions[1]["target"]) / 2
 	profile.data.gems = 60
+	profile.data.day_mode = opts.get("day", "day")  # day=cycle|clock|sunrise|day|sunset|night
 	if opts["offline"] == "1":
 		profile.offline_pending = 240.0
 	var main: Control = load("res://scenes/main.tscn").instantiate()
@@ -50,6 +51,7 @@ func _initialize() -> void:
 		"research": main.show_research()
 		"missions": main.get_child(main.get_child_count() - 1).call("_open_missions")
 		"settings": main.get_child(main.get_child_count() - 1).call("_open_settings")
+		"bestiary": main.get_child(main.get_child_count() - 1).call("_open_bestiary")
 	await process_frame
 	var screen_node: Node = main.get_child(main.get_child_count() - 1)
 	if screen == "battle":
@@ -61,6 +63,9 @@ func _initialize() -> void:
 			bs.battle.levels["thorns"] = int(opts["thorns"])
 		if opts["tab"] != "":
 			bs.get("_panel").call("_set_tab", opts["tab"])
+		if opts.get("picker", "0") == "1":
+			await create_timer(float(opts["wait"]) - 0.3).timeout
+			bs.call("_open_day_picker")
 		if opts["perk"] == "1":
 			await create_timer(float(opts["wait"]) - 0.3).timeout
 			bs.battle.perk_offer = Perks.pick_three(bs.battle.rng)

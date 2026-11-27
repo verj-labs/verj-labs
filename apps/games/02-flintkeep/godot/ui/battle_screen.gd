@@ -28,6 +28,9 @@ var _tutorial: Tutorial
 var _early_button: Button
 var _boss_meter: Meter
 var _perk_overlay: Control
+var _hud_style: StyleBoxFlat
+var _sky: SkyButton
+var _panel_style: StyleBoxFlat
 var _perk_label: Label
 
 
@@ -41,18 +44,20 @@ func _ready() -> void:
 	battle = Battle.new(Profile.data.research, tier, 0, Profile.data.workshop)
 	Profile.changed.connect(battle.refresh_unlocks)
 	Profile.data.refresh_missions(Missions.today())
-	var bg := Kit.color_rect(Pal.GRASS)
+	var bg := Kit.color_rect(Pal.WOOD)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var margin := SafeMargin.new(0)
-	add_child(margin)
+	# Edge to edge: the wood bar runs up under the status bar / Dynamic Island and the wood panel
+	# down under the home bar; only their contents keep clear of those (see _apply_insets).
 	var column := Kit.vbox(0)
-	margin.add_child(column)
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(column)
 	column.add_child(_build_hud())
 	column.add_child(_build_field())
 	column.add_child(_build_panel())
 	_banner = Kit.heading("", 48, Pal.WHITE)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # long enemy names wrap instead of running off screen
 	add_child(_banner)
 	_show_banner("Wave 1", Pal.WHITE)
 	if not Profile.data.tutorial_done:
@@ -67,6 +72,19 @@ func _ready() -> void:
 		_tutorial.offset_bottom = -12
 		_tutorial.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_update_hud()
+	_apply_insets()
+	get_viewport().size_changed.connect(_apply_insets)
+
+
+## Pads the top bar and bottom panel by the phone's unsafe areas (notch, home bar, corners).
+func _apply_insets() -> void:
+	var insets := SafeMargin.insets(get_viewport())
+	_hud_style.content_margin_top = 8 + insets.y
+	_hud_style.content_margin_left = 14 + insets.x
+	_hud_style.content_margin_right = 14 + insets.z
+	_panel_style.content_margin_bottom = 10 + insets.w
+	_panel_style.content_margin_left = 14 + insets.x
+	_panel_style.content_margin_right = 14 + insets.z
 
 
 func _build_hud() -> Control:
@@ -78,6 +96,7 @@ func _build_hud() -> Control:
 	style.content_margin_top = 8
 	style.content_margin_bottom = 10
 	hud.add_theme_stylebox_override("panel", style)
+	_hud_style = style
 	var v := Kit.vbox(8)
 	hud.add_child(v)
 	var top := Kit.hbox(8)
@@ -128,6 +147,7 @@ func _build_field() -> Control:
 	view = BattleView.new()
 	_field.add_child(view)
 	view.setup(battle)
+	view.day_mode = Profile.data.day_mode
 	view.event.connect(_on_battle_event)
 	_field.gui_input.connect(_on_field_input)
 	_boss_meter = Meter.new(Color("#ff7a2a"), 30, 16)
@@ -139,7 +159,29 @@ func _build_field() -> Control:
 	_boss_meter.offset_bottom = 38
 	_boss_meter.visible = false
 	_field.add_child(_boss_meter)
+	_sky = SkyButton.new()
+	_sky.anchor_left = 1.0
+	_sky.anchor_right = 1.0
+	_sky.offset_left = -60
+	_sky.offset_right = -8
+	_sky.offset_top = 8
+	_sky.offset_bottom = 60
+	_sky.pressed.connect(_open_day_picker)
+	_field.add_child(_sky)
 	return _field
+
+
+func _open_day_picker() -> void:
+	var holder := [null]
+	var body := Kit.vbox(14)
+	body.add_child(Kit.heading("Time of day", 40, Pal.WHITE))
+	body.add_child(Kit.para("Auto loops sunrise, day, sunset and night every 5 minutes. My clock follows your phone's time.",
+		18, Pal.WHITE, Fonts.bold(), HORIZONTAL_ALIGNMENT_CENTER, true))
+	body.add_child(DayPicker.build(func(mode: String) -> void: view.day_mode = mode))
+	var close := Kit.button("Close", Kit.Btn.PRIMARY, 28, 66)
+	close.pressed.connect(func() -> void: holder[0].queue_free())
+	body.add_child(close)
+	holder[0] = Kit.modal(self, body)
 
 
 func _build_panel() -> Control:
@@ -152,6 +194,7 @@ func _build_panel() -> Control:
 	style.corner_radius_bottom_right = 0
 	style.content_margin_top = 12
 	box.add_theme_stylebox_override("panel", style)
+	_panel_style = style
 	box.custom_minimum_size.y = PANEL_HEIGHT
 	_panel = BattlePanel.new(battle)
 	_panel.close_slot.connect(_select_slot.bind(-1))
@@ -161,6 +204,8 @@ func _build_panel() -> Control:
 
 func _process(delta: float) -> void:
 	view.layout(_field.size)
+	_sky.night = view.night_amount()
+	_sky.warmth = view.warmth()
 	_update_boss_bar()
 	if _perk_overlay != null:
 		if battle.perk_offer.is_empty():
@@ -306,15 +351,9 @@ func _on_battle_event(e: Dictionary) -> void:
 			_end_run()
 
 
-const ENEMY_NAMES := {"runner": "Runners", "balloon": "War balloons (flyers)", "brute": "Armoured brutes",
-	"sapper": "Sappers (blow up walls)", "wyvern": "Wyverns (flyers)", "shaman": "Shamans (heal others)"}
-
-
 func _new_enemy(wave: int) -> String:
-	for kind in Defs.ENEMY_WAVES:
-		if int(Defs.ENEMY_WAVES[kind][0]) == wave and ENEMY_NAMES.has(kind):
-			return ENEMY_NAMES[kind]
-	return ""
+	var kind := BattleWaves.newcomer(wave, battle.tier)
+	return "" if kind == "" else Defs.ENEMY_ROSTER[kind]["name"]
 
 
 func _track_missions(e: Dictionary) -> void:
@@ -346,12 +385,16 @@ func _bank_coins() -> void:
 	if battle.gems_earned > 0:
 		Profile.data.gems += battle.gems_earned
 		battle.gems_earned = 0
+	for kind in battle.kinds_seen:
+		Profile.data.seen_enemies[kind] = true
 	Profile.save_game()
 
 
 func _exit_tree() -> void:
 	if Profile.changed.is_connected(battle.refresh_unlocks):
 		Profile.changed.disconnect(battle.refresh_unlocks)
+	if get_viewport().size_changed.is_connected(_apply_insets):
+		get_viewport().size_changed.disconnect(_apply_insets)
 
 
 func _notification(what: int) -> void:

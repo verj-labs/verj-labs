@@ -26,8 +26,10 @@ var spawn_extents := Vector2(140.0, 180.0)
 var time := 0.0
 var wave := 0
 var wave_timer := 0.0
+var heal_timer := 0.0  ## next shaman healing pulse
 var cash := 0.0
 var coins_earned := 0.0
+var kinds_seen := {}  ## enemy kinds that raided this run (the profile's bestiary learns them)
 var gems_earned := 0  ## rare boss drops, banked into the profile by the screen
 var kills := 0
 var over := false
@@ -165,7 +167,7 @@ func keep_max_hp() -> float:
 
 
 func keep_regen() -> float:
-	return keep_max_hp() * stat("regen") / 100.0 * _ws("regen")
+	return keep_max_hp() * minf(stat("regen") * _ws("regen"), Defs.KEEP_REGEN_MAX) / 100.0
 
 
 func keep_armor() -> float:
@@ -297,6 +299,112 @@ func upgrade_tower(index: int) -> bool:
 	return true
 
 
+# --- Tower add-ons and whole-fortress actions -------------------------------------------------
+
+func addon_count(id: String) -> int:
+	var n := 0
+	for slot in slots:
+		if slot.tower != null and slot.tower.addons.has(id):
+			n += 1
+	return n
+
+
+## Price of add-on `id` for the tower in slot `index`, or -1 if there is no tower or it has it.
+func addon_cost(index: int, id: String, already: int = -1) -> float:
+	var tower := slots[index].tower
+	if tower == null or tower.addons.has(id):
+		return -1.0
+	var owned := addon_count(id) if already < 0 else already
+	var base: float = Defs.WEAPONS[tower.weapon]["cost"] * Defs.ADDONS[id]["cost"]
+	return base * pow(Defs.ADDON_GROWTH, owned) * (1.0 - maxf(discount(), 0.0))
+
+
+func buy_addon(index: int, id: String) -> bool:
+	var price := addon_cost(index, id)
+	if price < 0.0 or over or not _pay(price):
+		return false
+	var tower := slots[index].tower
+	tower.addons[id] = true
+	tower.invested += price
+	_event({"type": "upgraded", "slot": index})
+	return true
+
+
+## Slots whose tower lacks add-on `id`, cheapest weapon first.
+func towers_without(id: String) -> Array[int]:
+	var out: Array[int] = []
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index) and not slot.tower.addons.has(id):
+			out.append(slot.index)
+	out.sort_custom(func(a: int, c: int) -> bool: return Defs.WEAPONS[slots[a].tower.weapon]["cost"] < Defs.WEAPONS[slots[c].tower.weapon]["cost"])
+	return out
+
+
+## What giving every tower add-on `id` costs (each one dearer than the last), or -1 if all have it.
+func addon_all_cost(id: String) -> float:
+	var todo := towers_without(id)
+	if todo.is_empty():
+		return -1.0
+	var total := 0.0
+	var owned := addon_count(id)
+	for index in todo:
+		total += addon_cost(index, id, owned)
+		owned += 1
+	return total
+
+
+## Gives add-on `id` to as many towers as cash allows, cheapest first.
+func buy_addon_all(id: String) -> bool:
+	var bought := false
+	for index in towers_without(id):
+		if not buy_addon(index, id):
+			break
+		bought = true
+	return bought
+
+
+## The cheapest single step of "upgrade all" (to enable its button), or -1 with no towers.
+func cheapest_tower_upgrade() -> float:
+	var best := -1.0
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			var price := tower_upgrade_cost(slot.index)
+			if best < 0.0 or price < best:
+				best = price
+	return best
+
+
+## One more level for every tower, or -1 with no towers.
+func upgrade_all_cost() -> float:
+	var total := -1.0
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			total = maxf(total, 0.0) + tower_upgrade_cost(slot.index)
+	return total
+
+
+## Raises every tower one level, cheapest first, as far as cash allows.
+func upgrade_all_towers() -> bool:
+	var order: Array[int] = []
+	for slot in slots:
+		if slot.tower != null and slot_open(slot.index):
+			order.append(slot.index)
+	order.sort_custom(func(a: int, c: int) -> bool: return tower_upgrade_cost(a) < tower_upgrade_cost(c))
+	var bought := false
+	for index in order:
+		if not upgrade_tower(index):
+			break
+		bought = true
+	return bought
+
+
+## Sets every tower's targeting ("" = each weapon's default).
+func set_focus_all(focus: String) -> void:
+	for slot in slots:
+		if slot.tower != null:
+			slot.tower.focus = focus
+
+
 func sell_value(index: int) -> float:
 	var tower := slots[index].tower
 	return 0.0 if tower == null else tower.invested * Defs.SELL_REFUND
@@ -345,6 +453,41 @@ func wall_build_cost(ring: int) -> float:
 
 func wall_reinforce_cost(ring: int) -> float:
 	return Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount()) * pow(Defs.WALL_REINFORCE_GROWTH, walls[ring].level + 1)
+
+
+func wall_addon_count(id: String) -> int:
+	var n := 0
+	for ring in range(1, walls.size()):
+		if walls[ring].addons.has(id):
+			n += 1
+	return n
+
+
+## Why add-on `id` cannot be bought for `ring` yet ("" if it can, or it is owned).
+func wall_addon_blocker(ring: int, id: String) -> String:
+	var needs: String = Defs.WALL_ADDONS[id]["needs"]
+	if needs != "" and level(needs) < 1:
+		return "Unlock %s in Defense" % Upgrades.LIST[needs]["name"]
+	if not walls[ring].built:
+		return "Build the wall first"
+	return ""
+
+
+## Price of wall add-on `id` for `ring`, or -1 if it is owned or cannot be bought yet.
+func wall_addon_cost(ring: int, id: String) -> float:
+	if walls[ring].addons.has(id) or wall_addon_blocker(ring, id) != "":
+		return -1.0
+	var base := Defs.WALL_BUILD_BASE * pow(Defs.WALL_RING_GROWTH, ring - 1) * (1.0 - discount())
+	return base * Defs.WALL_ADDONS[id]["cost"] * pow(Defs.ADDON_GROWTH, wall_addon_count(id))
+
+
+func buy_wall_addon(ring: int, id: String) -> bool:
+	var price := wall_addon_cost(ring, id)
+	if price < 0.0 or over or not _pay(price):
+		return false
+	walls[ring].addons[id] = true
+	_event({"type": "wall_built", "ring": ring})
+	return true
 
 
 func wall_repair_cost(ring: int) -> float:
@@ -604,12 +747,34 @@ func _auto_buy() -> void:
 			continue
 		if tab == "Walls":
 			_auto_walls()
+		if tab == "Towers":
+			_auto_towers()
 		var best := ""
 		for id in Upgrades.ids_in(tab):
 			if not upgrade_maxed(id) and (best == "" or upgrade_cost(id) < upgrade_cost(best)):
 				best = id
 		if best != "" and cash >= upgrade_cost(best):
 			buy_upgrade(best)
+
+
+## The Towers tab's auto-buy: the cheapest tower level or add-on.
+func _auto_towers() -> void:
+	var best_price := INF
+	var best: Callable
+	for slot in slots:
+		if slot.tower == null or not slot_open(slot.index):
+			continue
+		var up := tower_upgrade_cost(slot.index)
+		if up < best_price:
+			best_price = up
+			best = upgrade_tower.bind(slot.index)
+		for id in Defs.ADDON_ORDER:
+			var price := addon_cost(slot.index, id)
+			if price >= 0.0 and price < best_price:
+				best_price = price
+				best = buy_addon.bind(slot.index, id)
+	if best.is_valid() and cash >= best_price:
+		best.call()
 
 
 func _auto_walls() -> void:
@@ -619,6 +784,10 @@ func _auto_walls() -> void:
 			return
 		if walls[ring].missing_share() > 0.3 and repair_wall(ring):
 			return
+	for ring in range(1, rings_unlocked + 1):
+		for id in Defs.WALL_ADDON_ORDER:
+			if buy_wall_addon(ring, id):
+				return
 
 
 func wave_elapsed() -> float:
@@ -641,7 +810,7 @@ func _next_wave() -> void:
 		_event({"type": "perk_offer"})
 	wave_timer += Defs.WAVE_SECONDS
 	coins_earned += wave_coins()
-	_spawn_queue = BattleWaves.plan(wave, rng)
+	_spawn_queue = BattleWaves.plan(wave, rng, tier)
 	_event({"type": "wave", "wave": wave, "boss": wave % Defs.BOSS_EVERY == 0})
 
 
@@ -674,6 +843,7 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.ward = def["ward"]
 	e.air = def["air"]
 	e.boss = kind == "juggernaut"
+	kinds_seen[kind] = true
 	e.cash = def["cash"] * Upgrades.cash_scale(wave, siege())
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
 	e.size = def["size"]

@@ -68,6 +68,14 @@ static func card(radius: int = 12) -> StyleBoxFlat:
 
 
 ## Text. `outline` gives it the dark cartoon edge used on wood, sky and buttons.
+## A label that wraps onto more lines instead of widening its container.
+static func para(text: String, size: int, color: Color = Pal.TEXT, font: Font = null, align := HORIZONTAL_ALIGNMENT_LEFT, outline: bool = false) -> Label:
+	var l := label(text, size, color, font, align, outline)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return l
+
+
 static func label(text: String, size: int, color: Color = Pal.TEXT, font: Font = null, align := HORIZONTAL_ALIGNMENT_LEFT, outline: bool = false) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -137,6 +145,15 @@ static func style_button(b: Button, kind: Btn, size: int = 24) -> void:
 	b.add_theme_color_override("font_disabled_color", Color("#f2ebe0"))
 	b.add_theme_color_override("font_outline_color", Pal.INK)
 	b.add_theme_constant_override("outline_size", maxi(5, size / 4))
+
+
+## Narrow side padding, for rows of many small buttons (the battle panel's six tabs).
+static func tighten(b: Button, side: float = 4.0) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box := b.get_theme_stylebox(state) as StyleBoxFlat
+		if box != null:
+			box.content_margin_left = side
+			box.content_margin_right = side
 
 
 static func _button_box(fill: Color, lip: Color, lip_px: int) -> StyleBoxFlat:

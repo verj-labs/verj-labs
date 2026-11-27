@@ -21,6 +21,85 @@ static func _price_label(prefix: String, price: Callable) -> Callable:
 		return (prefix + " " if prefix != "" else "") + Num.price(p)
 
 
+# --- Tower add-ons and the Towers tab ---------------------------------------------------------
+
+## What an add-on does right now, using the Keep's current values.
+static func addon_effect(b: Battle, id: String) -> String:
+	match id:
+		"crit": return "%s · ×%.1f dmg" % [Num.pct(b.crit_chance()), b.stat("crit_factor")]
+		"multishot": return "%s · +%d target%s" % [Num.pct(b.multishot_chance()), b.multishot_targets(), "" if b.multishot_targets() == 1 else "s"]
+		"bounce": return "%s to bounce" % Num.pct(b.bounce_chance())
+		"push": return "%s to push" % Num.pct(b.push_chance())
+	return ""
+
+
+static func _addon_row(b: Battle, index: int, id: String) -> UpgradeRow:
+	var addon: Dictionary = Defs.ADDONS[id]
+	var tower := func() -> Entities.Tower: return b.slots[index].tower
+	var detail := func() -> String:
+		var t: Entities.Tower = tower.call()
+		if t != null and t.addons.has(id):
+			return "Owned: " + addon_effect(b, id)
+		return addon["about"]
+	var price := func() -> float: return b.addon_cost(index, id)
+	var label := func() -> String:
+		var t: Entities.Tower = tower.call()
+		return "Owned" if t != null and t.addons.has(id) else Num.price(b.addon_cost(index, id))
+	return UpgradeRow.make(addon["name"], detail, [_cash_action(b, label, price, b.buy_addon.bind(index, id))], Pal.TEXT)
+
+
+## The Towers tab: act on every tower at once.
+static func tower_cards(b: Battle) -> Array[Control]:
+	var cards: Array[Control] = []
+	var count := func() -> int:
+		var n := 0
+		for slot in b.slots:
+			if slot.tower != null and b.slot_open(slot.index):
+				n += 1
+		return n
+	var up_value := func() -> String:
+		var n: int = count.call()
+		return "No towers yet" if n == 0 else "+1 level for %d tower%s" % [n, "" if n == 1 else "s"]
+	var up_label := func() -> String:
+		var total := b.upgrade_all_cost()
+		return "Build a tower" if total < 0.0 else "All " + Num.price(total)
+	cards.append(UpgradeCard.make("Upgrade all", up_value, up_label, b.cheapest_tower_upgrade, func() -> float: return b.cash, b.upgrade_all_towers))
+	var focus_value := func() -> String:
+		var seen := {}
+		for slot in b.slots:
+			if slot.tower != null:
+				seen[FOCUS_NAMES.get(slot.tower.focus if slot.tower.focus != "" else Defs.WEAPONS[slot.tower.weapon]["focus"], "First")] = true
+		if seen.is_empty():
+			return "No towers yet"
+		return "Now: " + (seen.keys()[0] if seen.size() == 1 else "mixed")
+	var cycle := func() -> bool:
+		var first := ""
+		for slot in b.slots:
+			if slot.tower != null:
+				first = slot.tower.focus if slot.tower.focus != "" else Defs.WEAPONS[slot.tower.weapon]["focus"]
+				break
+		var i := FOCUS_ORDER.find("first" if first in ["near", ""] else first)
+		b.set_focus_all(FOCUS_ORDER[(i + 1) % FOCUS_ORDER.size()])
+		return true
+	var has_tower := func() -> float: return 0.0 if int(count.call()) > 0 else -1.0
+	cards.append(UpgradeCard.make("Targeting (all)", focus_value, func() -> String: return "Change", has_tower, func() -> float: return 1.0, cycle, Kit.Btn.SECONDARY))
+	for id in Defs.ADDON_ORDER:
+		var addon: Dictionary = Defs.ADDONS[id]
+		var value := func() -> String:
+			var n: int = count.call()
+			return "%d/%d · %s" % [b.addon_count(id), n, addon_effect(b, id)] if n > 0 else addon["about"]
+		var next := func() -> float:
+			var todo := b.towers_without(id)
+			return -1.0 if todo.is_empty() else b.addon_cost(todo[0], id)
+		var label := func() -> String:
+			var total := b.addon_all_cost(id)
+			if total < 0.0:
+				return "All have it" if int(count.call()) > 0 else "Build a tower"
+			return "All " + Num.price(total)
+		cards.append(UpgradeCard.make(addon["name"] + " (all)", value, label, next, func() -> float: return b.cash, b.buy_addon_all.bind(id)))
+	return cards
+
+
 # --- Upgrade tabs (two-column cards) ----------------------------------------------------------
 
 static func upgrade_cards(b: Battle, tab: String) -> Array[Control]:
@@ -92,7 +171,40 @@ static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 				reinforce_price, b.reinforce_wall.bind(ring), Kit.Btn.SECONDARY),
 		]
 		rows.append(UpgradeRow.make(title_fn, detail, actions))
+		rows.append(_wall_addon_row(b, ring))
 	return rows
+
+
+## A ring's add-ons: Thorns and Absolute defense, each bought once per ring.
+static func _wall_addon_row(b: Battle, ring: int) -> UpgradeRow:
+	var wall := b.walls[ring]
+	var detail := func() -> String:
+		var parts: Array[String] = []
+		for id in Defs.WALL_ADDON_ORDER:
+			if wall.addons.has(id):
+				parts.append(wall_addon_effect(b, id))
+		if not parts.is_empty():
+			return "  ·  ".join(parts)
+		var blocker := b.wall_addon_blocker(ring, "absolute")
+		return blocker if blocker != "" else "The Keep's defenses, for this wall"
+	var actions: Array = []
+	for id in Defs.WALL_ADDON_ORDER:
+		var short := "Thorns" if id == "thorns" else "Absolute"
+		var price := func() -> float: return b.wall_addon_cost(ring, id)
+		var label := func() -> String:
+			if wall.addons.has(id):
+				return short + " ✓"
+			var p := b.wall_addon_cost(ring, id)
+			return short if p < 0.0 else short + " " + Num.price(p)
+		actions.append(_cash_action(b, label, price, b.buy_wall_addon.bind(ring, id), Kit.Btn.SECONDARY))
+	return UpgradeRow.make("Ring %d add-ons" % ring, detail, actions, Pal.TEXT_DIM)
+
+
+static func wall_addon_effect(b: Battle, id: String) -> String:
+	match id:
+		"thorns": return "Thorns " + Num.pct(b.stat("thorns"))
+		"absolute": return "Blocks %s/s" % Num.fmt(b.stat("absolute"))
+	return ""
 
 
 ## Rows for one wall section, after tapping its arc on the battlefield.
@@ -166,6 +278,8 @@ static func slot_rows(b: Battle, index: int, rebuild: Callable) -> Array[Upgrade
 			rebuild.call_deferred()
 		return ok
 	rows.append(UpgradeRow.make("Upgrade", up_detail, [_cash_action(b, _price_label("", up_price), up_price, upgrade)], Pal.TEXT, tower.weapon))
+	for id in Defs.ADDON_ORDER:
+		rows.append(_addon_row(b, index, id))
 	var focus_label := func() -> String:
 		var f: String = tower.focus if tower.focus != "" else Defs.WEAPONS[tower.weapon]["focus"]
 		return FOCUS_NAMES.get(f, "First")

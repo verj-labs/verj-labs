@@ -3,7 +3,96 @@
 Product and design decisions, newest first, with the reasons. The code is the source of truth for
 numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `perks.gd`, `powers.gd`).
 
-## 0.3: research anywhere, gems, lab slots, thorns, music, polish
+## 0.5: day and night, a bestiary, planned enemy arrivals
+
+### Day and night (visual only)
+
+- **A loop of sunrise, day, sunset and night.** Modes: **Auto** (a full loop every 5 minutes of
+  real time, so 3x game speed does not spin it), **My clock** (follows the phone's time; a free
+  dark mode for night players) or a fixed **Sunrise, Day, Sunset or Night**. Picked from a
+  sun/moon button in the battlefield's corner or in Settings, and saved.
+- **It never changes the rules.** Players can pick a fixed time, so a harder night would only
+  make everyone pick Day.
+- **How it is drawn, and why it is cheap:** the ground and everything standing are tinted with
+  one colour each (no extra drawing). Effects stay untinted, so shots light up the night. Dawn
+  and dusk add a golden light from the sun's side and a coloured edge haze. Night adds a lamplit
+  pool round the Keep, lit windows, tower lanterns, brighter glows and fireflies, all with the
+  existing additive glow sprites. The Keep and towers cast soft shadows that swing with the sun.
+  The benchmark shows no measurable cost (night ~25 ms a frame, the same as day, on the
+  software renderer).
+- **Not 3D:** 3D would mean new models for everything, a heavier renderer and worse battery
+  life for real light and shadow; tint plus glow gets most of the mood in 2D.
+
+### Enemies
+
+- **Planned arrivals:** a new kind arrives only on a wave ending in 5 (never with a boss on the
+  10s), one at a time, with a banner: Sprinters at 15, Armoured brutes at 25, War balloons at
+  35, Sappers at 45, so all of tier 1 has arrived by wave 45. Wyverns raid from tier 2 and
+  Shamans from tier 3 (from wave 5). One roster (`Defs.ENEMY_ROSTER`) drives the waves, the
+  banner and the bestiary.
+- **Speeds:** raiders were too slow. Raiders now move at 16 (was 11), Sprinters (the renamed
+  runners) at 32 (was 19), heavies at 9-12 and the Juggernaut at 6.
+- **Bestiary** ("Enemies" on the menu): each raider you have met, with what it does and its
+  wave-1 health, speed, damage, armour, ward, flying, healing and bounty. Unmet ones are dark
+  silhouettes that say when they arrive. Older saves are credited from their best waves.
+
+### iPhone safe areas
+
+- The battle screen is edge to edge: the wood top bar runs up under the status bar and the
+  wood panel down to the bottom edge; only their contents keep clear of the notch and home
+  bar. (The green strips above and below were the grass background showing through.)
+
+### Balance (simulated player, 4 seeds)
+
+- Fresh 31-32 waves, light ~40, mid ~480-510, late reaches the 1,000 cap. Workshop levels:
+  5 ~295, 10 ~325, 20 ~380, 30 ~430. The jump between 3 and 5 levels is still there.
+
+## 0.4: performance, tower add-ons, a Towers tab
+
+### Performance (late runs slowed to a crawl on an iPhone 15 Pro, even at 1x)
+
+- **Measured first.** `tools/bench.gd` builds a wave-60 battle (three full rings of upgraded
+  towers, 70 raiders) and times the simulation and the drawing separately. Drawing took ~37 ms
+  a frame; the simulation 0.5 ms. So the fix was drawing, not game rules.
+- **Nothing redraws every frame unless it moves.** Everything standing (wall pieces, towers, the
+  Keep, bushes) is its own node under a y-sorted layer, so the engine sorts it, and it redraws
+  only when it changes. Enemies are pooled sprites that only move. The ground redraws when the
+  fortress or a selection changes.
+- **Wall pieces are one mesh each.** A piece used to be dozens of polygons, outlines, battlement
+  rectangles and spikes; three rings were ~6,500 draw commands a frame. Now ~200.
+- **A bug that logged errors every frame:** the wall face polygon folded over itself where a
+  ring runs up the screen, so Godot logged "triangulation failed" (and skipped the face) a
+  couple of times a frame. Faces are now drawn as quads.
+- **Effects are capped** (90 tracers, 24 floating numbers, 300 sparks; the oldest go first) and
+  drawn as one mesh.
+- **60 fps cap.** 120 Hz iPhones were drawing everything twice as often.
+- **Result** on the benchmark (software renderer): 46.9 ms -> about 24 ms a frame. A phone's
+  GPU does the remaining fill work much faster than the software renderer.
+
+### Towers
+
+- **Add-ons:** towers no longer get the Keep's critical hits, bounce and pushback for free. Each
+  tower can buy **Critical hits, Multishot, Bounce and Pushback**; a tower with an add-on uses the
+  Keep's values from the Attack tab. Price: the build price x 4 (crit), 8 (multishot, bounce)
+  or 5 (pushback), x1.35 for every tower that already has that add-on.
+- **Towers tab** (sixth tab): upgrade every tower one level, give an add-on to every tower (as
+  many as cash allows, cheapest first), set targeting for all, and auto-buy.
+- **Smaller outer rings:** ring 3 holds **6** towers (was 8) and ring 4 holds **8** (was 12).
+
+### Walls
+
+- **Wall add-ons, ring by ring:** walls no longer get the Keep's thorns for free. Each ring buys
+  **Thorns** (needs Thorns unlocked in Defense) and **Absolute defense** separately, on the
+  Walls tab; they then use the Keep's values. Price: the ring's +HP base price x 6 (thorns) or
+  5 (absolute), x1.35 for every ring that already has it. Only rings with Thorns grow spikes.
+- Walls tab auto-buy also buys wall add-ons once the sections are built and repaired.
+
+### Balance after the change (simulated player, 3-4 seeds)
+
+- Fresh profile waves 22-33; a light profile ~40; a mid profile ~490-550. Workshop levels add
+  waves steadily past the first few (5 levels ~310, 10 ~320, 20 ~390, 30 ~450).
+
+
 
 ### Research and the workshop
 
@@ -59,8 +148,28 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
 
 ### Balance
 
-- Cash per kill now grows with enemy strength to the power 0.6 (was 0.7), so late runs fall
-  behind more steadily instead of either dying early or running for ever.
+Simulated runs showed that, with the same research, one run would die at wave 12 and the next
+would never end. Three causes were found and fixed:
+
+- **Regeneration compounded on top of health.** It is a share of max health, but its upgrade
+  multiplied itself every level (×1.1), so late runs healed thousands of times their health a
+  second. Now each level adds 0.05% (up to 4%/s), and everything together is capped at 8%/s.
+- **The run could keep up with the enemies.** The player fell behind by only ~0.7% a wave, so a
+  good start lasted 900 waves and doubling your power was worth ~100 waves. Now:
+  - enemies grow ~3.6% a wave late (`SCALE_C` 0.02 → 0.035), with a gentler start
+    (`SCALE_A` 1.5 → 1.0, `SCALE_B` 10 → 20);
+  - cash per kill grows with enemy strength to the power 0.45 (was 0.7);
+  - Cash bounty and Cash per wave pay ×1.02 / ×1.025 a level (were ×1.03 / ×1.04) and cost
+    ×1.16 (was ×1.15). Income upgrades that pay for themselves were the hidden runaway.
+  - waves grow by 0.7 enemies a wave (was 1.2), so the first waves are less of a wall;
+  - wyverns arrive at wave 15 (was 12) and are weaker (3 dps, was 5; slower), since they fly
+    over walls and were ending most first runs.
+- **Results** (simulated player, 4 seeds): fresh profile waves 32–36. Past the first few
+  workshop levels each level adds a steady ~4 waves (10 levels ≈ 300, 20 ≈ 370), and runs with
+  the same setup end within ±20 waves of each other. Nothing reaches wave 1,000 for ever.
+- **Still to tune with real play:** a hump right after the start (3 workshop levels already
+  reach ~280). The capped upgrades (crit, armour, multishot, bounce) add up to about ×100 once a
+  run can afford them, which carries it a long way.
 - **Each wall ring can be repaired once per wave.** Late in a run repairs had become cheap next
   to the cash income, so walls never fell: one simulated run reached wave 830 with 1,200
   raiders piled outside an untouched Keep. Now a heavy wave can break a wall, and

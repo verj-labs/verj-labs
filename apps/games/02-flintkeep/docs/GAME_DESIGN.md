@@ -104,7 +104,7 @@ multiplier).
 
 - **The Keep** sits in the centre. It always shoots (cyan arcane bolts) and has its own
   upgrades: damage, fire rate, range, health, regen and armour. If it falls, the run ends.
-- **Rings 1–4** hold towers: 4 / 4 / 8 / 12, so 28 at most (ring 1 an X, ring 2 a plus). Ring 1 is open from the
+- **Rings 1–4** hold towers: 4 / 4 / 6 / 8, so 22 at most (ring 1 an X, ring 2 a plus). Ring 1 is open from the
   start; rings 2–4 are unlocked by research, in order. Slots grow with ring size, so a new
   player has 4 decisions and a veteran has 30. We used 4 rather than 2 for ring 1 because
   enemies come from every side.

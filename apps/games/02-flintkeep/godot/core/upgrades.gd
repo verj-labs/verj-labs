@@ -10,7 +10,7 @@ extends RefCounted
 ## faster), so a run's power grows a little slower than the enemies and every run ends. How far
 ## it gets is set by research and the workshop, whose bonuses multiply (see docs/DECISIONS.md).
 
-const TABS := ["Attack", "Defense", "Walls", "Economy", "Powers"]
+const TABS := ["Attack", "Defense", "Walls", "Towers", "Economy", "Powers"]
 
 const LIST := {
 	# --- Attack (the Keep's own shot; crits, multishot, bounce and pushback apply to every shot)
@@ -25,7 +25,7 @@ const LIST := {
 	"push_dist": {"tab": "Attack", "name": "Pushback distance", "kind": "add", "start": 2.0, "step": 0.75, "base": 25.0, "growth": 1.18, "max": 24},
 	# --- Defense
 	"health": {"tab": "Defense", "name": "Health", "kind": "mult", "start": 150.0, "step": 1.1, "base": 6.0, "growth": 1.13, "max": 0},
-	"regen": {"tab": "Defense", "name": "Regeneration", "kind": "mult", "start": 0.5, "step": 1.1, "base": 8.0, "growth": 1.13, "max": 0},
+	"regen": {"tab": "Defense", "name": "Regeneration", "kind": "add", "start": 0.5, "step": 0.05, "base": 8.0, "growth": 1.13, "max": 70},
 	"armor": {"tab": "Defense", "name": "Armour", "kind": "add", "start": 0.0, "step": 0.01, "base": 12.0, "growth": 1.1, "max": 75},
 	"absolute": {"tab": "Defense", "name": "Absolute defense", "kind": "mult", "start": 1.0, "step": 1.1, "base": 20.0, "growth": 1.13, "max": 0},
 	"thorns": {"tab": "Defense", "name": "Thorns", "kind": "add", "start": 0.0, "step": 0.02, "base": 25.0, "growth": 1.14, "max": 40, "unlock": 400.0},
@@ -33,9 +33,9 @@ const LIST := {
 	# --- Walls (sections are bought on the field; these improve every wall)
 	"wall_regen": {"tab": "Walls", "name": "Wall regeneration", "kind": "add", "start": 0.0, "step": 0.001, "base": 20.0, "growth": 1.15, "max": 30},
 	# --- Economy
-	"bounty": {"tab": "Economy", "name": "Cash bounty", "kind": "mult", "start": 1.0, "step": 1.03, "base": 15.0, "growth": 1.15, "max": 0},
+	"bounty": {"tab": "Economy", "name": "Cash bounty", "kind": "mult", "start": 1.0, "step": 1.02, "base": 15.0, "growth": 1.16, "max": 0},
 	"coin_bounty": {"tab": "Economy", "name": "Coin bounty", "kind": "mult", "start": 1.0, "step": 1.03, "base": 20.0, "growth": 1.15, "max": 0},
-	"wave_cash": {"tab": "Economy", "name": "Cash per wave", "kind": "mult", "start": 8.0, "step": 1.04, "base": 15.0, "growth": 1.15, "max": 0},
+	"wave_cash": {"tab": "Economy", "name": "Cash per wave", "kind": "mult", "start": 8.0, "step": 1.025, "base": 15.0, "growth": 1.16, "max": 0},
 	"wave_coins": {"tab": "Economy", "name": "Coins per wave", "kind": "mult", "start": 2.0, "step": 1.08, "base": 30.0, "growth": 1.17, "max": 0},
 	"interest": {"tab": "Economy", "name": "Interest", "kind": "add", "start": 0.0, "step": 0.005, "base": 25.0, "growth": 1.2, "max": 10},
 }
@@ -86,13 +86,15 @@ static func show(id: String, v: float) -> String:
 
 
 # --- Enemy scaling ------------------------------------------------------------------------------
-## Health multiplier at a wave: steep for the first waves, then about +2% a wave, so the
-## numbers reach ~1e11 at wave 1,000 (fine for floats; the HUD prints them with suffixes).
-## `siege` (research) slows the long-run growth.
+## Health multiplier at a wave: steeper for the first waves, then about +3.6% a wave, so the
+## numbers reach ~1e17 at wave 1,000 (fine for floats; the HUD prints them with suffixes).
+## The late growth has to beat what a run can buy by a clear margin (about 2% a wave): then each
+## doubling of power brought in from the workshop and labs is worth a steady ~35 waves, instead
+## of a cliff where surviving wave 25 means surviving wave 800. `siege` (research) slows it.
 
-const SCALE_A := 1.5
-const SCALE_B := 10.0
-const SCALE_C := 0.02
+const SCALE_A := 1.0
+const SCALE_B := 20.0
+const SCALE_C := 0.035
 
 
 static func enemy_scale(wave: int, siege: float = 0.0) -> float:
@@ -100,9 +102,9 @@ static func enemy_scale(wave: int, siege: float = 0.0) -> float:
 	return exp(SCALE_A * log(1.0 + w / SCALE_B) + SCALE_C * (1.0 - siege) * w)
 
 
-## Cash per kill grows slower than health, so upgrades have to compound to keep up.
+## Cash per kill grows much slower than health, so a run's power falls behind steadily.
 static func cash_scale(wave: int, siege: float = 0.0) -> float:
-	return pow(enemy_scale(wave, siege), 0.6)
+	return pow(enemy_scale(wave, siege), 0.45)
 
 
 ## Enemy damage grows slower still: your defences are about outlasting them, not one-shots.

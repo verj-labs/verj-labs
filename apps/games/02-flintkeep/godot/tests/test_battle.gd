@@ -19,7 +19,7 @@ func _run(b: Battle, seconds: float) -> void:
 
 func test_fortress_layout_grows_outward() -> void:
 	var b := _battle()
-	eq(b.slots.size(), 4 + 4 + 8 + 12)
+	eq(b.slots.size(), 4 + 4 + 6 + 8, "rings of 4, 4, 6 and 8 towers")
 	eq(b.rings_unlocked, 1)
 	check(b.slot_open(0), "ring 1 is open")
 	check(not b.slot_open(4), "ring 2 starts locked")
@@ -430,20 +430,55 @@ func test_higher_tiers_are_the_same_curve_raised() -> void:
 
 
 
-func test_thorns_cost_a_lot_to_unlock_and_spike_walls_too() -> void:
+func test_thorns_cost_a_lot_to_unlock_and_walls_need_the_add_on() -> void:
 	check(Upgrades.price("thorns", 0) > Upgrades.price("thorns", 1) * 5.0, "the first level is the expensive unlock")
 	var b := _battle()
-	b.cash = 1000.0
+	b.cash = 1e6
 	b.build_wall(1)
 	b.levels["damage"] = -200
+	eq(b.wall_addon_cost(1, "thorns"), -1.0, "wall thorns need Thorns unlocked first")
 	b.levels["thorns"] = 10
 	var e := b.spawn("brute", Battle.section_angle(1, 0))
 	e.dist = b.wall_radius(1) + 4.0
 	e.hp = 1e6
 	_run(b, 2.0)
 	eq(e.attacking, 1, "hacking at the wall")
-	check(e.hp < 1e6, "the spiked wall hurt it back")
+	near(e.hp, 1e6, 0.001, "a plain wall does not hurt back")
+	check(b.buy_wall_addon(1, "thorns"), "ring 1 bought thorns")
+	_run(b, 2.0)
+	check(e.hp < 1e6, "now the spiked wall hurts it back")
 	check(b.damage_by.has("Thorns"), "and the run report counts it")
+
+
+func test_wall_add_ons_are_bought_ring_by_ring() -> void:
+	var b := _battle({"ring_2": 1})
+	b.cash = 1e9
+	b.levels["thorns"] = 1
+	eq(b.wall_addon_cost(1, "absolute"), -1.0, "needs a wall")
+	b.build_wall(1)
+	b.build_wall(2)
+	var first := b.wall_addon_cost(1, "absolute")
+	check(b.buy_wall_addon(1, "absolute"), "ring 1")
+	check(not b.buy_wall_addon(1, "absolute"), "once per ring")
+	near(b.wall_addon_cost(2, "absolute"), first * Defs.WALL_RING_GROWTH * Defs.ADDON_GROWTH, 0.01, "the next ring costs more")
+	check(not b.walls[2].addons.has("absolute"), "ring 2 does not get it for free")
+
+
+func test_absolute_defense_on_a_wall_blocks_damage() -> void:
+	var plain := _battle()
+	var guarded := _battle()
+	for b: Battle in [plain, guarded]:
+		b.cash = 1e9
+		b.build_wall(1)
+		b.levels["damage"] = -200
+		b.levels["absolute"] = 20
+	guarded.buy_wall_addon(1, "absolute")
+	for b: Battle in [plain, guarded]:
+		var e: Entities.Enemy = b.spawn("brute", Battle.section_angle(1, 0))
+		e.dist = b.wall_radius(1) + 4.0
+		e.hp = 1e9
+		_run(b, 3.0)
+	check(guarded.walls[1].segments[0] > plain.walls[1].segments[0], "the guarded wall lost less")
 
 
 func test_research_finished_mid_run_applies_at_once() -> void:
@@ -481,3 +516,118 @@ func test_walls_can_be_repaired_once_per_wave() -> void:
 	b.step(0.05)
 	b.walls[1].segments[0] = 1.0
 	check(b.repair_wall(1), "a new wave allows another repair")
+
+
+
+func test_keep_regeneration_is_a_capped_share_of_health() -> void:
+	var b := Battle.new({}, 1, 1, {"regen": 200})
+	b.levels["regen"] = Upgrades.LIST["regen"]["max"]
+	near(b.keep_regen(), b.keep_max_hp() * Defs.KEEP_REGEN_MAX / 100.0, 0.01, "capped however much is bought")
+	check(Upgrades.maxed("regen", Upgrades.LIST["regen"]["max"]), "the in-run upgrade has a last level")
+
+
+
+func test_towers_need_add_ons_for_the_keeps_effects() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	b.levels["crit_chance"] = 80
+	b.build(0, "musket")
+	var tower := b.slots[0].tower
+	var e := b.spawn("footman", 0.0)
+	e.max_hp = 1e12
+	e.hp = 1e12
+	e.dist = 20.0
+	b.record_events = true
+	for i in 40:
+		BattleCombat._shoot(b, e, 1.0, Defs.DamageType.PHYSICAL, 0.0, "test", tower.addons)
+	check(not b.drain_events().any(func(ev: Dictionary) -> bool: return ev["type"] == "crit"), "no crits without the add-on")
+	check(b.buy_addon(0, "crit"), "bought")
+	check(not b.buy_addon(0, "crit"), "only once per tower")
+	for i in 40:
+		BattleCombat._shoot(b, e, 1.0, Defs.DamageType.PHYSICAL, 0.0, "test", tower.addons)
+	check(b.drain_events().any(func(ev: Dictionary) -> bool: return ev["type"] == "crit"), "the add-on uses the Keep's crit chance")
+
+
+func test_each_add_on_costs_more_the_more_towers_have_it() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	b.build(0, "musket")
+	b.build(1, "musket")
+	var first := b.addon_cost(0, "bounce")
+	b.buy_addon(0, "bounce")
+	near(b.addon_cost(1, "bounce"), first * Defs.ADDON_GROWTH, 0.01)
+	eq(b.addon_cost(0, "bounce"), -1.0, "already has it")
+	var invested := b.slots[0].tower.invested
+	check(invested > b.build_cost("musket"), "add-ons count towards the sell refund")
+
+
+func test_upgrade_all_and_add_ons_for_all() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	for i in 4:
+		b.build(i, "musket")
+	var total := b.upgrade_all_cost()
+	var before := b.cash
+	check(b.upgrade_all_towers(), "upgraded")
+	near(before - b.cash, total, 0.01, "one level each costs the shown total")
+	for i in 4:
+		eq(b.slots[i].tower.level, 2)
+	check(b.addon_all_cost("multishot") > 0.0, "priced")
+	check(b.buy_addon_all("multishot"), "bought for all")
+	eq(b.addon_count("multishot"), 4)
+	eq(b.addon_all_cost("multishot"), -1.0, "nothing left to buy")
+	b.set_focus_all("strong")
+	check(b.slots.filter(func(s: Entities.Slot) -> bool: return s.tower != null).all(func(s: Entities.Slot) -> bool: return s.tower.focus == "strong"), "targeting set for all")
+
+
+func test_buy_all_stops_when_cash_runs_out() -> void:
+	var b := _battle()
+	b.cash = 1e9
+	for i in 4:
+		b.build(i, "musket")
+	b.cash = b.addon_cost(0, "crit") * 1.5
+	check(b.buy_addon_all("crit"), "bought what it could")
+	eq(b.addon_count("crit"), 1, "only one was affordable")
+
+
+func test_new_enemies_arrive_on_planned_waves() -> void:
+	var seen := {}
+	for kind in Defs.ENEMY_ORDER:
+		if kind == "footman" or kind == "juggernaut":
+			continue
+		for tier in range(1, Defs.MAX_TIER + 1):
+			var wave := Defs.enemy_arrives(kind, tier)
+			if wave < 0:
+				continue
+			eq(wave % 5, 0, kind + " arrives on a wave ending in 5")
+			check(wave % Defs.BOSS_EVERY != 0, kind + " never arrives with a boss")
+			var key := "%d:%d" % [tier, wave]
+			check(not seen.has(key) or wave < 15, "one newcomer per wave (%s)" % key)
+			seen[key] = true
+	for kind in Defs.ENEMY_ORDER:
+		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1:
+			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1 has arrived by wave 45")
+	eq(Defs.enemy_arrives("wyvern", 1), -1, "wyverns only raid from tier 2")
+	check(Defs.enemy_arrives("wyvern", 2) > 0, "and do raid in tier 2")
+
+
+func test_waves_only_send_enemies_that_have_arrived() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = SEED
+	for wave in [1, 14]:
+		for entry in BattleWaves.plan(wave, rng, 1):
+			check(entry[1] in ["footman", "juggernaut"], "only raiders before wave 15 (got %s)" % entry[1])
+	var kinds := {}
+	for i in 20:
+		for entry in BattleWaves.plan(60, rng, 1):
+			kinds[entry[1]] = true
+	check(kinds.has("sapper") and not kinds.has("wyvern"), "tier 1 wave 60: all tier-1 kinds, no wyverns")
+	eq(BattleWaves.newcomer(15, 1), "runner", "sprinters are the first newcomer")
+	eq(BattleWaves.newcomer(10, 1), "", "boss waves bring no newcomer")
+
+
+func test_sprinters_are_fast_and_bosses_slow() -> void:
+	var footman: float = Defs.ENEMIES["footman"]["speed"]
+	check(Defs.ENEMIES["runner"]["speed"] >= footman * 1.8, "sprinters are much faster than raiders")
+	check(Defs.ENEMIES["juggernaut"]["speed"] < footman * 0.5, "the boss is slow")
+	check(Defs.ENEMIES["brute"]["speed"] < footman, "heavies are slow")

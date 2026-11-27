@@ -192,3 +192,15 @@ func test_missions_pay_a_few_gems() -> void:
 	p.missions = [{"kind": "kills", "target": 1, "progress": 1, "reward": 10, "gems": 3, "claimed": false}]
 	check(p.claim(0), "claimed")
 	eq(p.gems, 3)
+
+
+func test_bestiary_learns_enemies_from_runs_and_best_waves() -> void:
+	var p := ProfileData.new()
+	check(p.enemy_seen("footman"), "everyone has met raiders")
+	check(not p.enemy_seen("brute"), "brutes arrive at wave 25")
+	p.best_wave["1"] = 30
+	check(p.enemy_seen("brute"), "a best wave of 30 means you met them")
+	check(not p.enemy_seen("wyvern"), "wyverns only raid tier 2")
+	p.seen_enemies["wyvern"] = true
+	var copy := ProfileData.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	check(copy.enemy_seen("wyvern"), "saved")
