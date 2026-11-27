@@ -63,7 +63,7 @@ static func refresh(b: Battle, pieces: Array) -> void:
 	for item in pieces:
 		var wall: Entities.Wall = b.walls[item[0]]
 		var spiked := 1 if thorns and wall.addons.has("thorns") else 0
-		var share := wall.segments[item[1]] / wall.max_hp if wall.max_hp > 0.0 else 0.0
+		var share := wall.segments[item[1]] / wall.max_hp if wall.max_hp > 0.0 and not wall.broken[item[1]] else 0.0
 		(item[2] as Stand).refresh(_band(share) * 2 + spiked)
 
 

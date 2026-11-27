@@ -4,7 +4,8 @@ extends SceneTree
 ##
 ##   godot --path godot --resolution 540x1170 -s ../tools/screenshot.gd -- battle out.png wait=20 research=mid auto=1 speed=3
 ##
-## Screens: menu, battle, research, missions, settings, bestiary. tutorial=1 shows the first-run tips,
+## Screens: menu, battle, research, missions, settings, bestiary, heroes. hero=captain|engineer|archmage
+## unlocks that hero and brings it into the battle. tutorial=1 shows the first-run tips,
 ## offline=1 the welcome-back coins, section=RING,SEG selects a wall section, tab=Attack|Defense|
 ## Walls|Economy|Powers opens a panel tab, perk=1 shows the perk choice. research=fresh|mid|late fakes a profile (nothing is saved).
 ## auto=1 lets the AutoPlayer spend cash during the battle. slot=N selects a build slot.
@@ -41,6 +42,9 @@ func _initialize() -> void:
 	profile.data.missions[1]["progress"] = int(profile.data.missions[1]["target"]) / 2
 	profile.data.gems = 60
 	profile.data.day_mode = opts.get("day", "day")  # day=cycle|clock|sunrise|day|sunset|night
+	if opts.has("hero"):  # hero=captain|engineer|archmage: unlock it and bring it along
+		profile.data.best_wave["1"] = Heroes.unlock_wave(opts["hero"]) + 1
+		profile.data.hero = opts["hero"]
 	if opts["offline"] == "1":
 		profile.offline_pending = 240.0
 	var main: Control = load("res://scenes/main.tscn").instantiate()
@@ -52,6 +56,7 @@ func _initialize() -> void:
 		"missions": main.get_child(main.get_child_count() - 1).call("_open_missions")
 		"settings": main.get_child(main.get_child_count() - 1).call("_open_settings")
 		"bestiary": main.get_child(main.get_child_count() - 1).call("_open_bestiary")
+		"heroes": main.get_child(main.get_child_count() - 1).call("_open_heroes")
 	await process_frame
 	var screen_node: Node = main.get_child(main.get_child_count() - 1)
 	if screen == "battle":

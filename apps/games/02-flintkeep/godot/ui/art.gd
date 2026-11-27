@@ -12,6 +12,8 @@ const WIDTH := {
 	"keep": 36.0, "musket": 19.0, "cannon": 20.0, "volley": 19.0, "sniper": 19.0, "arcane": 19.0,
 	"slot": 17.0, "footman": 9.0, "runner": 8.0, "brute": 13.0, "balloon": 11.0, "wyvern": 15.0,
 	"wyvern_b": 15.0, "juggernaut": 18.0, "sapper": 9.0, "shaman": 9.5,
+	"warlord": 17.0, "golem": 22.0, "dragon": 30.0, "dragon_b": 30.0,
+	"captain": 9.0, "engineer": 9.0, "archmage": 9.0,
 	"decor_bush": 9.0, "decor_tuft": 4.5, "decor_flowers": 5.5, "decor_rock": 6.0, "decor_mushroom": 4.0,
 }
 ## Enemies with a second walking frame (name + "_b").
@@ -22,7 +24,9 @@ const FOOT := {
 	"slot": Vector2(0.5, 0.9), "footman": Vector2(0.5, 0.94), "runner": Vector2(0.5, 0.94),
 	"brute": Vector2(0.5, 0.95), "balloon": Vector2(0.5, 0.92), "wyvern": Vector2(0.5, 0.55),
 	"wyvern_b": Vector2(0.5, 0.55), "juggernaut": Vector2(0.5, 0.96), "sapper": Vector2(0.5, 0.94),
-	"shaman": Vector2(0.5, 0.94), "decor_bush": Vector2(0.5, 0.85), "decor_tuft": Vector2(0.5, 0.9),
+	"shaman": Vector2(0.5, 0.94), "warlord": Vector2(0.4, 0.95), "golem": Vector2(0.5, 0.96),
+	"dragon": Vector2(0.5, 0.6), "dragon_b": Vector2(0.5, 0.6),
+	"captain": Vector2(0.5, 0.94), "engineer": Vector2(0.5, 0.94), "archmage": Vector2(0.5, 0.94), "decor_bush": Vector2(0.5, 0.85), "decor_tuft": Vector2(0.5, 0.9),
 	"decor_flowers": Vector2(0.5, 0.9), "decor_rock": Vector2(0.5, 0.85), "decor_mushroom": Vector2(0.5, 0.92),
 }
 

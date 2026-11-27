@@ -42,6 +42,7 @@ func _init(p_tier: int) -> void:
 func _ready() -> void:
 	# live references: research and workshop levels finished mid-run apply at once
 	battle = Battle.new(Profile.data.research, tier, 0, Profile.data.workshop)
+	battle.hero = Profile.data.run_hero()
 	Profile.changed.connect(battle.refresh_unlocks)
 	Profile.data.refresh_missions(Missions.today())
 	var bg := Kit.color_rect(Pal.WOOD)
@@ -285,7 +286,7 @@ func _update_boss_bar() -> void:
 	tension = maxf(tension, 1.0 - battle.keep_hp / battle.keep_max_hp())
 	Sfx.intensity(tension)
 	if boss != null:
-		_boss_meter.set_state(boss.hp / boss.max_hp, "Juggernaut  %s" % Num.fmt(maxf(boss.hp, 0.0)))
+		_boss_meter.set_state(boss.hp / boss.max_hp, "%s  %s" % [Defs.ENEMY_ROSTER[boss.kind]["name"], Num.fmt(maxf(boss.hp, 0.0))])
 
 
 ## Every 100 waves: three perks to choose from, picked at random when the timer runs out.
@@ -326,7 +327,8 @@ func _on_battle_event(e: Dictionary) -> void:
 		"perk_chosen":
 			_show_banner(Perks.LIST[e["id"]]["name"] + "!", Pal.GOLD)
 		"power":
-			_show_banner(Powers.LIST[e["id"]]["name"] + "!", Pal.CYAN, 1.2)
+			var title: String = Heroes.LIST[e["id"]]["ability"] if Heroes.LIST.has(e["id"]) else Powers.LIST[e["id"]]["name"]
+			_show_banner(title + "!", Pal.CYAN, 1.2)
 		"wave":
 			_bank_coins()
 			var gems := Profile.data.reach_wave(tier, e["wave"])
@@ -338,7 +340,14 @@ func _on_battle_event(e: Dictionary) -> void:
 			if fresh != "" and not e["boss"]:
 				_show_banner("Wave %d\nNew enemy: %s" % [e["wave"], fresh], Pal.ORANGE, 2.4)
 			elif e["boss"]:
-				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
+				var boss := BattleWaves.boss_for(e["wave"])
+				var name: String = Defs.ENEMY_ROSTER[boss]["name"]
+				if boss in Defs.CHAMPIONS and int(Defs.ENEMY_ROSTER[boss]["wave"]) == int(e["wave"]):
+					_show_banner("Wave %d\nA champion arrives:\n%s!" % [e["wave"], name], Pal.GOLD, 3.2)
+				elif boss in Defs.CHAMPIONS:
+					_show_banner("Wave %d\nThe %s returns" % [e["wave"], name], Pal.ORANGE, 2.6)
+				else:
+					_show_banner("Wave %d\nThe %s comes" % [e["wave"], name], Pal.ORANGE, 2.6)
 			else:
 				_show_banner("Wave %d" % e["wave"], Pal.WHITE)
 		"early":
@@ -368,7 +377,9 @@ func _track_missions(e: Dictionary) -> void:
 		"wave": Missions.track(list, "wave", e["wave"])
 		"built": Missions.track(list, "build", 1)
 		"upgraded": Missions.track(list, "upgrade", 1)
-		"wall_built": Missions.track(list, "walls", 1)
+		"wall_built":
+			if not e.get("regrown", false):  # walls mending themselves do not count
+				Missions.track(list, "walls", 1)
 
 
 ## The workshop and labs over the running battle: research while you fight.

@@ -14,7 +14,9 @@ const SHOT_ORIGIN_KEEP := Vector2(0.0, -10.0)
 const BOUNCE_REACH := 40.0
 const MAX_BOUNCES := 3
 const KEEP_EFFECTS := {"crit": true, "multishot": true, "bounce": true, "push": true}
-const HEAL_TICK := 0.25  ## shamans heal in pulses this far apart (same total; far fewer checks)
+const HEAL_TICK := 0.25
+const RALLY_SPEED := 0.3  ## a Warlord's banner: +30% speed ...
+const RALLY_GUARD := 0.3  ## ... and 30% less damage taken  ## shamans heal in pulses this far apart (same total; far fewer checks)
 const ABSOLUTE_FLOOR := 0.1  ## absolute defense never blocks more than 90% of an attack
 const PUSH_BOSS_SHARE := 0.25  ## bosses are pushed a quarter as far
 const PUSH_COOLDOWN := 2.0  ## an enemy can be pushed at most once every 2 seconds
@@ -23,6 +25,7 @@ const PUSH_COOLDOWN := 2.0  ## an enemy can be pushed at most once every 2 secon
 # --- Movement -------------------------------------------------------------------------------
 
 static func move_enemies(b: Battle, dt: float) -> void:
+	_rally(b)
 	b.heal_timer -= dt
 	if b.heal_timer <= 0.0:
 		b.heal_timer += HEAL_TICK
@@ -35,7 +38,7 @@ static func move_enemies(b: Battle, dt: float) -> void:
 		var target := 0
 		var segment := -1
 		if e.air:
-			stop_at = Defs.KEEP_RADIUS + AIR_HOVER + e.size * 0.5
+			stop_at = Defs.KEEP_RADIUS + AIR_HOVER + e.size * 0.5 + e.standoff
 		else:
 			stop_at = Defs.KEEP_RADIUS + e.size * 0.5 + CONTACT_GAP
 			for ring in range(b.rings_unlocked, 0, -1):
@@ -44,17 +47,34 @@ static func move_enemies(b: Battle, dt: float) -> void:
 				if e.dist < radius - 0.5:
 					continue
 				var seg := Battle.wall_segment(ring, e.angle)
-				if wall.sections[seg] and wall.segments[seg] > 0.0:
+				if wall.stands(seg):
 					stop_at = radius + e.size * 0.5 + CONTACT_GAP
 					target = ring
 					segment = seg
 					break
 		if e.dist > stop_at + 0.01:
-			e.dist = maxf(stop_at, e.dist - e.speed * b.enemy_speed_factor() * dt)
+			e.dist = maxf(stop_at, e.dist - e.speed * b.enemy_speed_factor() * (1.0 + RALLY_SPEED if e.rallied else 1.0) * dt)
 			e.attacking = -1
 		else:
 			e.attacking = target
 			_attack(b, e, target, segment, dt)
+
+
+## Raiders near a Goblin Warlord's banner move faster and take less damage (see hit()).
+static func _rally(b: Battle) -> void:
+	var lords: Array = []
+	for e in b.enemies:
+		e.rallied = false
+		if e.aura > 0.0 and e.alive():
+			lords.append(e)
+	if lords.is_empty():
+		return
+	var reach_sq := Defs.AURA_REACH * Defs.AURA_REACH
+	for e in b.enemies:
+		for lord: Enemy in lords:
+			if e != lord and e.pos().distance_squared_to(lord.pos()) <= reach_sq:
+				e.rallied = true
+				break
 
 
 ## Shamans mend the raiders around them (not themselves).
@@ -91,6 +111,8 @@ static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> 
 		# absolute defense blocks a flat amount per second, then armour takes its share
 		var blocked := minf(b.stat("absolute") * dt, damage * (1.0 - ABSOLUTE_FLOOR)) if e.burst <= 0.0 else 0.0
 		var taken := (damage - blocked) * (1.0 - b.keep_armor())
+		if e.standoff > 0.0 and b.rng.randf() < dt * 2.5:  # the Dragon's fire, a few gouts a second
+			b._event({"type": "breath", "from": e.pos()})
 		b.keep_hp -= taken
 		b.killed_by = e.kind
 		_thorns(b, e, damage, dt)
@@ -98,10 +120,12 @@ static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> 
 	var wall := b.walls[ring]
 	if wall.addons.has("absolute") and e.burst <= 0.0:
 		damage -= minf(b.stat("absolute") * dt, damage * (1.0 - ABSOLUTE_FLOOR))
+	damage *= e.wall_mult  # the Siege Golem
 	wall.segments[segment] = maxf(wall.segments[segment] - damage, 0.0)
 	if wall.addons.has("thorns"):
 		_thorns(b, e, damage, dt)
-	if wall.segments[segment] <= 0.0:
+	if wall.segments[segment] <= 0.0 and not wall.broken[segment]:
+		wall.broken[segment] = true
 		b._event({"type": "wall_broken", "ring": ring, "segment": segment})
 
 
@@ -131,6 +155,11 @@ static func _fire_keep(b: Battle, dt: float) -> void:
 	for t in targets:
 		_shoot(b, t, b.keep_damage(), Defs.DamageType.PHYSICAL, 0.0, "Keep", KEEP_EFFECTS)
 		b._event({"type": "shot", "weapon": "keep", "from": SHOT_ORIGIN_KEEP, "to": t.pos()})
+	if b.hero == "archmage":  # the Archmage's passive: the bolt arcs on to a second raider
+		var other := _nearest(b, target.pos(), Heroes.ARC_REACH, {target.id: true})
+		if other != null:
+			b._deal(other, b.keep_damage() * Heroes.ARC_SHARE, Defs.DamageType.MAGIC, 0.0, "Keep")
+			b._event({"type": "chain", "from": target.pos(), "to": other.pos()})
 
 
 static func _fire_tower(b: Battle, s: Entities.Slot, dt: float) -> void:
@@ -270,6 +299,8 @@ static func find_target(b: Battle, from: Vector2, reach: float, kind: int, focus
 ## Applies damage after armour (physical) or ward (magic). Returns the damage dealt.
 static func hit(e: Enemy, amount: float, type: int, pierce: float) -> float:
 	var mult := 1.0 - e.armor * (1.0 - pierce) if type == Defs.DamageType.PHYSICAL else 1.0 - e.ward
+	if e.rallied:
+		mult *= 1.0 - RALLY_GUARD
 	var dealt := minf(amount * mult, maxf(e.hp, 0.0))  # overkill does not count
 	e.hp -= amount * mult
 	e.hit_flash = 0.08

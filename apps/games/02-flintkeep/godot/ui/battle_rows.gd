@@ -116,9 +116,23 @@ static func upgrade_cards(b: Battle, tab: String) -> Array[Control]:
 	return cards
 
 
-## The Powers tab: cast now, or let a power cast itself.
+## The Powers tab: the hero's ability first (if a hero came along), then the powers: cast now,
+## or let one cast itself.
 static func power_cards(b: Battle) -> Array[Control]:
 	var cards: Array[Control] = []
+	if b.hero != "":
+		var h: Dictionary = Heroes.LIST[b.hero]
+		var status := func() -> String:
+			if b.rally_left > 0.0:
+				return "Rallying: %ds" % int(ceil(b.rally_left))
+			return ("Ready" if b.hero_cd <= 0.0 else "Ready in %ds" % int(ceil(b.hero_cd))) + ("  ·  auto" if b.hero_auto else "")
+		cards.append(UpgradeCard.make("%s: %s" % [h["name"], h["ability"]], status, func() -> String: return "Cast",
+			func() -> float: return 0.0 if b.hero_ready() else -1.0, func() -> float: return 1.0, b.cast_hero, Kit.Btn.SECONDARY))
+		var toggle := func() -> bool:
+			b.hero_auto = not b.hero_auto
+			return true
+		cards.append(UpgradeCard.make("Auto-cast " + h["ability"], func() -> String: return h["passive"],
+			func() -> String: return "Auto: on" if b.hero_auto else "Auto: off", func() -> float: return 0.0, func() -> float: return 1.0, toggle, Kit.Btn.PRIMARY))
 	for id in Powers.ORDER:
 		var p: Dictionary = Powers.LIST[id]
 		var status := func() -> String:
@@ -153,20 +167,14 @@ static func wall_rows(b: Battle) -> Array[UpgradeRow]:
 		var title_fn := func() -> String:
 			return "Ring %d wall  ·  fortified!" % ring if wall.complete() else "Ring %d wall  ·  %d/%d" % [ring, wall.built_count(), count]
 		var reinforce_price := func() -> float: return b.wall_reinforce_cost(ring) if wall.built else -1.0
-		var repair_price := func() -> float:
-			return b.wall_repair_cost(ring) if b.can_repair(ring) else -1.0
-		var main_price := func() -> float: return repair_price.call() if wall.complete() else b.wall_build_cost(ring)
+		var build_price := func() -> float: return -1.0 if wall.complete() else b.wall_build_cost(ring)
 		var detail := func() -> String:
 			if not wall.complete():
 				return "Finish it: +50% wall HP, +15% tower damage"
-			return "Level %d  ·  %s HP  ·  %s intact" % [wall.level, Num.fmt(wall.max_hp), Num.pct(1.0 - wall.missing_share())]
+			return "%s HP · %s intact · +%s/s" % [Num.fmt(wall.max_hp), Num.pct(1.0 - wall.missing_share()), Num.pct(b.stat("wall_regen"))]
 		var actions := [
-			_cash_action(b, func() -> String:
-				if wall.complete():
-					return "Fix " + (Num.price(repair_price.call()) if repair_price.call() >= 0.0 else "–")
-				return "All " + Num.price(b.wall_build_cost(ring)),
-				main_price,
-				func() -> bool: return b.repair_wall(ring) if wall.complete() else b.build_wall(ring)),
+			_cash_action(b, func() -> String: return "Built" if wall.complete() else "All " + Num.price(b.wall_build_cost(ring)),
+				build_price, b.build_wall.bind(ring)),
 			_cash_action(b, func() -> String: return "+HP " + Num.price(reinforce_price.call()) if wall.built else "+HP",
 				reinforce_price, b.reinforce_wall.bind(ring), Kit.Btn.SECONDARY),
 		]
@@ -186,7 +194,7 @@ static func _wall_addon_row(b: Battle, ring: int) -> UpgradeRow:
 		if not parts.is_empty():
 			return "  ·  ".join(parts)
 		var blocker := b.wall_addon_blocker(ring, "absolute")
-		return blocker if blocker != "" else "The Keep's defenses, for this wall"
+		return blocker if blocker != "" else "The Keep's defenses here"
 	var actions: Array = []
 	for id in Defs.WALL_ADDON_ORDER:
 		var short := "Thorns" if id == "thorns" else "Absolute"
@@ -223,6 +231,8 @@ static func section_rows(b: Battle, ring: int, seg: int, rebuild: Callable) -> A
 			[_cash_action(b, _price_label("", price), price, run)]))
 	else:
 		rows.append(UpgradeRow.make("Section health", func() -> String:
+			if wall.broken[seg]:
+				return "Broken: regrowing, stands again at %s (%s now)" % [Num.pct(Defs.WALL_REBUILD_SHARE), Num.pct(wall.segments[seg] / wall.max_hp)]
 			return "%s / %s HP" % [Num.fmt(wall.segments[seg]), Num.fmt(wall.max_hp)], []))
 	rows.append_array(wall_rows(b).slice(ring - 1, ring))
 	return rows

@@ -29,7 +29,7 @@ const MAX_WAVE := 1000
 # --- Tiers ("Level 1, 2, ..." on the menu) -----------------------------------------------------
 
 const MAX_TIER := 10
-const TIER_UNLOCK_WAVE := 25  ## Reaching this wave unlocks the next tier.
+const TIER_UNLOCK_WAVE := 100  ## Reaching this wave unlocks the next tier (25 was too easy: a fresh profile reaches ~30).
 
 
 static func tier_enemy_mult(tier: int) -> float:
@@ -92,6 +92,7 @@ const ADDONS := {
 	"push": {"name": "Pushback", "about": "Uses the Keep's pushback chance and distance", "cost": 5.0},
 }
 const ADDON_GROWTH := 1.35
+const WALL_REBUILD_SHARE := 0.5  ## a broken section regrown by wall regeneration stands again at 50%
 ## Wall add-ons work the same way, per ring: a ring with Thorns hurts raiders hacking at it, and a
 ## ring with Absolute defense blocks a flat amount of each attacker's damage, using the Keep's
 ## values from the Defense tab. Price: the ring's +HP base price x `cost`, x ADDON_GROWTH for
@@ -119,6 +120,10 @@ const ENEMIES := {
 	"wyvern": {"hp": 18.0, "dps": 3.0, "speed": 18.0, "armor": 0.0, "ward": 0.5, "air": true, "cash": 4.0, "coins": 1.0, "size": 6.0},
 	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 20.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
 	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 12.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
+	# champions: the bosses of waves 250, 500 and 750, then back every 50 waves
+	"warlord": {"hp": 450.0, "dps": 12.0, "speed": 9.0, "armor": 0.3, "ward": 0.2, "air": false, "cash": 150.0, "coins": 40.0, "size": 11.0, "aura": 0.3},
+	"golem": {"hp": 1100.0, "dps": 10.0, "speed": 5.0, "armor": 0.5, "ward": 0.0, "air": false, "cash": 250.0, "coins": 60.0, "size": 14.0, "wall_mult": 6.0},
+	"dragon": {"hp": 750.0, "dps": 16.0, "speed": 12.0, "armor": 0.1, "ward": 0.5, "air": true, "cash": 300.0, "coins": 80.0, "size": 14.0, "standoff": 40.0},
 	"juggernaut": {"hp": 200.0, "dps": 7.0, "speed": 6.0, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
 }
 ## Speeds (field units a second): bosses and heavies are slow (6-12), raiders steady (16-20),
@@ -128,7 +133,13 @@ const ENEMIES := {
 ## boss on the 10s), one at a time, so each arrival is a planned moment with a banner, and all of
 ## tier 1's kinds have arrived by wave 45. Some kinds only raid from a higher tier, where they
 ## arrive on wave 5. `weight` is how often it is picked once it has arrived.
-const ENEMY_ORDER := ["footman", "juggernaut", "runner", "brute", "balloon", "sapper", "wyvern", "shaman"]
+const ENEMY_ORDER := ["footman", "juggernaut", "runner", "brute", "balloon", "sapper", "wyvern", "shaman", "warlord", "golem", "dragon"]
+## Champions: a new boss on waves 250, 500 and 750 (in every tier), so a long run still has
+## something new ahead after the last regular raider. Beating one's wave for the first time
+## unlocks a hero (Heroes). After arriving they come back as the boss of every 50th wave.
+const CHAMPIONS := ["warlord", "golem", "dragon"]
+const CHAMPION_RETURN := 50
+const AURA_REACH := 30.0  ## the Warlord's banner reaches raiders this close
 const ENEMY_ROSTER := {
 	"footman": {"name": "Raider", "about": "A goblin with an axe. Hacks at walls, then the Keep.", "wave": 1, "tier": 1, "weight": 1.0},
 	"juggernaut": {"name": "Juggernaut", "about": "The boss: slow, armoured and huge. Every 10th wave.", "wave": BOSS_EVERY, "tier": 1, "weight": 0.0},
@@ -138,6 +149,9 @@ const ENEMY_ROSTER := {
 	"sapper": {"name": "Sapper", "about": "Runs at a wall and blows it up (and himself).", "wave": 45, "tier": 1, "weight": 0.2},
 	"wyvern": {"name": "Wyvern", "about": "A fast flyer, warded against magic.", "wave": 5, "tier": 2, "weight": 0.2},
 	"shaman": {"name": "Shaman", "about": "Heals the raiders around him. Shoot him first.", "wave": 5, "tier": 3, "weight": 0.12},
+	"warlord": {"name": "Goblin Warlord", "about": "Champion. His war banner makes raiders near him faster and tougher.", "wave": 250, "tier": 1, "weight": 0.0},
+	"golem": {"name": "Siege Golem", "about": "Champion. Walking masonry that smashes walls six times as hard.", "wave": 500, "tier": 1, "weight": 0.0},
+	"dragon": {"name": "Dragon", "about": "Champion. Flies, and breathes fire at the Keep from out of reach.", "wave": 750, "tier": 1, "weight": 0.0},
 }
 
 
@@ -176,7 +190,6 @@ const WALL_HP := 60.0  ## Per segment, ring 1, level 1.
 const WALL_HP_RING_GROWTH := 1.25
 const WALL_HP_GROWTH := 1.10  ## Per reinforce level (compounds).
 const WALL_REINFORCE_GROWTH := 1.13
-const WALL_REPAIR_SHARE := 0.5  ## Repairing every segment from zero costs half a reinforce.
 
 
 static func upgrade_cost(def: Dictionary, level: int, discount: float = 0.0) -> float:

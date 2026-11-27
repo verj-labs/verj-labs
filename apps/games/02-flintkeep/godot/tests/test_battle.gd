@@ -196,16 +196,11 @@ func test_keep_health_upgrade_heals_the_difference() -> void:
 	near(b.keep_hp, 50.0 + b.keep_max_hp() - before)
 
 
-func test_walls_repair_and_reinforce() -> void:
+func test_walls_can_be_reinforced() -> void:
 	var b := _battle()
 	b.cash = 10000.0
 	b.build_wall(1)
 	var hp := b.walls[1].max_hp
-	b.walls[1].segments[0] = 0.0
-	check(b.wall_repair_cost(1) > 0.0, "damage costs something to fix")
-	check(b.repair_wall(1), "repaired")
-	near(b.walls[1].segments[0], hp)
-	check(not b.repair_wall(1), "nothing left to repair")
 	b.reinforce_wall(1)
 	check(b.walls[1].max_hp > hp, "reinforced walls are tougher")
 
@@ -504,20 +499,6 @@ func test_perks_can_be_rerolled() -> void:
 
 
 
-func test_walls_can_be_repaired_once_per_wave() -> void:
-	var b := _battle()
-	b.cash = 100000.0
-	b.build_wall(1)
-	b.walls[1].segments[0] = 1.0
-	check(b.repair_wall(1), "first repair this wave")
-	b.walls[1].segments[0] = 1.0
-	check(not b.repair_wall(1), "not again in the same wave")
-	b.wave_timer = 0.01
-	b.step(0.05)
-	b.walls[1].segments[0] = 1.0
-	check(b.repair_wall(1), "a new wave allows another repair")
-
-
 
 func test_keep_regeneration_is_a_capped_share_of_health() -> void:
 	var b := Battle.new({}, 1, 1, {"regen": 200})
@@ -593,8 +574,8 @@ func test_buy_all_stops_when_cash_runs_out() -> void:
 func test_new_enemies_arrive_on_planned_waves() -> void:
 	var seen := {}
 	for kind in Defs.ENEMY_ORDER:
-		if kind == "footman" or kind == "juggernaut":
-			continue
+		if kind == "footman" or kind == "juggernaut" or kind in Defs.CHAMPIONS:
+			continue  # champions arrive as the boss of their wave (see the champion tests)
 		for tier in range(1, Defs.MAX_TIER + 1):
 			var wave := Defs.enemy_arrives(kind, tier)
 			if wave < 0:
@@ -605,8 +586,8 @@ func test_new_enemies_arrive_on_planned_waves() -> void:
 			check(not seen.has(key) or wave < 15, "one newcomer per wave (%s)" % key)
 			seen[key] = true
 	for kind in Defs.ENEMY_ORDER:
-		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1:
-			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1 has arrived by wave 45")
+		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1 and not kind in Defs.CHAMPIONS:
+			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1's raiders have arrived by wave 45")
 	eq(Defs.enemy_arrives("wyvern", 1), -1, "wyverns only raid from tier 2")
 	check(Defs.enemy_arrives("wyvern", 2) > 0, "and do raid in tier 2")
 
@@ -631,3 +612,131 @@ func test_sprinters_are_fast_and_bosses_slow() -> void:
 	check(Defs.ENEMIES["runner"]["speed"] >= footman * 1.8, "sprinters are much faster than raiders")
 	check(Defs.ENEMIES["juggernaut"]["speed"] < footman * 0.5, "the boss is slow")
 	check(Defs.ENEMIES["brute"]["speed"] < footman, "heavies are slow")
+
+
+func test_walls_mend_themselves_from_the_start() -> void:
+	near(Upgrades.value("wall_regen", 0), 0.001, 0.00001, "0.1% a second before any upgrade")
+	check(Upgrades.value("wall_regen", 1) > Upgrades.value("wall_regen", 0), "the upgrade speeds it up")
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.walls[1].segments[1] = b.walls[1].max_hp * 0.5
+	_run(b, 5.0)
+	check(b.walls[1].segments[1] > b.walls[1].max_hp * 0.5, "a hurt wall mends on its own")
+
+
+func test_wall_regeneration_rebuilds_broken_sections() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	var e := b.spawn("brute", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1) + 4.0
+	e.hp = 1e12
+	e.max_hp = 1e12
+	e.dps = b.walls[1].max_hp * 10.0
+	_run(b, 1.0)
+	check(b.walls[1].broken[0], "the brute broke through")
+	e.hp = 0.0  # gone
+	b.levels["wall_regen"] = 29
+	_run(b, 2.0)
+	check(b.walls[1].segments[0] > 0.0, "a broken section regrows")
+	check(not b.walls[1].stands(0), "but it does not block until it is half rebuilt")
+	_run(b, 20.0)
+	check(b.walls[1].stands(0), "half rebuilt: it stands again")
+
+
+func test_rubble_does_not_regrow_under_raiders() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	b.levels["wall_regen"] = 29
+	b.walls[1].segments[0] = 0.0
+	b.walls[1].broken[0] = true
+	var e := b.spawn("brute", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1)
+	e.speed = 0.0  # stands right on the rubble
+	e.hp = 1e12
+	_run(b, 2.0)
+	near(b.walls[1].segments[0], 0.0, 0.001, "nothing regrows while a raider stands on it")
+	e.hp = 0.0
+	_run(b, 2.0)
+	check(b.walls[1].segments[0] > 0.0, "it starts again once they are gone")
+
+
+func test_regrowing_rubble_does_not_stop_raiders() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	b.levels["wall_regen"] = 29
+	b.walls[1].segments[0] = 0.0
+	b.walls[1].broken[0] = true
+	var e := b.spawn("footman", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1) + 6.0
+	e.hp = 1e12
+	_run(b, 1.5)
+	check(e.dist < b.wall_radius(1), "walked through the rubble")
+	check(e.attacking != 1, "never stopped at the wall")
+
+
+
+func test_champions_are_the_bosses_of_waves_250_500_750() -> void:
+	eq(BattleWaves.boss_for(10), "juggernaut")
+	eq(BattleWaves.boss_for(240), "juggernaut", "before any champion")
+	eq(BattleWaves.boss_for(250), "warlord")
+	eq(BattleWaves.boss_for(500), "golem")
+	eq(BattleWaves.boss_for(750), "dragon")
+	eq(BattleWaves.boss_for(260), "juggernaut", "ordinary boss waves keep the Juggernaut")
+	check(BattleWaves.boss_for(300) in ["warlord"], "the Warlord returns every 50 waves")
+	var later := {}
+	for w in range(800, 1001, 50):
+		later[BattleWaves.boss_for(w)] = true
+	eq(later.size(), 3, "after wave 750 all three champions take turns")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = SEED
+	var kinds := BattleWaves.plan(250, rng).map(func(e: Array) -> String: return e[1])
+	check("warlord" in kinds and not ("juggernaut" in kinds), "wave 250 brings the Warlord instead")
+
+
+func test_warlord_rallies_raiders_near_him() -> void:
+	var b := _battle()
+	var lord := b.spawn("warlord", 0.0)
+	lord.dist = 120.0
+	var near_one := b.spawn("footman", 0.05)
+	near_one.dist = 120.0
+	var far_one := b.spawn("footman", PI)
+	far_one.dist = 120.0
+	BattleCombat._rally(b)
+	check(near_one.rallied and not far_one.rallied, "only raiders under the banner")
+	near_one.hp = 100.0
+	far_one.hp = 100.0
+	var a := BattleCombat.hit(near_one, 10.0, Defs.DamageType.MAGIC, 0.0)
+	var c := BattleCombat.hit(far_one, 10.0, Defs.DamageType.MAGIC, 0.0)
+	check(a < c, "rallied raiders take less damage")
+
+
+func test_golem_smashes_walls_and_dragon_attacks_from_range() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	var golem := b.spawn("golem", Battle.section_angle(1, 0))
+	golem.dist = b.wall_radius(1) + 8.0
+	golem.hp = 1e12
+	var raider := b.spawn("footman", Battle.section_angle(1, 2))
+	raider.dist = b.wall_radius(1) + 4.0
+	raider.hp = 1e12
+	raider.dps = golem.dps
+	b.walls[1].max_hp = 1e9
+	b.walls[1].segments[0] = 1e9
+	b.walls[1].segments[2] = 1e9
+	_run(b, 3.0)
+	check(1e9 - b.walls[1].segments[0] > (1e9 - b.walls[1].segments[2]) * 4.0, "the golem hits walls far harder")
+	var dragon := b.spawn("dragon", 1.0)
+	dragon.dist = 200.0
+	dragon.hp = 1e12
+	_run(b, 30.0)
+	check(dragon.attacking == 0, "the dragon attacks the Keep")
+	check(dragon.dist > b.keep_range(), "from beyond the Keep's reach")

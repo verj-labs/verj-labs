@@ -10,6 +10,7 @@ const Slot = Entities.Slot
 const Wall = Entities.Wall
 
 const BASE_START_CASH := 60.0
+const RUBBLE_REACH := 5.0  ## a raider this close to a broken section is standing on it
 const BOSS_GEM_CHANCE := 0.15  ## a Juggernaut sometimes drops a gem
 const REROLL_GEMS := 10  ## gems to swap the three perks on offer for three new ones
 const SPAWN_MARGIN := 10.0
@@ -50,6 +51,10 @@ var power_cd := {}
 var power_auto := {}
 var freeze_left := 0.0
 var gold_left := 0.0
+var hero := ""  ## the hero standing by the Keep this run ("" = none), see Heroes
+var hero_cd := 0.0
+var hero_auto := false
+var rally_left := 0.0  ## the Captain's Rally: towers fire faster while this runs
 
 ## Tabs whose upgrades buy themselves when cash allows ("Attack", "Walls" ...).
 var auto_tabs := {}
@@ -133,6 +138,7 @@ func _build_layout() -> void:
 		for i in count:
 			wall.sections.append(false)
 			wall.segments.append(0.0)
+			wall.broken.append(false)
 		walls.append(wall)
 
 
@@ -419,11 +425,13 @@ func sell(index: int) -> bool:
 
 
 func tower_damage(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1) * _ws("towers") * perk_mult("towers")
+	var captain := Heroes.CAPTAIN_DAMAGE if hero == "captain" else 1.0
+	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1) * _ws("towers") * perk_mult("towers") * captain
 
 
 func tower_rate(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["rate"] * (1.0 + Defs.WEAPON_RATE_GROWTH * (tower.level - 1))
+	var rally := Heroes.RALLY_RATE if rally_left > 0.0 else 1.0
+	return Defs.WEAPONS[tower.weapon]["rate"] * (1.0 + Defs.WEAPON_RATE_GROWTH * (tower.level - 1)) * rally
 
 
 func tower_range(tower: Tower) -> float:
@@ -490,10 +498,6 @@ func buy_wall_addon(ring: int, id: String) -> bool:
 	return true
 
 
-func wall_repair_cost(ring: int) -> float:
-	return ceilf(wall_reinforce_cost(ring) * Defs.WALL_REPAIR_SHARE * walls[ring].missing_share())
-
-
 func section_open(ring: int, seg: int) -> bool:
 	return ring >= 1 and ring <= rings_unlocked and seg >= 0 and seg < Defs.SLOT_COUNTS[ring]
 
@@ -505,6 +509,7 @@ func build_section(ring: int, seg: int) -> bool:
 	wall.sections[seg] = true
 	_update_wall_hp(wall)
 	wall.segments[seg] = wall.max_hp
+	wall.broken[seg] = false
 	_event({"type": "wall_built", "ring": ring, "segment": seg})
 	if wall.complete():
 		_event({"type": "fortified", "ring": ring})
@@ -536,22 +541,6 @@ func reinforce_wall(ring: int) -> bool:
 	return true
 
 
-## Repairs are limited to once per wave per ring: otherwise, late in a run, cheap repairs make
-## walls unbreakable and the run stalls with thousands of raiders piled outside.
-func can_repair(ring: int) -> bool:
-	var wall := walls[ring]
-	return wall.built and wall.missing_share() > 0.0 and wall.repaired_wave != wave
-
-
-func repair_wall(ring: int) -> bool:
-	var wall := walls[ring]
-	if not can_repair(ring) or not _pay(wall_repair_cost(ring)):
-		return false
-	wall.repaired_wave = wave
-	_heal_wall(wall)
-	return true
-
-
 ## Keeps each built section's share of health when the maximum changes.
 func _update_wall_hp(wall: Wall) -> void:
 	var old := wall.max_hp
@@ -564,6 +553,7 @@ func _update_wall_hp(wall: Wall) -> void:
 func _heal_wall(wall: Wall) -> void:
 	for i in wall.segments.size():
 		wall.segments[i] = wall.max_hp if wall.sections[i] else 0.0
+		wall.broken[i] = false
 	_event({"type": "wall_built", "ring": wall.ring})
 
 
@@ -704,9 +694,59 @@ func cast(id: String) -> bool:
 	return true
 
 
+# --- The hero ------------------------------------------------------------------------------
+
+func hero_ready() -> bool:
+	return hero != "" and hero_cd <= 0.0 and not over
+
+
+## Casts the hero's ability: Rally (Captain), Rebuild (Engineer) or Meteor (Archmage).
+func cast_hero() -> bool:
+	if not hero_ready():
+		return false
+	hero_cd = Heroes.LIST[hero]["cooldown"]
+	match hero:
+		"captain":
+			rally_left = Heroes.RALLY_SECONDS
+		"engineer":
+			for ring in range(1, rings_unlocked + 1):
+				if walls[ring].built:
+					_heal_wall(walls[ring])
+		"archmage":
+			var target: Enemy = null
+			for e in enemies:
+				if e.alive() and (target == null or e.hp > target.hp):
+					target = e
+			if target == null:
+				hero_cd = 0.0  # nothing to hit: keep it ready
+				return false
+			var at := target.pos()
+			_deal(target, keep_damage() * Heroes.METEOR_MULT, Defs.DamageType.MAGIC, 0.0, "Meteor")
+			for e in enemies:
+				if e != target and e.alive() and e.pos().distance_to(at) <= Heroes.METEOR_RADIUS:
+					_deal(e, keep_damage() * Heroes.METEOR_MULT * Heroes.METEOR_SPLASH, Defs.DamageType.MAGIC, 0.0, "Meteor")
+			_event({"type": "meteor", "at": at})
+	_event({"type": "power", "id": hero})
+	return true
+
+
+## Should auto-cast use the ability now? (Rebuild waits until a wall is hurt.)
+func _hero_wanted() -> bool:
+	if hero == "engineer":
+		for ring in range(1, rings_unlocked + 1):
+			if walls[ring].built and walls[ring].missing_share() > 0.3:
+				return true
+		return false
+	return enemies.size() >= 3
+
+
 func _tick_effects(dt: float) -> void:
 	freeze_left = maxf(freeze_left - dt, 0.0)
 	gold_left = maxf(gold_left - dt, 0.0)
+	rally_left = maxf(rally_left - dt, 0.0)
+	hero_cd = maxf(hero_cd - dt, 0.0)
+	if hero_auto and hero_ready() and _hero_wanted():
+		cast_hero()
 	for id in Powers.ORDER:
 		power_cd[id] = maxf(float(power_cd[id]) - dt, 0.0)
 		if power_auto[id] and power_ready(id) and enemies.size() >= 3:
@@ -715,13 +755,44 @@ func _tick_effects(dt: float) -> void:
 		perk_time -= dt
 		if perk_time <= 0.0:
 			choose_perk(perk_offer[rng.randi() % perk_offer.size()])
-	var regen := stat("wall_regen")
-	if regen > 0.0:
+	_regrow_walls(dt)
+
+
+## Walls mend themselves (there is no paid repair): every built section regenerates, 0.1% of
+## its health a second to start, faster with the Wall regeneration upgrade. A broken section
+## regrows as rubble that raiders walk through, and only while no raider stands on it; it
+## stands (and blocks) again at WALL_REBUILD_SHARE of its health. Blocking from the first
+## sliver would make walls with regeneration unbreakable.
+func _regrow_walls(dt: float) -> void:
+	var regen := stat("wall_regen") + (Heroes.ENGINEER_REGEN if hero == "engineer" else 0.0)
+	if regen <= 0.0:
+		return
+	var occupied := _raiders_on_rubble()
+	for ring in range(1, rings_unlocked + 1):
+		var wall := walls[ring]
+		for i in wall.segments.size():
+			if not wall.sections[i] or wall.segments[i] >= wall.max_hp:
+				continue
+			if wall.broken[i] and occupied.has(ring * 100 + i):
+				continue  # raiders are climbing through the gap
+			wall.segments[i] = minf(wall.segments[i] + wall.max_hp * regen * dt, wall.max_hp)
+			if wall.broken[i] and wall.segments[i] >= wall.max_hp * Defs.WALL_REBUILD_SHARE:
+				wall.broken[i] = false
+				_event({"type": "wall_built", "ring": ring, "segment": i, "regrown": true})
+
+
+## Broken sections with a ground raider on them, as ring * 100 + segment.
+func _raiders_on_rubble() -> Dictionary:
+	var out := {}
+	for e in enemies:
+		if e.air or not e.alive():
+			continue
 		for ring in range(1, rings_unlocked + 1):
-			var wall := walls[ring]
-			for i in wall.segments.size():
-				if wall.sections[i] and wall.segments[i] > 0.0:
-					wall.segments[i] = minf(wall.segments[i] + wall.max_hp * regen * dt, wall.max_hp)
+			if absf(e.dist - wall_radius(ring)) <= e.size * 0.5 + RUBBLE_REACH:
+				var seg := wall_segment(ring, e.angle)
+				if walls[ring].broken[seg]:
+					out[ring * 100 + seg] = true
+	return out
 
 
 ## Damage from any source, with armour/ward, run stats and lifesteal. Returns damage dealt.
@@ -740,7 +811,7 @@ func set_auto(tab: String, on: bool) -> void:
 	auto_tabs[tab] = on
 
 
-## Buys the cheapest affordable upgrade in each auto tab (walls: missing sections, then repairs).
+## Buys the cheapest affordable upgrade in each auto tab (walls: missing sections, then add-ons).
 func _auto_buy() -> void:
 	for tab in auto_tabs:
 		if not auto_tabs[tab]:
@@ -781,8 +852,6 @@ func _auto_walls() -> void:
 	for ring in range(1, rings_unlocked + 1):
 		var gap := walls[ring].sections.find(false)
 		if gap != -1 and build_section(ring, gap):
-			return
-		if walls[ring].missing_share() > 0.3 and repair_wall(ring):
 			return
 	for ring in range(1, rings_unlocked + 1):
 		for id in Defs.WALL_ADDON_ORDER:
@@ -842,7 +911,10 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.armor = def["armor"]
 	e.ward = def["ward"]
 	e.air = def["air"]
-	e.boss = kind == "juggernaut"
+	e.boss = kind == "juggernaut" or kind in Defs.CHAMPIONS
+	e.aura = def.get("aura", 0.0)
+	e.wall_mult = def.get("wall_mult", 1.0)
+	e.standoff = def.get("standoff", 0.0)
 	kinds_seen[kind] = true
 	e.cash = def["cash"] * Upgrades.cash_scale(wave, siege())
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
