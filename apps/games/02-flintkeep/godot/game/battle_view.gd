@@ -339,6 +339,10 @@ func _on_event(e: Dictionary) -> void:
 			_shake = maxf(_shake, 0.8)
 		"thorns":
 			fx.burst(proj(e["pos"]) + Vector2(0, -3), Color("#ff6a4a"), 4, 18.0)
+		"breath":
+			var keep := Art.rect("keep", Vector2.ZERO)
+			fx.shot(proj(e["from"]) + Vector2(0, -16), keep.position + keep.size * Vector2(0.5, 0.45), "breath")
+			fx.burst(keep.position + keep.size * Vector2(0.5, 0.45), Color("#ff8a2a"), 4, 20.0)
 		"crit":
 			if randf() < 0.35:  # not every crit, or the field fills with numbers
 				fx.float_text(proj(e["pos"]) + Vector2(randf_range(-3, 3), -12), Num.fmt(e["amount"]) + "!", Pal.ORANGE, 0.7, 6)

@@ -574,8 +574,8 @@ func test_buy_all_stops_when_cash_runs_out() -> void:
 func test_new_enemies_arrive_on_planned_waves() -> void:
 	var seen := {}
 	for kind in Defs.ENEMY_ORDER:
-		if kind == "footman" or kind == "juggernaut":
-			continue
+		if kind == "footman" or kind == "juggernaut" or kind in Defs.CHAMPIONS:
+			continue  # champions arrive as the boss of their wave (see the champion tests)
 		for tier in range(1, Defs.MAX_TIER + 1):
 			var wave := Defs.enemy_arrives(kind, tier)
 			if wave < 0:
@@ -586,8 +586,8 @@ func test_new_enemies_arrive_on_planned_waves() -> void:
 			check(not seen.has(key) or wave < 15, "one newcomer per wave (%s)" % key)
 			seen[key] = true
 	for kind in Defs.ENEMY_ORDER:
-		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1:
-			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1 has arrived by wave 45")
+		if int(Defs.ENEMY_ROSTER[kind]["tier"]) == 1 and not kind in Defs.CHAMPIONS:
+			check(Defs.enemy_arrives(kind, 1) <= 45, kind + ": all of tier 1's raiders have arrived by wave 45")
 	eq(Defs.enemy_arrives("wyvern", 1), -1, "wyverns only raid from tier 2")
 	check(Defs.enemy_arrives("wyvern", 2) > 0, "and do raid in tier 2")
 
@@ -679,3 +679,64 @@ func test_regrowing_rubble_does_not_stop_raiders() -> void:
 	_run(b, 1.5)
 	check(e.dist < b.wall_radius(1), "walked through the rubble")
 	check(e.attacking != 1, "never stopped at the wall")
+
+
+
+func test_champions_are_the_bosses_of_waves_250_500_750() -> void:
+	eq(BattleWaves.boss_for(10), "juggernaut")
+	eq(BattleWaves.boss_for(240), "juggernaut", "before any champion")
+	eq(BattleWaves.boss_for(250), "warlord")
+	eq(BattleWaves.boss_for(500), "golem")
+	eq(BattleWaves.boss_for(750), "dragon")
+	eq(BattleWaves.boss_for(260), "juggernaut", "ordinary boss waves keep the Juggernaut")
+	check(BattleWaves.boss_for(300) in ["warlord"], "the Warlord returns every 50 waves")
+	var later := {}
+	for w in range(800, 1001, 50):
+		later[BattleWaves.boss_for(w)] = true
+	eq(later.size(), 3, "after wave 750 all three champions take turns")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = SEED
+	var kinds := BattleWaves.plan(250, rng).map(func(e: Array) -> String: return e[1])
+	check("warlord" in kinds and not ("juggernaut" in kinds), "wave 250 brings the Warlord instead")
+
+
+func test_warlord_rallies_raiders_near_him() -> void:
+	var b := _battle()
+	var lord := b.spawn("warlord", 0.0)
+	lord.dist = 120.0
+	var near_one := b.spawn("footman", 0.05)
+	near_one.dist = 120.0
+	var far_one := b.spawn("footman", PI)
+	far_one.dist = 120.0
+	BattleCombat._rally(b)
+	check(near_one.rallied and not far_one.rallied, "only raiders under the banner")
+	near_one.hp = 100.0
+	far_one.hp = 100.0
+	var a := BattleCombat.hit(near_one, 10.0, Defs.DamageType.MAGIC, 0.0)
+	var c := BattleCombat.hit(far_one, 10.0, Defs.DamageType.MAGIC, 0.0)
+	check(a < c, "rallied raiders take less damage")
+
+
+func test_golem_smashes_walls_and_dragon_attacks_from_range() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	var golem := b.spawn("golem", Battle.section_angle(1, 0))
+	golem.dist = b.wall_radius(1) + 8.0
+	golem.hp = 1e12
+	var raider := b.spawn("footman", Battle.section_angle(1, 2))
+	raider.dist = b.wall_radius(1) + 4.0
+	raider.hp = 1e12
+	raider.dps = golem.dps
+	b.walls[1].max_hp = 1e9
+	b.walls[1].segments[0] = 1e9
+	b.walls[1].segments[2] = 1e9
+	_run(b, 3.0)
+	check(1e9 - b.walls[1].segments[0] > (1e9 - b.walls[1].segments[2]) * 4.0, "the golem hits walls far harder")
+	var dragon := b.spawn("dragon", 1.0)
+	dragon.dist = 200.0
+	dragon.hp = 1e12
+	_run(b, 30.0)
+	check(dragon.attacking == 0, "the dragon attacks the Keep")
+	check(dragon.dist > b.keep_range(), "from beyond the Keep's reach")

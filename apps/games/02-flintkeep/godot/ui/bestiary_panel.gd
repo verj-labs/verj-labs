@@ -60,6 +60,12 @@ static func _card(kind: String, met: bool) -> Control:
 		traits.append("Ward " + Num.pct(stats["ward"]))
 	if float(stats.get("heal", 0.0)) > 0.0:
 		traits.append("Heals " + Num.pct(stats["heal"]) + "/s")
+	if float(stats.get("aura", 0.0)) > 0.0:
+		traits.append("Rallies raiders: +%s speed, -%s damage" % [Num.pct(BattleCombat.RALLY_SPEED), Num.pct(BattleCombat.RALLY_GUARD)])
+	if float(stats.get("wall_mult", 1.0)) > 1.0:
+		traits.append("×%d damage to walls" % int(stats["wall_mult"]))
+	if float(stats.get("standoff", 0.0)) > 0.0:
+		traits.append("Attacks from range")
 	traits.append("Bounty $" + Num.fmt(stats["cash"]))
 	lines.append("  ·  ".join(traits))
 	lines.append(arrival(kind))
@@ -73,6 +79,8 @@ static func arrival(kind: String) -> String:
 	var info: Dictionary = Defs.ENEMY_ROSTER[kind]
 	if kind == "juggernaut":
 		return "Every %dth wave" % Defs.BOSS_EVERY
+	if kind in Defs.CHAMPIONS:
+		return "Champion of wave %d (then every %dth wave)" % [int(info["wave"]), Defs.CHAMPION_RETURN]
 	var tier := int(info["tier"])
 	if tier > 1:
 		return "Raids from tier %d (wave %d)" % [tier, int(info["wave"])]

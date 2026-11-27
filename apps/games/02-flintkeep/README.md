@@ -11,7 +11,7 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 
 ## Status
 
-- [x] Endless runs: waves every 24 s, a boss every 10th wave, tiers unlocked at wave 25
+- [x] Endless runs: waves every 24 s, a boss every 10th wave, tiers unlocked at wave 100
 - [x] The Keep plus 4 rings of towers (4 / 4 / 6 / 8; ring 1 an X, ring 2 a plus) on their walls; wall sections
       between towers are bought one at a time, and a finished ring is fortified
 - [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright

@@ -29,8 +29,8 @@ func _init(soft: Texture2D) -> void:
 ## Places and dresses the sprite for enemy `e` (frozen: tinted blue).
 func show_enemy(e: Entities.Enemy, frozen: bool) -> void:
 	var name := e.kind
-	if e.kind == "wyvern":
-		name = "wyvern_b" if int(e.age * 6.0) % 2 == 1 else "wyvern"
+	if e.kind == "wyvern" or e.kind == "dragon":  # wings up, wings down
+		name = e.kind + "_b" if int(e.age * (6.0 if e.kind == "wyvern" else 3.5)) % 2 == 1 else e.kind
 	elif not e.air and e.attacking == -1 and Art.WALKERS.has(e.kind) and int(e.age * 6.0) % 2 == 1:
 		name = e.kind + "_b"  # second walking frame
 	var p := BattleView.proj(e.pos())

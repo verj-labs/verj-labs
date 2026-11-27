@@ -74,7 +74,7 @@ and a banner, level 10 adds a golden crown and a gem.
 2. **Research (between runs).** Spend coins on permanent upgrades. Each takes real time in
    one of two labs and keeps running while the game is closed.
 3. **Repeat.** Research makes the next run start stronger and go further, which pays more
-   coins. Reaching wave 25 unlocks the next tier: tougher enemies, more coins.
+   coins. Reaching wave 100 unlocks the next tier: tougher enemies, more coins.
 
 Two time scales keep players coming back. A run is a 5–15 minute session (idle games
 average about 8 minutes). Research timers are a reason to check back in a few hours.

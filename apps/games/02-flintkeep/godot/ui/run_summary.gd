@@ -40,8 +40,9 @@ static func build(b: Battle, tier: int, record: bool, coins: float, goto: Callab
 	return body
 
 
-const ENEMY_NAMES := {"footman": "Raiders", "runner": "Runners", "brute": "Brutes", "balloon": "War balloons",
-	"wyvern": "Wyverns", "sapper": "Sappers", "shaman": "Shamans", "juggernaut": "the Juggernaut"}
+const ENEMY_NAMES := {"footman": "Raiders", "runner": "Sprinters", "brute": "Brutes", "balloon": "War balloons",
+	"wyvern": "Wyverns", "sapper": "Sappers", "shaman": "Shamans", "juggernaut": "the Juggernaut",
+	"warlord": "the Goblin Warlord", "golem": "the Siege Golem", "dragon": "the Dragon"}
 
 
 ## What did the damage, and what finally broke the Keep: so players know what to research next.

@@ -34,6 +34,8 @@ DEFS = """
 <linearGradient id="tunicOrange" x1="0" x2="1"><stop offset="0" stop-color="#ffc06a"/><stop offset="0.35" stop-color="#ffc06a"/><stop offset="0.35" stop-color="#ff8a1f"/><stop offset="1" stop-color="#d0600f"/></linearGradient>
 <linearGradient id="plate" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ffffff"/><stop offset="0.3" stop-color="#bfc8e0"/><stop offset="0.72" stop-color="#bfc8e0"/><stop offset="0.72" stop-color="#8590b4"/><stop offset="1" stop-color="#8590b4"/></linearGradient>
 <linearGradient id="wyvern" x1="0" x2="1"><stop offset="0" stop-color="#d79bff"/><stop offset="0.35" stop-color="#d79bff"/><stop offset="0.35" stop-color="#a24dff"/><stop offset="1" stop-color="#6d24c9"/></linearGradient>
+<linearGradient id="dragon" x1="0" x2="1"><stop offset="0" stop-color="#ff9a6a"/><stop offset="0.35" stop-color="#ff9a6a"/><stop offset="0.35" stop-color="#e2412c"/><stop offset="1" stop-color="#a3201c"/></linearGradient>
+<linearGradient id="skinHuman" x1="0" x2="1"><stop offset="0" stop-color="#ffe2c4"/><stop offset="0.35" stop-color="#ffe2c4"/><stop offset="0.35" stop-color="#f3b98e"/><stop offset="1" stop-color="#d9946a"/></linearGradient>
 <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff6b0"/><stop offset="0.4" stop-color="#ffd43a"/><stop offset="1" stop-color="#f09a12"/></linearGradient>
 """
 
@@ -261,7 +263,12 @@ def tiered(fn, name, tier):
 # --- Enemies (goblin raiders) --------------------------------------------------------------------
 
 def goblin(tunic, weapon, helmet=True, w=40, h=48, step=False, extra=""):
-    b = shadow(20, 45, 12, 3)
+    return svg(w, h, shadow(20, 45, 12, 3) + goblin_art(tunic, weapon, helmet, step, extra))
+
+
+def goblin_art(tunic, weapon, helmet=True, step=False, extra=""):
+    """A goblin on a 40x48 canvas, feet at y=45 (no shadow, so it can be scaled up)."""
+    b = ""
     if step:  # second walking frame: one leg forward, one back
         b += '<rect x="11" y="33" width="5" height="11" rx="2" fill="#3d5a24" transform="rotate(18 13 34)"/><rect x="23" y="34" width="5" height="11" rx="2" fill="#3d5a24" transform="rotate(-14 25 35)"/>'
     else:
@@ -276,7 +283,7 @@ def goblin(tunic, weapon, helmet=True, w=40, h=48, step=False, extra=""):
     if helmet:
         b += '<path d="M11.5 11 A8.5 7 0 0 1 28.5 11 Z" fill="url(#iron)"/>'
     b += weapon
-    return svg(w, h, b)
+    return b
 
 
 def footman(step=False):
@@ -376,6 +383,97 @@ def juggernaut():
     return svg(72, 80, b)
 
 
+# --- Champions (waves 250, 500, 750) ------------------------------------------------------------
+
+def warlord():
+    """The Goblin Warlord: a big goblin in gold-trimmed armour under a war banner."""
+    b = shadow(32, 77, 22, 4)
+    b += '<line x1="55" y1="2" x2="55" y2="74" stroke="#5a3a1e" stroke-width="3"/>'
+    b += '<path d="M56 4 L76 9 L56 26 Z" fill="url(#tunicRed)"/><circle cx="62" cy="13" r="3" fill="url(#gold)"/>'
+    axe = ('<line x1="31" y1="10" x2="34" y2="40" stroke="#5a3a1e" stroke-width="2.4"/>'
+           '<path d="M28 8 Q42 4 41 18 L32 16 Z M34 8 Q24 4 25 16 L32 14 Z" fill="url(#plate)" stroke="#4a4e58" stroke-width="0.8"/>')
+    helm = ('<path d="M11 11 A9 7.5 0 0 1 29 11 Z" fill="url(#gold)"/>'
+            '<path d="M12 9 L5 0 L15 6 Z M28 9 L35 0 L25 6 Z" fill="#e8dcc0"/>')
+    plate = '<path d="M12 23 Q20 19 28 23 L27 31 Q20 33 13 31 Z" fill="url(#gold)" opacity="0.9"/>'
+    cape = '<path d="M10 22 L4 42 Q20 46 36 42 L30 22 Z" fill="#7a1a1a"/>'
+    b += f'<g transform="translate(3 10) scale(1.45)">{goblin_art("tunicRed", plate + axe + helm, helmet=False, extra=cape)}</g>'
+    return svg(80, 84, b)
+
+
+def golem():
+    """The Siege Golem: walking masonry with glowing runes and huge fists."""
+    b = shadow(40, 85, 30, 5)
+    b += '<rect x="22" y="64" width="14" height="20" rx="4" fill="url(#stone)"/><rect x="44" y="64" width="14" height="20" rx="4" fill="url(#stone)"/>'
+    b += '<rect x="2" y="30" width="16" height="30" rx="7" fill="url(#stone)"/><rect x="62" y="30" width="16" height="30" rx="7" fill="url(#stone)"/>'
+    b += '<ellipse cx="10" cy="62" rx="10" ry="8" fill="url(#stone)"/><ellipse cx="70" cy="62" rx="10" ry="8" fill="url(#stone)"/>'
+    b += '<path d="M12 26 Q40 10 68 26 L64 68 Q40 76 16 68 Z" fill="url(#stone)"/>'
+    b += '<path d="M14 26 Q24 20 30 22 L28 28 Q20 26 16 30 Z M66 26 Q56 20 50 22 L52 28 Q60 26 64 30 Z" fill="#6fbf4a"/>'
+    b += '<path d="M24 36 L56 36 M30 48 L50 48 M22 58 L58 58" stroke="#9d93c2" stroke-width="1.5"/>'
+    for (x, y) in ((40, 42), (30, 54), (50, 54)):
+        b += f'<circle cx="{x}" cy="{y}" r="4" fill="#4ff0ff"/><circle cx="{x}" cy="{y}" r="8" fill="#4ff0ff" opacity="0.25" stroke="none"/>'
+    b += '<rect x="30" y="4" width="20" height="16" rx="4" fill="url(#stone)"/>'
+    b += '<rect x="33" y="10" width="14" height="3" rx="1.5" fill="#1d4a5a"/><circle cx="37" cy="11.5" r="1.4" fill="#4ff0ff"/><circle cx="43" cy="11.5" r="1.4" fill="#4ff0ff"/>'
+    b += gloss(22, 30, 4, 7, 30, 0.35)
+    return svg(80, 90, b)
+
+
+def dragon(up):
+    """The Dragon: a great red flyer that breathes fire from out of reach."""
+    b = ""
+    if up:
+        wings = ('<path d="M40 26 Q24 -2 2 4 Q14 14 10 26 Q24 22 40 32 Z" fill="url(#dragon)" stroke="#5a1010" stroke-width="0.8"/>'
+                 '<path d="M56 26 Q72 -2 94 4 Q82 14 86 26 Q72 22 56 32 Z" fill="url(#dragon)" stroke="#5a1010" stroke-width="0.8"/>')
+    else:
+        wings = ('<path d="M40 28 Q20 48 2 42 Q14 36 10 28 Q24 26 40 24 Z" fill="url(#dragon)" stroke="#5a1010" stroke-width="0.8"/>'
+                 '<path d="M56 28 Q76 48 94 42 Q82 36 86 28 Q72 26 56 24 Z" fill="url(#dragon)" stroke="#5a1010" stroke-width="0.8"/>')
+    b += wings
+    b += '<path d="M48 40 Q52 56 62 60 Q52 60 45 46 Z" fill="#a3201c"/>'
+    b += '<ellipse cx="48" cy="30" rx="11" ry="15" fill="url(#dragon)"/>'
+    b += '<ellipse cx="48" cy="34" rx="6" ry="10" fill="url(#gold)"/>'
+    b += '<ellipse cx="48" cy="13" rx="8" ry="7" fill="url(#dragon)"/>'
+    b += '<path d="M42 9 L38 1 L45 7 Z M54 9 L58 1 L51 7 Z" fill="#e8dcc0"/>'
+    b += '<circle cx="45" cy="12" r="1.5" fill="#ffdd55"/><circle cx="51" cy="12" r="1.5" fill="#ffdd55"/>'
+    b += '<path d="M45 18 Q48 22 51 18" fill="#ffb020" stroke="none"/>'
+    return svg(96, 64, b)
+
+
+# --- Heroes (unlocked by beating the champions) ----------------------------------------------------
+
+def human(coat, extra_back="", hat="", hand="", step=False):
+    b = shadow(20, 45, 12, 3)
+    b += extra_back
+    b += '<rect x="13" y="34" width="5" height="11" rx="2" fill="#3a2a4a"/><rect x="22" y="34" width="5" height="11" rx="2" fill="#3a2a4a"/>'
+    b += f'<path d="M11 21 Q20 16 29 21 L29 38 Q20 41 11 38 Z" fill="url(#{coat})"/>'
+    b += '<rect x="12" y="31" width="16" height="3" fill="#4a2c18"/><rect x="18.5" y="31" width="3" height="3" fill="url(#gold)"/>'
+    b += '<ellipse cx="20" cy="13" rx="7" ry="7.5" fill="url(#skinHuman)"/>'
+    b += '<circle cx="17.5" cy="13.5" r="1.1" fill="#2a1a10"/><circle cx="22.5" cy="13.5" r="1.1" fill="#2a1a10"/>'
+    b += '<path d="M18 17.5 Q20 19 22 17.5" fill="none" stroke="#8a4a2a" stroke-width="0.9"/>'
+    b += hat + hand
+    return svg(40, 48, b)
+
+
+def captain():
+    hat = '<path d="M9 9 Q20 -1 31 9 Q20 6 9 9 Z" fill="#1f2a44"/><path d="M8 9 Q20 4 32 9 L30 11 Q20 8 10 11 Z" fill="#2c3a60"/><circle cx="20" cy="6" r="1.4" fill="url(#gold)"/>'
+    sabre = '<path d="M30 22 Q38 14 37 6" fill="none" stroke="#dfe4ee" stroke-width="2" stroke-linecap="round"/><rect x="28" y="22" width="5" height="2.4" rx="1" fill="url(#gold)"/>'
+    epaulettes = '<rect x="9" y="20" width="6" height="3" rx="1.5" fill="url(#gold)"/><rect x="25" y="20" width="6" height="3" rx="1.5" fill="url(#gold)"/>'
+    return human("roofBlue", hat=hat + epaulettes, hand=sabre)
+
+
+def engineer():
+    goggles = '<path d="M12 9 Q20 3 28 9 L28 11 L12 11 Z" fill="#7a4a22"/><rect x="13" y="9" width="14" height="4" rx="2" fill="#5a3a1e"/><circle cx="17" cy="11" r="2" fill="#9ff4ff"/><circle cx="23" cy="11" r="2" fill="#9ff4ff"/>'
+    apron = '<path d="M14 24 L26 24 L27 39 L13 39 Z" fill="#e8dcc0" opacity="0.95"/>'
+    wrench = '<line x1="31" y1="34" x2="35" y2="18" stroke="#9aa1ae" stroke-width="2.4" stroke-linecap="round"/><circle cx="35.5" cy="16" r="3" fill="#9aa1ae"/><circle cx="35.5" cy="16" r="1.3" fill="#ffe2c4" stroke="none"/>'
+    return human("wood", hat=goggles + apron, hand=wrench)
+
+
+def archmage():
+    hat = '<path d="M10 9 L20 -6 L30 9 Z" fill="url(#wyvern)"/><path d="M7 9 Q20 5 33 9 L31 11 Q20 8 9 11 Z" fill="#5a2f94"/><circle cx="17" cy="2" r="1" fill="#ffe066"/><circle cx="23" cy="5" r="0.9" fill="#ffe066"/>'
+    beard = '<path d="M14 16 Q20 28 26 16 Q20 20 14 16 Z" fill="#f4f1ff"/>'
+    staff = '<line x1="33" y1="6" x2="31" y2="44" stroke="#6b4524" stroke-width="2.2"/><circle cx="33" cy="5" r="4" fill="url(#violet)"/>'
+    robe = '<path d="M11 21 Q20 16 29 21 L31 44 Q20 47 9 44 Z" fill="url(#wyvern)"/>'
+    return human("wyvern", extra_back=robe, hat=hat + beard, hand=staff)
+
+
 # --- Meadow decorations ------------------------------------------------------------------------------
 
 def decor_bush():
@@ -458,6 +556,8 @@ ART = {
     "decor_bush": decor_bush, "decor_tuft": decor_tuft, "decor_flowers": decor_flowers,
     "decor_rock": decor_rock, "decor_mushroom": decor_mushroom,
     "wyvern": lambda: wyvern(True), "wyvern_b": lambda: wyvern(False), "juggernaut": juggernaut,
+    "warlord": warlord, "golem": golem, "dragon": lambda: dragon(True), "dragon_b": lambda: dragon(False),
+    "captain": captain, "engineer": engineer, "archmage": archmage,
     "coin": coin, "cash": cash, "heart": heart, "gem": gem,
 }
 

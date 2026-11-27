@@ -285,7 +285,7 @@ func _update_boss_bar() -> void:
 	tension = maxf(tension, 1.0 - battle.keep_hp / battle.keep_max_hp())
 	Sfx.intensity(tension)
 	if boss != null:
-		_boss_meter.set_state(boss.hp / boss.max_hp, "Juggernaut  %s" % Num.fmt(maxf(boss.hp, 0.0)))
+		_boss_meter.set_state(boss.hp / boss.max_hp, "%s  %s" % [Defs.ENEMY_ROSTER[boss.kind]["name"], Num.fmt(maxf(boss.hp, 0.0))])
 
 
 ## Every 100 waves: three perks to choose from, picked at random when the timer runs out.
@@ -338,7 +338,14 @@ func _on_battle_event(e: Dictionary) -> void:
 			if fresh != "" and not e["boss"]:
 				_show_banner("Wave %d\nNew enemy: %s" % [e["wave"], fresh], Pal.ORANGE, 2.4)
 			elif e["boss"]:
-				_show_banner("Wave %d\nThe Juggernaut comes" % e["wave"], Pal.ORANGE, 2.6)
+				var boss := BattleWaves.boss_for(e["wave"])
+				var name: String = Defs.ENEMY_ROSTER[boss]["name"]
+				if boss in Defs.CHAMPIONS and int(Defs.ENEMY_ROSTER[boss]["wave"]) == int(e["wave"]):
+					_show_banner("Wave %d\nA champion arrives:\n%s!" % [e["wave"], name], Pal.GOLD, 3.2)
+				elif boss in Defs.CHAMPIONS:
+					_show_banner("Wave %d\nThe %s returns" % [e["wave"], name], Pal.ORANGE, 2.6)
+				else:
+					_show_banner("Wave %d\nThe %s comes" % [e["wave"], name], Pal.ORANGE, 2.6)
 			else:
 				_show_banner("Wave %d" % e["wave"], Pal.WHITE)
 		"early":

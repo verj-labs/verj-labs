@@ -25,6 +25,10 @@ class Enemy:
 	var burst: float = 0.0  ## sappers: damage when they blow up
 	var heal: float = 0.0  ## shamans: share of max health healed per second around them
 	var push_cd: float = 0.0  ## seconds until this enemy can be pushed back again
+	var aura: float = 0.0  ## Warlord: raiders near him move faster and take this much less damage
+	var rallied: bool = false  ## within a Warlord's banner this step
+	var wall_mult: float = 1.0  ## Siege Golem: damage against walls
+	var standoff: float = 0.0  ## Dragon: hovers this much further out and attacks from range
 
 	func pos() -> Vector2:
 		return Vector2(cos(angle), sin(angle)) * dist

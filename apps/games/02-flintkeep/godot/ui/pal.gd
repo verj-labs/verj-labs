@@ -34,6 +34,7 @@ const PATH := Color("#e3bd7c")
 ## Colour of each weapon's shots and its name in the build list.
 const WEAPON_COLORS := {
 	"keep": Color("#ffc23a"),  ## the Keep throws firebolts
+	"breath": Color("#ff5a1a"),  ## the Dragon's fire
 	"musket": Color("#ffe066"),
 	"cannon": Color("#ff8a2a"),
 	"volley": Color("#fff0a0"),

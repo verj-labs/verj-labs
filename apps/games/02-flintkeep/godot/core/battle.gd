@@ -855,7 +855,10 @@ func spawn(kind: String, angle: float) -> Enemy:
 	e.armor = def["armor"]
 	e.ward = def["ward"]
 	e.air = def["air"]
-	e.boss = kind == "juggernaut"
+	e.boss = kind == "juggernaut" or kind in Defs.CHAMPIONS
+	e.aura = def.get("aura", 0.0)
+	e.wall_mult = def.get("wall_mult", 1.0)
+	e.standoff = def.get("standoff", 0.0)
 	kinds_seen[kind] = true
 	e.cash = def["cash"] * Upgrades.cash_scale(wave, siege())
 	e.coins = def["coins"] * (1.0 + Defs.COIN_GROWTH * w)
