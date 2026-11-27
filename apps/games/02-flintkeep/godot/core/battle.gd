@@ -133,6 +133,7 @@ func _build_layout() -> void:
 		for i in count:
 			wall.sections.append(false)
 			wall.segments.append(0.0)
+			wall.broken.append(false)
 		walls.append(wall)
 
 
@@ -505,6 +506,7 @@ func build_section(ring: int, seg: int) -> bool:
 	wall.sections[seg] = true
 	_update_wall_hp(wall)
 	wall.segments[seg] = wall.max_hp
+	wall.broken[seg] = false
 	_event({"type": "wall_built", "ring": ring, "segment": seg})
 	if wall.complete():
 		_event({"type": "fortified", "ring": ring})
@@ -564,6 +566,7 @@ func _update_wall_hp(wall: Wall) -> void:
 func _heal_wall(wall: Wall) -> void:
 	for i in wall.segments.size():
 		wall.segments[i] = wall.max_hp if wall.sections[i] else 0.0
+		wall.broken[i] = false
 	_event({"type": "wall_built", "ring": wall.ring})
 
 
@@ -715,13 +718,19 @@ func _tick_effects(dt: float) -> void:
 		perk_time -= dt
 		if perk_time <= 0.0:
 			choose_perk(perk_offer[rng.randi() % perk_offer.size()])
+	# Wall regeneration mends every built section, broken ones too. Rubble regrows without
+	# blocking anyone, and stands again at WALL_REBUILD_SHARE of its health (so a wall with
+	# regeneration can still be broken through, instead of stopping raiders for ever).
 	var regen := stat("wall_regen")
 	if regen > 0.0:
 		for ring in range(1, rings_unlocked + 1):
 			var wall := walls[ring]
 			for i in wall.segments.size():
-				if wall.sections[i] and wall.segments[i] > 0.0:
+				if wall.sections[i] and wall.segments[i] < wall.max_hp:
 					wall.segments[i] = minf(wall.segments[i] + wall.max_hp * regen * dt, wall.max_hp)
+					if wall.broken[i] and wall.segments[i] >= wall.max_hp * Defs.WALL_REBUILD_SHARE:
+						wall.broken[i] = false
+						_event({"type": "wall_built", "ring": ring, "segment": i})
 
 
 ## Damage from any source, with armour/ward, run stats and lifesteal. Returns damage dealt.

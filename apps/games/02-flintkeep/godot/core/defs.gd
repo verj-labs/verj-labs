@@ -92,6 +92,7 @@ const ADDONS := {
 	"push": {"name": "Pushback", "about": "Uses the Keep's pushback chance and distance", "cost": 5.0},
 }
 const ADDON_GROWTH := 1.35
+const WALL_REBUILD_SHARE := 0.5  ## a broken section regrown by wall regeneration stands again at 50%
 ## Wall add-ons work the same way, per ring: a ring with Thorns hurts raiders hacking at it, and a
 ## ring with Absolute defense blocks a flat amount of each attacker's damage, using the Keep's
 ## values from the Defense tab. Price: the ring's +HP base price x `cost`, x ADDON_GROWTH for

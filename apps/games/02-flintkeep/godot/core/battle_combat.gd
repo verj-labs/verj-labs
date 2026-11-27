@@ -44,7 +44,7 @@ static func move_enemies(b: Battle, dt: float) -> void:
 				if e.dist < radius - 0.5:
 					continue
 				var seg := Battle.wall_segment(ring, e.angle)
-				if wall.sections[seg] and wall.segments[seg] > 0.0:
+				if wall.stands(seg):
 					stop_at = radius + e.size * 0.5 + CONTACT_GAP
 					target = ring
 					segment = seg
@@ -101,7 +101,8 @@ static func _attack(b: Battle, e: Enemy, ring: int, segment: int, dt: float) -> 
 	wall.segments[segment] = maxf(wall.segments[segment] - damage, 0.0)
 	if wall.addons.has("thorns"):
 		_thorns(b, e, damage, dt)
-	if wall.segments[segment] <= 0.0:
+	if wall.segments[segment] <= 0.0 and not wall.broken[segment]:
+		wall.broken[segment] = true
 		b._event({"type": "wall_broken", "ring": ring, "segment": segment})
 
 

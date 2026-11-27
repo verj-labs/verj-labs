@@ -631,3 +631,41 @@ func test_sprinters_are_fast_and_bosses_slow() -> void:
 	check(Defs.ENEMIES["runner"]["speed"] >= footman * 1.8, "sprinters are much faster than raiders")
 	check(Defs.ENEMIES["juggernaut"]["speed"] < footman * 0.5, "the boss is slow")
 	check(Defs.ENEMIES["brute"]["speed"] < footman, "heavies are slow")
+
+
+func test_wall_regeneration_rebuilds_broken_sections() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	var e := b.spawn("brute", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1) + 4.0
+	e.hp = 1e12
+	e.max_hp = 1e12
+	e.dps = b.walls[1].max_hp * 10.0
+	_run(b, 1.0)
+	check(b.walls[1].broken[0], "the brute broke through")
+	near(b.walls[1].segments[0], 0.0, 0.001, "no regeneration bought: rubble stays rubble")
+	e.hp = 0.0  # gone
+	b.levels["wall_regen"] = 30
+	_run(b, 2.0)
+	check(b.walls[1].segments[0] > 0.0, "with regeneration, a broken section regrows")
+	check(not b.walls[1].stands(0), "but it does not block until it is half rebuilt")
+	_run(b, 20.0)
+	check(b.walls[1].stands(0), "half rebuilt: it stands again")
+
+
+func test_regrowing_rubble_does_not_stop_raiders() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	b.levels["wall_regen"] = 30
+	b.walls[1].segments[0] = 0.0
+	b.walls[1].broken[0] = true
+	var e := b.spawn("footman", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1) + 6.0
+	e.hp = 1e12
+	_run(b, 1.5)
+	check(e.dist < b.wall_radius(1), "walked through the rubble")
+	check(e.attacking != 1, "never stopped at the wall")

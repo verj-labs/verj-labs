@@ -36,6 +36,14 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
   wave-1 health, speed, damage, armour, ward, flying, healing and bounty. Unmet ones are dark
   silhouettes that say when they arrive. Older saves are credited from their best waves.
 
+### Walls
+
+- **Wall regeneration rebuilds broken sections too** (it used to skip anything at 0, so rubble
+  stayed rubble). A broken section regrows as rubble that raiders walk through, and stands
+  again at **50%** of its health (`Defs.WALL_REBUILD_SHARE`). If it blocked as soon as it had any
+  health, raiders would keep hacking at a sliver for ever and walls with regeneration could
+  never be broken through (the endless-run stall the once-per-wave repair rule fixed).
+
 ### iPhone safe areas
 
 - The battle screen is edge to edge: the wood top bar runs up under the status bar and the

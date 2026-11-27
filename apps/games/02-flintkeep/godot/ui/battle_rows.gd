@@ -223,6 +223,8 @@ static func section_rows(b: Battle, ring: int, seg: int, rebuild: Callable) -> A
 			[_cash_action(b, _price_label("", price), price, run)]))
 	else:
 		rows.append(UpgradeRow.make("Section health", func() -> String:
+			if wall.broken[seg]:
+				return "Broken: regrowing, stands again at %s (%s now)" % [Num.pct(Defs.WALL_REBUILD_SHARE), Num.pct(wall.segments[seg] / wall.max_hp)]
 			return "%s / %s HP" % [Num.fmt(wall.segments[seg]), Num.fmt(wall.max_hp)], []))
 	rows.append_array(wall_rows(b).slice(ring - 1, ring))
 	return rows
