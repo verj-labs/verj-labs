@@ -3,6 +3,49 @@
 Product and design decisions, newest first, with the reasons. The code is the source of truth for
 numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `perks.gd`, `powers.gd`).
 
+## 0.6: champions, heroes, later tiers, a balancing guide
+
+### Something new ahead in long runs
+
+- **Champions** arrive as the boss of waves **250, 500 and 750** (in every tier), after the last
+  regular raider (wave 45), so long runs still have new threats ahead:
+  - **Goblin Warlord** (250): his war banner makes raiders within reach 30% faster and 30% tougher.
+  - **Siege Golem** (500): huge and armoured; six times the damage against walls.
+  - **Dragon** (750): flies, and breathes fire at the Keep from just beyond its starting reach,
+    so range upgrades and outer towers matter.
+  - After arriving they come back as the boss of **every 50th wave**, taking turns.
+  - Health 450 / 1,100 / 750 (2-5x a Juggernaut). At 700 / 1,600 / 1,100 they ended mid-game
+    runs a champion earlier (wave 401 instead of 451); the aura strength mattered little.
+- **Heroes** are the reward for beating a champion's wave for the first time (any tier). One
+  hero stands by the Keep each run (picked on the menu). Each has a small passive (at most
+  ~10%) and an ability with a cooldown that is cast like a power or set to auto:
+  - **Captain** (beat 250): towers +10% damage; *Rally*: towers fire 60% faster for 10 s.
+  - **Engineer** (beat 500): walls mend 1%/s faster; *Rebuild*: every wall back to full.
+  - **Archmage** (beat 750): Keep shots arc to a second raider (50%); *Meteor*: 30x Keep damage
+    to the toughest raider, and some to those around it.
+- **Why both:** champions give long runs a challenge to look forward to, heroes a reward.
+  Locked heroes say which champion to beat, and the bestiary lists champions as silhouettes.
+
+### Tiers unlock at wave 100 (was 25)
+
+- A fresh profile reaches ~30, so 25 unlocked tier 2 on the first or second run. Wave 100
+  takes some research (about 5 workshop levels). Players who already unlocked a tier keep it.
+
+### Balancing guide and tools
+
+- `docs/BALANCE.md`: what balanced means here, the targets, how to run the tools, the rules
+  that keep runs finite (each learned from a bug), a checklist for new content, and how to
+  find out why a run never ends.
+- Tools: `tools/balance.gd` (profiles x seeds, time-limited so runaways show as `N+`, with
+  `tier=` and `hero=`), `tools/ladder.gd` (waves per workshop level), `tools/sweep.py`
+  (variants side by side in temporary copies of the project).
+
+### Balance (simulated player)
+
+- Fresh 28-32, light 32-42, mid ~450 (runs end just after a returning champion), late reaches
+  the cap. With the Captain mid runs go a little further; tier 2 mid runs reach ~400.
+- The workshop ladder now climbs in 50-wave steps past wave 250, one per returning champion.
+
 ## 0.5: day and night, a bestiary, planned enemy arrivals
 
 ### Day and night (visual only)

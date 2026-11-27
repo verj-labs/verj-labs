@@ -121,9 +121,9 @@ const ENEMIES := {
 	"sapper": {"hp": 16.0, "dps": 0.0, "speed": 20.0, "armor": 0.0, "ward": 0.0, "air": false, "cash": 3.0, "coins": 0.6, "size": 4.0, "burst": 45.0},
 	"shaman": {"hp": 30.0, "dps": 2.0, "speed": 12.0, "armor": 0.0, "ward": 0.3, "air": false, "cash": 6.0, "coins": 1.5, "size": 4.5, "heal": 0.04},
 	# champions: the bosses of waves 250, 500 and 750, then back every 50 waves
-	"warlord": {"hp": 700.0, "dps": 12.0, "speed": 9.0, "armor": 0.3, "ward": 0.2, "air": false, "cash": 150.0, "coins": 40.0, "size": 11.0, "aura": 0.3},
-	"golem": {"hp": 1600.0, "dps": 10.0, "speed": 5.0, "armor": 0.5, "ward": 0.0, "air": false, "cash": 250.0, "coins": 60.0, "size": 14.0, "wall_mult": 6.0},
-	"dragon": {"hp": 1100.0, "dps": 16.0, "speed": 12.0, "armor": 0.1, "ward": 0.5, "air": true, "cash": 300.0, "coins": 80.0, "size": 14.0, "standoff": 40.0},
+	"warlord": {"hp": 450.0, "dps": 12.0, "speed": 9.0, "armor": 0.3, "ward": 0.2, "air": false, "cash": 150.0, "coins": 40.0, "size": 11.0, "aura": 0.3},
+	"golem": {"hp": 1100.0, "dps": 10.0, "speed": 5.0, "armor": 0.5, "ward": 0.0, "air": false, "cash": 250.0, "coins": 60.0, "size": 14.0, "wall_mult": 6.0},
+	"dragon": {"hp": 750.0, "dps": 16.0, "speed": 12.0, "armor": 0.1, "ward": 0.5, "air": true, "cash": 300.0, "coins": 80.0, "size": 14.0, "standoff": 40.0},
 	"juggernaut": {"hp": 200.0, "dps": 7.0, "speed": 6.0, "armor": 0.35, "ward": 0.2, "air": false, "cash": 60.0, "coins": 15.0, "size": 9.0},
 }
 ## Speeds (field units a second): bosses and heavies are slow (6-12), raiders steady (16-20),

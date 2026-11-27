@@ -136,16 +136,31 @@ towers **start one level higher** and makes their in-run upgrades 4% cheaper (up
 
 ## Enemies (goblin raiders)
 
-| Enemy | From wave | Notes |
+New kinds arrive on planned waves (ending in 5, never with a boss), one at a time, with a
+banner; the source of truth is `Defs.ENEMY_ROSTER`.
+
+| Enemy | Arrives | Notes |
 |---|---|---|
-| Raider | 1 | the basic footman |
-| Runner | 3 | fast, fragile |
-| War Balloon | 5 | flyer; drops bombs on the Keep |
-| Brute | 6 | armoured: blocks 50% of physical damage, so bring cannons or magic |
-| Wyvern | 12 | fast flyer; warded: blocks 50% of magic |
-| Sapper | 8 | carries a bomb: blows up against the first wall (or the Keep) and pays nothing |
-| Shaman | 15 | heals raiders within reach by 4% of their health a second |
+| Raider | wave 1 | the basic footman |
 | Juggernaut | every 10th wave | boss: huge health, armour and ward |
+| Sprinter | wave 15 | very fast, fragile |
+| Armoured brute | wave 25 | slow; armour blocks 35% of physical damage, so bring cannons or magic |
+| War balloon | wave 35 | flyer; only some towers reach it |
+| Sapper | wave 45 | carries a bomb: blows up against the first wall (or the Keep) and pays nothing |
+| Wyvern | tier 2, wave 5 | fast flyer; warded: blocks 50% of magic |
+| Shaman | tier 3, wave 5 | heals raiders within reach by 4% of their health a second |
+| Goblin Warlord | wave 250 (champion) | war banner: raiders near him 30% faster and tougher |
+| Siege Golem | wave 500 (champion) | six times the damage against walls |
+| Dragon | wave 750 (champion) | flies and breathes fire at the Keep from beyond its reach |
+
+Champions are the boss of their wave, then return as the boss of every 50th wave.
+
+## Heroes
+
+Beating a champion's wave for the first time (any tier) unlocks a hero; one hero stands by the
+Keep each run (picked on the menu). Each has a small passive and an ability with a cooldown:
+Captain (towers +10% damage; Rally), Engineer (walls mend faster; Rebuild), Archmage (Keep shots
+arc; Meteor).
 
 Enemy strength follows one smooth curve (`Upgrades.enemy_scale`). Each tier is the same curve
 raised: enemy health ×2.2 per tier (damage by its square root) and coins +75%.
@@ -163,9 +178,9 @@ beats stacking one.
 - **Labs** (timed): game speed (2x-5x), Siege lore (slower enemy growth), coin bonus,
   Quartermaster, the five weapons, four powers, rings 2-4.
 
-## Balance targets (checked by `tests/test_balance.gd`)
+## Balance targets (checked by `tests/test_balance.gd`; how to measure: `BALANCE.md`)
 
-- A brand-new player falls within a few minutes (the simulated player reaches wave ~20-25).
+- A brand-new player falls within a few minutes (the simulated player reaches wave ~30).
 - Workshop and research multiply how far runs go; strong setups reach the hundreds, and wave
   1,000 is the long-term goal.
 - Higher tiers end sooner for the same upgrades.

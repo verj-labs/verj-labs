@@ -5,7 +5,7 @@ goblin raiders, build a castle around it ring by ring, and research permanent up
 runs. Bright casual-cartoon look: glossy, outlined vector art (SVG), Lilita One and Fredoka
 fonts, wood panels with cream cards and chunky glossy buttons.
 
-Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
+Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Balancing (read before changing numbers): [`docs/BALANCE.md`](docs/BALANCE.md).
 
 ![Menu, battle and research](docs/screenshots/overview.png)
 
@@ -16,7 +16,8 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
       between towers are bought one at a time, and a finished ring is fortified
 - [x] A tilted "3D" camera: the ground squashes into ellipses, everything else stands upright
 - [x] 5 weapons (musket, cannon, volley gun, rifle nest, arcane spire), armour and ward
-- [x] 8 enemies (raider, sprinter, brute, sapper, shaman, war balloon, wyvern, juggernaut), with
+- [x] 11 enemies (raider, sprinter, brute, sapper, shaman, war balloon, wyvern, juggernaut and three
+      champions), with
       walking animations; towers look grander at levels 5 and 10
 - [x] Cash upgrades during a run: Keep, walls, economy (bounty, coin bounty, interest)
 - [x] Coins and research with 2 timed labs that keep running while the game is closed
@@ -42,6 +43,8 @@ Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md).
 - [x] 0.5: day and night (auto loop, your clock, or a fixed time) with lamplight, fireflies
       and moving shadows; a bestiary; new enemies on planned waves (15, 25, 35, 45; tier 2 and 3
       exclusives); faster raiders and sprinters; edge-to-edge battle screen on notched phones
+- [x] 0.6: champions at waves 250, 500 and 750 (Warlord, Siege Golem, Dragon); heroes unlocked by
+      beating them (Captain, Engineer, Archmage); tiers unlock at wave 100; balancing guide
 - [x] Settings: music, sound effects, time of day, reset progress
 - [x] Tests (rules, research, saves, missions, number formatting) and a balance check that plays whole runs
 - [ ] Store screenshots, adaptive Android icon layers
@@ -71,7 +74,9 @@ The script finds Godot at `/Applications/Godot.app` or on your `PATH`, or you ca
 Developer tools (run from `godot/`):
 
 ```bash
-godot --headless --path . -s ../tools/balance.gd     # waves and coins per research setup
+godot --headless --path . -s ../tools/balance.gd     # waves and coins per research setup (see docs/BALANCE.md)
+godot --headless --path . -s ../tools/ladder.gd      # waves per workshop level
+python3 ../tools/sweep.py --variant "" --variant "upgrades.SCALE_C=0.04" -- mid   # try changes side by side
 godot --path . -s ../tools/flow_check.gd             # clicks through menu > battle > summary > research
 godot --path . --resolution 540x1170 -s ../tools/screenshot.gd -- battle /tmp/b.png wait=20 auto=1 speed=3 research=late
 godot --path . --resolution 540x1170 -s ../tools/bench.gd       # frame time in a crowded wave-60 battle
@@ -114,7 +119,7 @@ godot/game/          the battlefield view: ground, walls, sprites, shots, glow, 
 godot/ui/            screens, panels, fonts, the art loader, the Profile autoload
 godot/assets/        SVG art, fonts, sounds
 godot/tests/         tests (run by tools/run_tests.gd)
-tools/               art and audio generators, test runner, balance report, flow check, screenshots
+tools/               art and audio generators, test runner, balance report/ladder/sweep, benchmark, flow check, screenshots
 ```
 
 Ground rules:
@@ -123,4 +128,4 @@ Ground rules:
    view only reads the state and the events it emits. The same code runs the game, the tests
    and the balance simulation.
 2. Tuning numbers go in `core/defs.gd` or `core/research.gd`, not in UI code.
-3. After changing balance, run `./test.sh` and `tools/balance.gd`.
+3. After changing balance, follow `docs/BALANCE.md`: run `./test.sh`, `tools/balance.gd` and `tools/ladder.gd`.
