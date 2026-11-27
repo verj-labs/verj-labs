@@ -8,6 +8,7 @@ var gems: int = 0  ## rare: missions, milestones, boss drops; buys lab slots and
 var milestones: Dictionary = {}  ## "tier:wave" -> true once its gems were paid
 var seen_enemies: Dictionary = {}  ## enemy kind -> true once it raided one of your runs (bestiary)
 var day_mode := "cycle"  ## time of day on the battlefield: see DayNight.MODES
+var hero := ""  ## the hero picked for runs ("" = none), see Heroes
 var research: Dictionary = {}  ## id -> level
 var workshop: Dictionary = {}  ## id -> level (instant coin upgrades)
 ## One Dictionary per lab slot: {"id": "" when free, "ends": unix seconds, "total": seconds}.
@@ -37,6 +38,21 @@ func level(id: String) -> int:
 
 func best(tier: int) -> int:
 	return int(best_wave.get(str(tier), 0))
+
+
+## A hero unlocks when you get past its champion's wave for the first time, in any tier.
+func hero_unlocked(id: String) -> bool:
+	if not Heroes.LIST.has(id):
+		return false
+	for tier in range(1, Defs.MAX_TIER + 1):
+		if best(tier) > Heroes.unlock_wave(id):
+			return true
+	return false
+
+
+## The hero to bring into a run: the one picked, if it is unlocked.
+func run_hero() -> String:
+	return hero if hero_unlocked(hero) else ""
 
 
 ## True once `kind` has raided one of your runs (or your best waves prove you met it).
@@ -302,7 +318,7 @@ func claim(index: int) -> bool:
 
 func to_dict() -> Dictionary:
 	return {
-		"version": 3, "coins": coins, "gems": gems, "milestones": milestones, "seen_enemies": seen_enemies, "day_mode": day_mode, "research": research, "workshop": workshop, "labs": labs, "best_wave": best_wave,
+		"version": 3, "coins": coins, "gems": gems, "milestones": milestones, "seen_enemies": seen_enemies, "day_mode": day_mode, "hero": hero, "research": research, "workshop": workshop, "labs": labs, "best_wave": best_wave,
 		"unlocked_tier": unlocked_tier, "runs": runs, "total_kills": total_kills,
 		"tutorial_done": tutorial_done, "last_seen": last_seen, "mission_day": mission_day, "missions": missions,
 	}
@@ -326,6 +342,7 @@ static func from_dict(data: Dictionary) -> ProfileData:
 		if Defs.ENEMY_ROSTER.has(kind):
 			p.seen_enemies[kind] = true
 	p.day_mode = str(data.get("day_mode", "cycle"))
+	p.hero = str(data.get("hero", ""))
 	var saved_labs: Array = data.get("labs", [])
 	# saves from before lab slots (version < 3) had two labs: players keep both
 	var slots := saved_labs.size() if int(data.get("version", 1)) >= 3 else maxi(saved_labs.size(), 2)

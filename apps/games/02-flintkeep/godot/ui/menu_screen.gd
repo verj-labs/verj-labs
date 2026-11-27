@@ -75,11 +75,15 @@ func _ready() -> void:
 	play_button.pressed.connect(func() -> void: play.emit(_tier))
 	col.add_child(play_button)
 	var row := Kit.hbox(12)
-	var research_button := Kit.button("Upgrades", Kit.Btn.PRIMARY, 30, 74)
+	var research_button := Kit.button("Upgrades", Kit.Btn.PRIMARY, 26, 74)
 	research_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	research_button.pressed.connect(func() -> void: research.emit())
 	row.add_child(research_button)
-	_missions_button = Kit.button("Missions", Kit.Btn.SECONDARY, 30, 74)
+	var heroes_button := Kit.button("Heroes", Kit.Btn.PRIMARY, 26, 74)
+	heroes_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heroes_button.pressed.connect(_open_heroes)
+	row.add_child(heroes_button)
+	_missions_button = Kit.button("Missions", Kit.Btn.SECONDARY, 26, 74)
 	_missions_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_missions_button.pressed.connect(_open_missions)
 	row.add_child(_missions_button)
@@ -126,6 +130,13 @@ func _open_missions() -> void:
 	holder[0] = Kit.modal(self, MissionsPanel.build(func() -> void:
 		holder[0].queue_free()
 		_refresh()), 480)
+
+
+func _open_heroes() -> void:
+	var holder := [null]
+	holder[0] = Kit.modal(self, HeroesPanel.build(func() -> void:
+		holder[0].queue_free()
+		_refresh()), 490)
 
 
 func _open_bestiary() -> void:

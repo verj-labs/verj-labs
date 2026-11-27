@@ -51,6 +51,10 @@ var power_cd := {}
 var power_auto := {}
 var freeze_left := 0.0
 var gold_left := 0.0
+var hero := ""  ## the hero standing by the Keep this run ("" = none), see Heroes
+var hero_cd := 0.0
+var hero_auto := false
+var rally_left := 0.0  ## the Captain's Rally: towers fire faster while this runs
 
 ## Tabs whose upgrades buy themselves when cash allows ("Attack", "Walls" ...).
 var auto_tabs := {}
@@ -421,11 +425,13 @@ func sell(index: int) -> bool:
 
 
 func tower_damage(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1) * _ws("towers") * perk_mult("towers")
+	var captain := Heroes.CAPTAIN_DAMAGE if hero == "captain" else 1.0
+	return Defs.WEAPONS[tower.weapon]["dmg"] * pow(Defs.WEAPON_DMG_GROWTH, tower.level - 1) * _ws("towers") * perk_mult("towers") * captain
 
 
 func tower_rate(tower: Tower) -> float:
-	return Defs.WEAPONS[tower.weapon]["rate"] * (1.0 + Defs.WEAPON_RATE_GROWTH * (tower.level - 1))
+	var rally := Heroes.RALLY_RATE if rally_left > 0.0 else 1.0
+	return Defs.WEAPONS[tower.weapon]["rate"] * (1.0 + Defs.WEAPON_RATE_GROWTH * (tower.level - 1)) * rally
 
 
 func tower_range(tower: Tower) -> float:
@@ -688,9 +694,59 @@ func cast(id: String) -> bool:
 	return true
 
 
+# --- The hero ------------------------------------------------------------------------------
+
+func hero_ready() -> bool:
+	return hero != "" and hero_cd <= 0.0 and not over
+
+
+## Casts the hero's ability: Rally (Captain), Rebuild (Engineer) or Meteor (Archmage).
+func cast_hero() -> bool:
+	if not hero_ready():
+		return false
+	hero_cd = Heroes.LIST[hero]["cooldown"]
+	match hero:
+		"captain":
+			rally_left = Heroes.RALLY_SECONDS
+		"engineer":
+			for ring in range(1, rings_unlocked + 1):
+				if walls[ring].built:
+					_heal_wall(walls[ring])
+		"archmage":
+			var target: Enemy = null
+			for e in enemies:
+				if e.alive() and (target == null or e.hp > target.hp):
+					target = e
+			if target == null:
+				hero_cd = 0.0  # nothing to hit: keep it ready
+				return false
+			var at := target.pos()
+			_deal(target, keep_damage() * Heroes.METEOR_MULT, Defs.DamageType.MAGIC, 0.0, "Meteor")
+			for e in enemies:
+				if e != target and e.alive() and e.pos().distance_to(at) <= Heroes.METEOR_RADIUS:
+					_deal(e, keep_damage() * Heroes.METEOR_MULT * Heroes.METEOR_SPLASH, Defs.DamageType.MAGIC, 0.0, "Meteor")
+			_event({"type": "meteor", "at": at})
+	_event({"type": "power", "id": hero})
+	return true
+
+
+## Should auto-cast use the ability now? (Rebuild waits until a wall is hurt.)
+func _hero_wanted() -> bool:
+	if hero == "engineer":
+		for ring in range(1, rings_unlocked + 1):
+			if walls[ring].built and walls[ring].missing_share() > 0.3:
+				return true
+		return false
+	return enemies.size() >= 3
+
+
 func _tick_effects(dt: float) -> void:
 	freeze_left = maxf(freeze_left - dt, 0.0)
 	gold_left = maxf(gold_left - dt, 0.0)
+	rally_left = maxf(rally_left - dt, 0.0)
+	hero_cd = maxf(hero_cd - dt, 0.0)
+	if hero_auto and hero_ready() and _hero_wanted():
+		cast_hero()
 	for id in Powers.ORDER:
 		power_cd[id] = maxf(float(power_cd[id]) - dt, 0.0)
 		if power_auto[id] and power_ready(id) and enemies.size() >= 3:
@@ -708,7 +764,7 @@ func _tick_effects(dt: float) -> void:
 ## stands (and blocks) again at WALL_REBUILD_SHARE of its health. Blocking from the first
 ## sliver would make walls with regeneration unbreakable.
 func _regrow_walls(dt: float) -> void:
-	var regen := stat("wall_regen")
+	var regen := stat("wall_regen") + (Heroes.ENGINEER_REGEN if hero == "engineer" else 0.0)
 	if regen <= 0.0:
 		return
 	var occupied := _raiders_on_rubble()

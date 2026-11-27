@@ -42,6 +42,7 @@ func _init(p_tier: int) -> void:
 func _ready() -> void:
 	# live references: research and workshop levels finished mid-run apply at once
 	battle = Battle.new(Profile.data.research, tier, 0, Profile.data.workshop)
+	battle.hero = Profile.data.run_hero()
 	Profile.changed.connect(battle.refresh_unlocks)
 	Profile.data.refresh_missions(Missions.today())
 	var bg := Kit.color_rect(Pal.WOOD)
@@ -326,7 +327,8 @@ func _on_battle_event(e: Dictionary) -> void:
 		"perk_chosen":
 			_show_banner(Perks.LIST[e["id"]]["name"] + "!", Pal.GOLD)
 		"power":
-			_show_banner(Powers.LIST[e["id"]]["name"] + "!", Pal.CYAN, 1.2)
+			var title: String = Heroes.LIST[e["id"]]["ability"] if Heroes.LIST.has(e["id"]) else Powers.LIST[e["id"]]["name"]
+			_show_banner(title + "!", Pal.CYAN, 1.2)
 		"wave":
 			_bank_coins()
 			var gems := Profile.data.reach_wave(tier, e["wave"])

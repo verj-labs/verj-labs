@@ -48,6 +48,8 @@ var _wall_pieces: Array = []  ## [ring, segment, Stand]
 var _slot_stands: Dictionary = {}  ## slot index -> Stand
 var _slot_rings := -1
 var _keep_stand: Stand
+var _hero_stand: Stand
+const HERO_SPOT := Vector2(15.0, 12.0)  ## where the hero stands, in front of the Keep (field units)
 var _decor_stands: Array[Stand] = []
 var _enemy_sprites: Dictionary = {}  ## enemy id -> EnemySprite
 var _spare_sprites: Array[EnemySprite] = []
@@ -243,6 +245,11 @@ func _refresh_field() -> void:
 	WallDrawer.refresh(battle, _wall_pieces)
 	_refresh_slots()
 	_keep_stand.refresh([battle.stat("thorns") > 0.0, battle.keep_fired < 0.08])
+	if battle.hero != "" and _hero_stand == null:
+		_hero_stand = Stand.new(proj(HERO_SPOT).y, _draw_hero)
+		_things.add_child(_hero_stand)
+	if _hero_stand != null:
+		_hero_stand.refresh([battle.hero, battle.hero_ready(), battle.rally_left > 0.0])
 	_refresh_enemies()
 
 
@@ -339,6 +346,11 @@ func _on_event(e: Dictionary) -> void:
 			_shake = maxf(_shake, 0.8)
 		"thorns":
 			fx.burst(proj(e["pos"]) + Vector2(0, -3), Color("#ff6a4a"), 4, 18.0)
+		"meteor":
+			var at := proj(e["at"])
+			fx.shot(at + Vector2(-30, -90), at, "breath")
+			fx.blast(at, Heroes.METEOR_RADIUS)
+			_shake = 2.5
 		"breath":
 			var keep := Art.rect("keep", Vector2.ZERO)
 			fx.shot(proj(e["from"]) + Vector2(0, -16), keep.position + keep.size * Vector2(0.5, 0.45), "breath")
@@ -387,6 +399,16 @@ func _power_fx(id: String) -> void:
 				fx.burst(proj(e.pos()) + Vector2(0, -3), Pal.CYAN, 4, 15.0)
 		"gold":
 			fx.burst(Vector2(0, -30), Pal.GOLD, 30, 50.0)
+		"captain":  # Rally: a gold flash over every tower
+			for slot in battle.slots:
+				if slot.tower != null and battle.slot_open(slot.index):
+					fx.burst(proj(slot.pos) + Vector2(0, -WallDrawer.HEIGHT - 10.0), Pal.GOLD, 8, 26.0)
+		"engineer":  # Rebuild: dust and stone along every wall
+			for ring in range(1, battle.rings_unlocked + 1):
+				for seg in Defs.SLOT_COUNTS[ring]:
+					if battle.walls[ring].sections[seg]:
+						var at := proj(Vector2.from_angle(Battle.section_angle(ring, seg)) * battle.wall_radius(ring))
+						fx.burst(at + Vector2(0, -4), Color("#ffffff"), 6, 22.0)
 
 
 ## Where a shot leaves: near the top of the tower (or the Keep's crystal).
@@ -584,6 +606,19 @@ func _draw_keep(ci: CanvasItem) -> void:
 	if battle.keep_fired < 0.08:
 		r.position.y += 0.5
 	ci.draw_texture_rect(Art.tex("keep"), r, false)
+
+
+## The run's hero, standing in front of the Keep; a gold ring under them when the ability is ready.
+func _draw_hero(ci: CanvasItem) -> void:
+	if battle == null or battle.hero == "":
+		return
+	var at := proj(HERO_SPOT)
+	if battle.hero_ready() or battle.rally_left > 0.0:
+		ci.draw_set_transform(at - Vector2(0, ci.position.y), 0.0, Vector2(1.0, TILT))
+		ci.draw_arc(Vector2.ZERO, 5.5, 0, TAU, 32, Pal.GOLD, 1.2, true)
+		ci.draw_set_transform(Vector2(0, -ci.position.y))
+	ci.draw_texture_rect(_soft, Rect2(at + Vector2(-4, -1.2), Vector2(8, 2.4)), false, Color(0.05, 0.25, 0.1, 0.35))
+	ci.draw_texture_rect(Art.tex(battle.hero), Art.rect(battle.hero, at), false)
 
 
 ## Every slot is a stone pedestal as tall as the walls; its tower stands on top.

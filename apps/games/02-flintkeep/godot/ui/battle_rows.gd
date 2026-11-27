@@ -116,9 +116,23 @@ static func upgrade_cards(b: Battle, tab: String) -> Array[Control]:
 	return cards
 
 
-## The Powers tab: cast now, or let a power cast itself.
+## The Powers tab: the hero's ability first (if a hero came along), then the powers: cast now,
+## or let one cast itself.
 static func power_cards(b: Battle) -> Array[Control]:
 	var cards: Array[Control] = []
+	if b.hero != "":
+		var h: Dictionary = Heroes.LIST[b.hero]
+		var status := func() -> String:
+			if b.rally_left > 0.0:
+				return "Rallying: %ds" % int(ceil(b.rally_left))
+			return ("Ready" if b.hero_cd <= 0.0 else "Ready in %ds" % int(ceil(b.hero_cd))) + ("  ·  auto" if b.hero_auto else "")
+		cards.append(UpgradeCard.make("%s: %s" % [h["name"], h["ability"]], status, func() -> String: return "Cast",
+			func() -> float: return 0.0 if b.hero_ready() else -1.0, func() -> float: return 1.0, b.cast_hero, Kit.Btn.SECONDARY))
+		var toggle := func() -> bool:
+			b.hero_auto = not b.hero_auto
+			return true
+		cards.append(UpgradeCard.make("Auto-cast " + h["ability"], func() -> String: return h["passive"],
+			func() -> String: return "Auto: on" if b.hero_auto else "Auto: off", func() -> float: return 0.0, func() -> float: return 1.0, toggle, Kit.Btn.PRIMARY))
 	for id in Powers.ORDER:
 		var p: Dictionary = Powers.LIST[id]
 		var status := func() -> String:

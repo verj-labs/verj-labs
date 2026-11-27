@@ -82,4 +82,5 @@ static func play(research: Dictionary, tier: int, seed_value: int, max_wave: int
 				b.choose_perk(b.perk_offer[0])
 			for id in Powers.ORDER:
 				b.cast(id)
+			b.cast_hero()
 	return b

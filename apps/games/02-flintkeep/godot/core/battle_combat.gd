@@ -155,6 +155,11 @@ static func _fire_keep(b: Battle, dt: float) -> void:
 	for t in targets:
 		_shoot(b, t, b.keep_damage(), Defs.DamageType.PHYSICAL, 0.0, "Keep", KEEP_EFFECTS)
 		b._event({"type": "shot", "weapon": "keep", "from": SHOT_ORIGIN_KEEP, "to": t.pos()})
+	if b.hero == "archmage":  # the Archmage's passive: the bolt arcs on to a second raider
+		var other := _nearest(b, target.pos(), Heroes.ARC_REACH, {target.id: true})
+		if other != null:
+			b._deal(other, b.keep_damage() * Heroes.ARC_SHARE, Defs.DamageType.MAGIC, 0.0, "Keep")
+			b._event({"type": "chain", "from": target.pos(), "to": other.pos()})
 
 
 static func _fire_tower(b: Battle, s: Entities.Slot, dt: float) -> void:
