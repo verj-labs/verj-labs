@@ -177,7 +177,6 @@ const WALL_HP := 60.0  ## Per segment, ring 1, level 1.
 const WALL_HP_RING_GROWTH := 1.25
 const WALL_HP_GROWTH := 1.10  ## Per reinforce level (compounds).
 const WALL_REINFORCE_GROWTH := 1.13
-const WALL_REPAIR_SHARE := 0.5  ## Repairing every segment from zero costs half a reinforce.
 
 
 static func upgrade_cost(def: Dictionary, level: int, discount: float = 0.0) -> float:

@@ -38,11 +38,15 @@ numbers (`godot/core/upgrades.gd`, `defs.gd`, `workshop.gd`, `research.gd`, `per
 
 ### Walls
 
-- **Wall regeneration rebuilds broken sections too** (it used to skip anything at 0, so rubble
-  stayed rubble). A broken section regrows as rubble that raiders walk through, and stands
-  again at **50%** of its health (`Defs.WALL_REBUILD_SHARE`). If it blocked as soon as it had any
-  health, raiders would keep hacking at a sliver for ever and walls with regeneration could
-  never be broken through (the endless-run stall the once-per-wave repair rule fixed).
+- **Walls mend themselves; there is no paid repair any more.** Every built section regenerates
+  from the start at **0.1% of its health a second**; the Wall regeneration upgrade raises that
+  to 3%. The Fix button (and the once-per-wave repair rule it needed) is gone; the Walls tab is
+  build, +HP and add-ons.
+- **Broken sections regrow too**, as rubble that raiders walk through, and **not while a raider
+  stands on them**. They stand again (and block) at **50%** of their health
+  (`Defs.WALL_REBUILD_SHARE`). Blocking from the first sliver of health would let raiders hack
+  at a sliver for ever, so walls with regeneration could never be broken through.
+- Sections mending themselves do not count towards the "build or reinforce walls" mission.
 
 ### iPhone safe areas
 

@@ -31,7 +31,7 @@ const LIST := {
 	"thorns": {"tab": "Defense", "name": "Thorns", "kind": "add", "start": 0.0, "step": 0.02, "base": 25.0, "growth": 1.14, "max": 40, "unlock": 400.0},
 	"lifesteal": {"tab": "Defense", "name": "Lifesteal", "kind": "add", "start": 0.0, "step": 0.001, "base": 30.0, "growth": 1.12, "max": 50},
 	# --- Walls (sections are bought on the field; these improve every wall)
-	"wall_regen": {"tab": "Walls", "name": "Wall regeneration", "kind": "add", "start": 0.0, "step": 0.001, "base": 20.0, "growth": 1.15, "max": 30},
+	"wall_regen": {"tab": "Walls", "name": "Wall regeneration", "kind": "add", "start": 0.001, "step": 0.001, "base": 20.0, "growth": 1.15, "max": 29},
 	# --- Economy
 	"bounty": {"tab": "Economy", "name": "Cash bounty", "kind": "mult", "start": 1.0, "step": 1.02, "base": 15.0, "growth": 1.16, "max": 0},
 	"coin_bounty": {"tab": "Economy", "name": "Coin bounty", "kind": "mult", "start": 1.0, "step": 1.03, "base": 20.0, "growth": 1.15, "max": 0},

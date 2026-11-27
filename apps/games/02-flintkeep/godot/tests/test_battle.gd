@@ -196,16 +196,11 @@ func test_keep_health_upgrade_heals_the_difference() -> void:
 	near(b.keep_hp, 50.0 + b.keep_max_hp() - before)
 
 
-func test_walls_repair_and_reinforce() -> void:
+func test_walls_can_be_reinforced() -> void:
 	var b := _battle()
 	b.cash = 10000.0
 	b.build_wall(1)
 	var hp := b.walls[1].max_hp
-	b.walls[1].segments[0] = 0.0
-	check(b.wall_repair_cost(1) > 0.0, "damage costs something to fix")
-	check(b.repair_wall(1), "repaired")
-	near(b.walls[1].segments[0], hp)
-	check(not b.repair_wall(1), "nothing left to repair")
 	b.reinforce_wall(1)
 	check(b.walls[1].max_hp > hp, "reinforced walls are tougher")
 
@@ -504,20 +499,6 @@ func test_perks_can_be_rerolled() -> void:
 
 
 
-func test_walls_can_be_repaired_once_per_wave() -> void:
-	var b := _battle()
-	b.cash = 100000.0
-	b.build_wall(1)
-	b.walls[1].segments[0] = 1.0
-	check(b.repair_wall(1), "first repair this wave")
-	b.walls[1].segments[0] = 1.0
-	check(not b.repair_wall(1), "not again in the same wave")
-	b.wave_timer = 0.01
-	b.step(0.05)
-	b.walls[1].segments[0] = 1.0
-	check(b.repair_wall(1), "a new wave allows another repair")
-
-
 
 func test_keep_regeneration_is_a_capped_share_of_health() -> void:
 	var b := Battle.new({}, 1, 1, {"regen": 200})
@@ -633,6 +614,17 @@ func test_sprinters_are_fast_and_bosses_slow() -> void:
 	check(Defs.ENEMIES["brute"]["speed"] < footman, "heavies are slow")
 
 
+func test_walls_mend_themselves_from_the_start() -> void:
+	near(Upgrades.value("wall_regen", 0), 0.001, 0.00001, "0.1% a second before any upgrade")
+	check(Upgrades.value("wall_regen", 1) > Upgrades.value("wall_regen", 0), "the upgrade speeds it up")
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.walls[1].segments[1] = b.walls[1].max_hp * 0.5
+	_run(b, 5.0)
+	check(b.walls[1].segments[1] > b.walls[1].max_hp * 0.5, "a hurt wall mends on its own")
+
+
 func test_wall_regeneration_rebuilds_broken_sections() -> void:
 	var b := _battle()
 	b.cash = 1e6
@@ -645,14 +637,32 @@ func test_wall_regeneration_rebuilds_broken_sections() -> void:
 	e.dps = b.walls[1].max_hp * 10.0
 	_run(b, 1.0)
 	check(b.walls[1].broken[0], "the brute broke through")
-	near(b.walls[1].segments[0], 0.0, 0.001, "no regeneration bought: rubble stays rubble")
 	e.hp = 0.0  # gone
-	b.levels["wall_regen"] = 30
+	b.levels["wall_regen"] = 29
 	_run(b, 2.0)
-	check(b.walls[1].segments[0] > 0.0, "with regeneration, a broken section regrows")
+	check(b.walls[1].segments[0] > 0.0, "a broken section regrows")
 	check(not b.walls[1].stands(0), "but it does not block until it is half rebuilt")
 	_run(b, 20.0)
 	check(b.walls[1].stands(0), "half rebuilt: it stands again")
+
+
+func test_rubble_does_not_regrow_under_raiders() -> void:
+	var b := _battle()
+	b.cash = 1e6
+	b.build_wall(1)
+	b.levels["damage"] = -200
+	b.levels["wall_regen"] = 29
+	b.walls[1].segments[0] = 0.0
+	b.walls[1].broken[0] = true
+	var e := b.spawn("brute", Battle.section_angle(1, 0))
+	e.dist = b.wall_radius(1)
+	e.speed = 0.0  # stands right on the rubble
+	e.hp = 1e12
+	_run(b, 2.0)
+	near(b.walls[1].segments[0], 0.0, 0.001, "nothing regrows while a raider stands on it")
+	e.hp = 0.0
+	_run(b, 2.0)
+	check(b.walls[1].segments[0] > 0.0, "it starts again once they are gone")
 
 
 func test_regrowing_rubble_does_not_stop_raiders() -> void:
@@ -660,7 +670,7 @@ func test_regrowing_rubble_does_not_stop_raiders() -> void:
 	b.cash = 1e6
 	b.build_wall(1)
 	b.levels["damage"] = -200
-	b.levels["wall_regen"] = 30
+	b.levels["wall_regen"] = 29
 	b.walls[1].segments[0] = 0.0
 	b.walls[1].broken[0] = true
 	var e := b.spawn("footman", Battle.section_angle(1, 0))

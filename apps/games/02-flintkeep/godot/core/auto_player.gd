@@ -2,9 +2,8 @@ class_name AutoPlayer
 extends RefCounted
 ## A simple greedy player used by the balance tests (and handy for an attract mode later).
 ## Each think() it buys the cheapest useful thing it can afford: fill open slots, raise walls,
-## repair them when they are hurt, then upgrade whatever is cheapest.
+## then upgrade whatever is cheapest.
 
-const REPAIR_BELOW := 0.35  ## Repair a wall once this share of it is missing.
 ## Which cash upgrades the bot buys, and how keen it is (lower = sooner).
 const WEIGHTS := {
 	"damage": 1.0, "health": 1.0, "rate": 1.2, "regen": 1.3, "crit_chance": 1.3, "crit_factor": 1.6,
@@ -21,10 +20,6 @@ static func think(b: Battle) -> void:
 
 
 static func _buy_one(b: Battle) -> bool:
-	for ring in range(1, b.rings_unlocked + 1):
-		var wall := b.walls[ring]
-		if b.can_repair(ring) and wall.missing_share() >= REPAIR_BELOW and b.cash >= b.wall_repair_cost(ring):
-			return b.repair_wall(ring)
 	var options: Array = []  # [cost, Callable]
 	var weapon := _next_weapon(b)
 	for slot in b.slots:

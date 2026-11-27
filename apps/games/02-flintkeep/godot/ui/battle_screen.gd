@@ -368,7 +368,9 @@ func _track_missions(e: Dictionary) -> void:
 		"wave": Missions.track(list, "wave", e["wave"])
 		"built": Missions.track(list, "build", 1)
 		"upgraded": Missions.track(list, "upgrade", 1)
-		"wall_built": Missions.track(list, "walls", 1)
+		"wall_built":
+			if not e.get("regrown", false):  # walls mending themselves do not count
+				Missions.track(list, "walls", 1)
 
 
 ## The workshop and labs over the running battle: research while you fight.

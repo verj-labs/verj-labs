@@ -13,7 +13,7 @@ const POOL := {
 	"build": ["Build %d towers", 8, 0.2, 0.8],
 	"upgrade": ["Upgrade towers %d times", 10, 0.5, 1.0],
 	"boss": ["Defeat %d Juggernaut", 1, 0.0, 2.0],
-	"walls": ["Build or repair walls %d times", 4, 0.1, 0.8],
+	"walls": ["Build or reinforce walls %d times", 4, 0.1, 0.8],
 }
 
 
