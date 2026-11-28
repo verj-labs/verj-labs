@@ -3,6 +3,9 @@
 Research done on 2026-11-28. The goal: **simple to build, a real chance at US$100,000 gross on
 Steam, and all in one studio identity: resource, simulation and tycoon games.**
 
+**Engine and dimension are chosen per game.** The "why simple" notes below assume the simplest
+version of each idea; any of them can be made in 3D (Unity, Unreal or Godot), which adds art time.
+
 ## The studio identity
 
 > **Verj Games makes small games about keeping something running.**
@@ -75,8 +78,9 @@ drains and guard chambers.
   ([Notebookcheck](https://www.notebookcheck.net/Unusual-RTS-with-94-positive-reviews-drops-to-just-7-50-from-30-on-Steam.1430132.0.html)),
   so the audience is real. It is a hex-map strategy game; ours is a hand-dug, side-view sim, a
   different feel.
-- **Why simple:** 2D side view, grid of soil cells, ants follow simple pheromone paths. Reuses
-  Flintkeep's wave and defence code for the rival raids.
+- **Why simple:** gameplay on a side-view grid of soil cells (it can be rendered in 3D as a glass
+  ant farm), ants follow simple pheromone paths, and the rival raids reuse the wave ideas from
+  Flintkeep and the flow fields from Quiverhold.
 - **The clip:** a rainstorm floods a tunnel and ants rush the eggs to higher chambers.
 - **Risk:** keeping hundreds of ants cheap to simulate (same flow-field approach as Quiverhold).
 - **Time:** 5–7 months. **Price:** $12–15.

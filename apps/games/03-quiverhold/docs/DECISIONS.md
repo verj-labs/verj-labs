@@ -3,6 +3,30 @@
 Product and design decisions, newest first, with the reasons. The numbers behind them are in
 [`MARKET_RESEARCH.md`](MARKET_RESEARCH.md).
 
+## 2026-11-28: 3D and Unity
+
+### Full 3D, stylised low-poly
+
+- Steam strategy players expect 3D, and the closest games (Thronefall, Cataclismo, Diplomacy is Not
+  an Option) are stylised low-poly 3D. That look reads well from a strategy camera, stays cheap with
+  thousands of units, and can be built from asset packs by one person.
+- The studio is not committed to 2D or 3D in general: each game picks what suits it.
+
+### Unity 6 with ECS, not Godot or Unreal
+
+- The hardest technical problem is thousands of enemies and a live economy. Unity's ECS is built for
+  it, and Diplomacy is Not an Option runs 25,000+ enemies on it.
+- Unity's asset store has the most stylised 3D packs, which a solo 3D game depends on.
+- Unreal is strongest at realistic visuals, which we do not need, and is heavy for one developer.
+  Godot remains a good choice for smaller games.
+- Cost: Unity Personal is free under US$200,000 in the last 12 months; budget for Pro if the game
+  passes that.
+
+### Longer timeline
+
+- 3D and a new engine add time: Early Access estimated at 12 to 18 months instead of 9 to 15. The
+  developer is taking the time to build it well.
+
 ## 2026-11-28: the starting decisions
 
 ### Genre: a base-building survival game with defence, not a tower defense

@@ -112,5 +112,6 @@ defence instead of city survival.
 To build it is mid-to-high complexity, about 3–5× Flintkeep's work (an estimate). The hard systems
 are horde pathfinding, goods logistics and the worker job system, and they are also the hook. The
 playable complexity is our choice; we aim for medium (learnable in five minutes, deep in
-decisions). Estimated solo timeline: prototype 2–3 weeks, vertical slice about 3 months, Early
-Access 9–15 months. Details in [`GAME_DESIGN.md`](GAME_DESIGN.md#13-milestones).
+decisions). The first estimate (2D) was a prototype in 2–3 weeks and Early Access in 9–15 months;
+after the move to 3D and Unity it is 3–5 weeks and 12–18 months. Details in
+[`GAME_DESIGN.md`](GAME_DESIGN.md#13-milestones).

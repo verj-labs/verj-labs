@@ -8,8 +8,14 @@ running when the horde comes.
 a wooden post. Every lumber camp, fletcher and carrier is part of the defence, and every step
 toward a rich resource field is a longer road to protect.
 
-**Platform:** PC first (Steam), mouse and keyboard. Made in Godot 4.7 like Flintkeep. A console or
-mobile port is a later question, only if the PC version sells.
+**Platform:** PC first (Steam), mouse and keyboard. A console port is a later question, only if the
+PC version sells.
+
+**Presentation:** full 3D, with a strategy camera (see §4).
+
+**Engine:** recommended **Unity 6 with ECS (DOTS)** for the horde and the simulation; see §10 for the
+comparison with Godot and Unreal. The studio is not tied to one engine: each game picks the engine
+and 2D or 3D that suits it.
 
 **Price (planned):** US$14.99 to 19.99 in Early Access.
 
@@ -19,7 +25,8 @@ means a third-person explorer-crafter (Valheim), a different audience. See
 [`MARKET_RESEARCH.md`](MARKET_RESEARCH.md).
 
 Numbers in this document are starting values to tune in the prototype, not final balance. Once
-code exists, the code is the source of truth for values, as in Flintkeep.
+code exists, the code is the source of truth for values, as in Flintkeep. The grid sizes and tile
+counts below are gameplay units; the 3D art sits on that grid.
 
 ---
 
@@ -54,18 +61,32 @@ and the **Hollowed**: husks and beasts it has taken.
 - Tone: tense but not grim. Warm firelight, hand-made wooden defences, a settlement you feel proud
   of.
 - Why medieval fantasy: arrows, bolts and stone shot are readable ammunition that anyone
-  understands. It suits wood-to-weapon chains, and it stays close to Flintkeep's art skills.
+  understands. It suits wood-to-weapon chains, and medieval 3D asset packs are plentiful, which
+  matters for a solo developer.
 - Why a horde of "the Blight" and not zombies: zombie hordes are where They Are Billions lives.
   A rot that spreads also gives a visual of the map getting worse over time.
 
 ## 4. Look and feel
 
-- **Camera:** top-down, tilted about 50 degrees (as in Flintkeep): the ground is squashed and
-  buildings, units and props stand upright, sorted back to front. 2D sprites, so art stays fast to
-  make and hundreds of units stay cheap to draw. Zoom from the whole map to one tower.
-- **Art direction:** stylised and readable, a little more grounded than Flintkeep's casual cartoon,
-  because the Steam strategy audience trusts a calmer look. Strong silhouettes, a warm palette for
-  the settlement, cold desaturated purples and greens for the Blight.
+- **Camera:** a 3D strategy camera. It looks down at about 50–60 degrees, pans with WASD or the
+  screen edges, rotates in 45-degree steps (Q/E), and zooms from the whole map down to one tower,
+  tilting lower as it zooms in so close-ups feel like being on the wall. A free "photo mode" camera
+  later, for players' screenshots.
+- **Art direction: stylised low-poly 3D.** Chunky shapes, flat or gently painted colours, soft
+  real-time lighting and long shadows. The look of Thronefall, Cataclismo and Diplomacy is Not an
+  Option. Reasons:
+  - it reads well from far away, which a strategy camera needs;
+  - it stays fast to draw with thousands of enemies on screen;
+  - it can be built from good asset packs (buildings, props, terrain) and kit-bashed into our own
+    style, instead of modelling everything by hand;
+  - it ages well, unlike a cheap attempt at realism.
+- **Palette:** warm wood, stone and firelight for the settlement; cold, desaturated purples and
+  greens for the Blight. The contrast shows where the front is at a glance.
+- **Units:** settlers and carriers are small, simple figures with clear carry poses (a bundle on
+  the back, a log on the shoulder). Enemies are drawn as GPU-instanced meshes with baked
+  animations, so 2,000 of them cost little.
+- **Effects:** arrows as visible streaks, catapult shot as real arcs, fire and pitch as particles,
+  the Blight as a ground shader that creeps outward.
 - **Readability rules:**
   - Every carrier shows what it carries (a bundle of arrows, a log, a stone).
   - Every tower shows an ammo pip bar; at 25% it flashes amber; when dry, its flag drops and its
@@ -259,27 +280,65 @@ Light, so that each map stands on its own:
 - Music in three layers (calm, wave coming, under siege), the same idea as Flintkeep's adaptive
   tracks.
 
-## 10. Technical design (Godot 4.7)
+## 10. Technical design
+
+### 10.1 Engine choice
+
+| | Unity 6 | Unreal Engine 5 | Godot 4 |
+|---|---|---|---|
+| Thousands of units | **ECS / DOTS, built for it**; Diplomacy is Not an Option runs 25,000+ enemies on Unity DOTS ([itch.io](https://door407.itch.io/diplomacy-is-not-an-option), [Unity](https://unity.com/dots)) | Mass Entity can do it, but it is younger and less documented | Possible with servers and MultiMesh, but you write more of it yourself |
+| Language | C# | C++ and Blueprints | GDScript or C# |
+| 3D asset packs | **Largest store** of stylised and low-poly packs | Fab; strong on realistic assets, fewer stylised strategy kits | Smallest ecosystem |
+| Strategy and sim games on Steam | **Very common** | Less common for indie strategy | Growing |
+| Weight for one developer | Medium | **Heavy** (big editor, long builds, C++) | Light |
+| Cost | Personal is free under US$200,000 in the last 12 months; above that, Pro at about US$2,310 per seat per year ([Unity](https://unity.com/en/legal/editor-terms-of-service/software), [Unity pricing](https://unity.com/pricing-updates)) | Free until US$1M lifetime gross, then 5% royalty ([Unreal](https://www.unrealengine.com/en-US/license)) | Free, MIT licence |
+
+**Choice: Unity 6 with ECS.** It is the engine built for exactly this problem (huge hordes and a big
+simulation), the closest competitor proves it works, and its asset store makes a 3D game possible
+for one person. Unreal's strength is realistic visuals, which a low-poly strategy game does not
+need, and its weight slows a solo developer. Godot stays a good choice for the studio's smaller
+games.
+
+Cost note: Unity's licence changes are a known risk (the 2023 runtime-fee episode was cancelled in
+2024). If Quiverhold earns over US$200,000 in a year, budget for Pro seats.
+
+### 10.2 Architecture
 
 - **Simulation apart from drawing.** A fixed simulation tick (10 per second) runs the economy, jobs
-  and enemies; drawing interpolates between ticks. This keeps the game the same at any frame rate
-  and at 3× speed.
-- **Grid:** one array of tiles (terrain, building id, wall, blight, road). Buildings are records in
-  arrays, not a node each, in the "only redraw what changes" spirit of Flintkeep 0.4.
-- **Horde pathfinding:** flow fields over the grid, one per target group, recomputed in the
-  background when walls or buildings change. Hundreds of enemies then read one direction from their
-  tile, which is cheap.
+  and enemies in ECS systems; rendering interpolates between ticks. The game stays the same at any
+  frame rate and at 3× speed.
+- **The world is a grid under 3D art.** Gameplay uses one grid of tiles (terrain, building id,
+  wall, blight, road); 3D models sit on it. Terrain height is cosmetic and gentle, so the rules stay
+  grid-simple.
+- **Plain C# for rules.** The economy, the job system and wave logic live in plain C# with no engine
+  types where possible, so they can be unit tested fast and outside the editor.
+- **Horde pathfinding:** flow fields over the grid, one per target group, computed with Burst-
+  compiled jobs in the background when walls or buildings change. Every enemy reads one direction
+  from its tile, which is cheap at any number.
 - **Carrier pathfinding:** A* on the grid with a lower cost on roads, cached per pair of buildings
   and cleared when roads change.
-- **Rendering:** MultiMeshInstance2D (or batched sprites) for enemies and carriers; the static
-  settlement drawn into cached layers.
-- **Job system:** a priority queue of requests matched against offers, in a plain GDScript module
-  with no nodes, so it can be unit tested.
+- **Rendering:** GPU instancing (Entities Graphics) for enemies and carriers with baked vertex
+  animations; static buildings batched; the Blight as a ground decal or shader mask.
+- **Job system:** a priority queue of requests matched against offers (see §7.4), tested on its
+  own.
 - **Saving:** the whole map state (grid, buildings, buffers, carriers in flight, enemies, timers) as
-  versioned JSON, with tests that save, load and compare.
-- **Tests:** like Flintkeep: rules tests (chains, jobs, ammo use), save tests, and a headless
-  **balance bot** that plays a map with a simple build order and reports the day it fell.
-- **Performance targets:** 60 fps with 1,000 enemies and 150 carriers on a mid-range laptop.
+  versioned data, with tests that save, load and compare.
+- **Tests:** rules tests (chains, jobs, ammo use), save tests, and a headless **balance bot** that
+  plays a map with a simple build order and reports the day it fell (the same idea as Flintkeep's
+  balance check).
+- **Performance targets:** 60 fps with 2,000 enemies and 150 carriers on a mid-range gaming laptop
+  (an RTX 3060-class GPU); 30 fps with 5,000 in the final siege.
+
+### 10.3 Art pipeline for one developer
+
+- Buy a coherent low-poly kit (medieval buildings, props, nature) as the base; keep to one or two
+  kits so the style matches.
+- Kit-bash and recolour to our palette, and model only the hero pieces (towers, the Town Hall, the
+  Blight Heart).
+- One shared colour-palette texture for most models (cheap to draw, easy to keep consistent).
+- Characters from a modular low-poly pack with retargeted animations.
+- Budget about US$300–800 for asset packs (a rough estimate), and check every licence allows
+  commercial use and modification.
 
 ## 11. Steam page and marketing plan
 
@@ -308,15 +367,16 @@ types plus a boss, final sieges, doctrines, the tutorial map, save and load, set
 
 ## 13. Milestones
 
-These are estimates for one developer.
+These are estimates for one developer, in 3D, with time to learn Unity's ECS. There is no fixed
+deadline; quality comes first.
 
 | Milestone | Time | Contents | Done when |
 |---|---|---|---|
-| **M0: prototype** | 2 to 3 weeks | grid, Town Hall, Lumber Camp, Fletcher, carriers, 2 archer towers with magazines, husks in waves, a supply view | the test below passes |
-| **M1: vertical slice** | about 3 months | 4 chains, depots, walls, 5 enemy types, one good map with a final siege, placeholder art, save and load, balance bot | 10 testers play a full map; most want another |
+| **M0: prototype** | 3 to 5 weeks | grey boxes on a grid, Town Hall, Lumber Camp, Fletcher, carriers, 2 archer towers with magazines, husks in waves (test with 1,000), a supply view | the test below passes |
+| **M1: vertical slice** | about 4 months | 4 chains, depots, walls, 5 enemy types, one good map with a final siege, first asset-pack art, save and load, balance bot | 10 testers play a full map; most want another |
 | **Steam page** | with M1 | capsule, the clip, a short trailer | page live; wishlists start counting |
-| **M2: demo** | about 6 months | real art for the demo map, tutorial, audio | Next Fest demo |
-| **M3: Early Access** | 9 to 15 months | 4 to 6 maps, all content in §12 | launch on Steam |
+| **M2: demo** | about 8 months | finished art for the demo map, tutorial, audio | Next Fest demo |
+| **M3: Early Access** | 12 to 18 months | 4 to 6 maps, all content in §12 | launch on Steam |
 
 **The prototype test (M0).** Play it yourself and with three to five people who like strategy
 games. The one question: **is it tense when the arrows run low?** If players lean in when the ammo
@@ -332,7 +392,9 @@ Next Fest is the floor for going on; above 10,000 means real interest.
 |---|---|
 | Competitors with ammo logistics: **Resupply** (turrets fed by workers, belts and bots; Q1 2027), **Infinitory**, **Feed the Front**, **Terrors of War** (WW2 depots feed defences) | Ship the demo early; our difference is a medieval settlement with real production chains and expansion tension, not a turret game with belts. Watch their launches and learn from their reviews. |
 | "It's They Are Billions with arrows" | Lead every clip and the store page with supply, the thing They Are Billions does not have. |
-| Pathfinding and many units cost too much CPU | Flow fields from day one; the performance target in §10; test with 1,000 enemies in the prototype. |
+| Pathfinding and many units cost too much CPU | ECS and flow fields from day one; the performance target in §10; test with 1,000 enemies in the prototype. |
+| Learning a new engine (Unity ECS) while building | Learn on the prototype, which is thrown away; keep rules in plain C# so engine mistakes stay contained. |
+| 3D art takes too long, or the asset packs clash | One or two coherent kits, a shared palette texture, and model only the hero pieces (§10.3). |
 | Balance gets out of hand as chains interact | Keep to 4 chains; the balance bot; one change at a time with a log, as in Flintkeep's BALANCE.md. |
 | Scope creep | The cut list in §12 is binding until Early Access sells. |
 | The hook is not fun | That is what the M0 test is for, before most of the work. |

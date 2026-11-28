@@ -1,6 +1,6 @@
 # Quiverhold (game 3, working title)
 
-A base-building survival strategy game for PC (Steam). Build a frontier settlement anywhere on an
+A 3D base-building survival strategy game for PC (Steam), planned in Unity 6. Build a frontier settlement anywhere on an
 open map, turn the land's resources into ammunition, and carry it to the towers that keep the
 horde out. **Your walls are only as strong as your supply lines.**
 
