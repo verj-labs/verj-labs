@@ -5,22 +5,24 @@ namespace Undermound.Game;
 
 /// <summary>
 /// Builds the scene, steps the simulation at a fixed rate, turns input into colony orders,
-/// and in screenshot mode (--shots=DIR) plays a scripted scene and saves pictures.
+/// shows the title, year and game over screens, and in screenshot mode (--shots=DIR) plays a
+/// scripted year and saves pictures.
 /// </summary>
 public partial class Main : Node3D
 {
     public Sim Sim { get; private set; } = null!;
     public CameraRig Rig { get; private set; } = null!;
     public Hud Hud { get; private set; } = null!;
+    public WeatherView Weather { get; private set; } = null!;
 
     private SoilView _soil = null!;
     private OverlayView _overlay = null!;
     private SurfaceView _surface = null!;
     private AntView _ants = null!;
+    private Sfx _sfx = null!;
     private DirectionalLight3D _sun = null!;
     private Environment _env = null!;
-    private GpuParticles3D _rain = null!;
-    private float _wet;
+    private ProceduralSkyMaterial _sky = null!;
 
     private double _accumulator;
     private int _speed = 1;                       // 0 paused, 1, 2, 3 = 1x, 2x, 4x
@@ -29,6 +31,9 @@ public partial class Main : Node3D
     private int _brush = 1;
     private bool _painting;
     private bool _erasing;
+    private bool _started;
+    private bool _shotMode;
+    private bool _gameOverShown;
 
     public override void _Ready()
     {
@@ -47,6 +52,12 @@ public partial class Main : Node3D
         _ants = new AntView();
         AddChild(_ants);
         _ants.Init(Sim, _surface);
+        _surface.SetSpiderMesh(_ants.SpiderMesh, _ants.SpiderMaterial);
+        Weather = new WeatherView();
+        AddChild(Weather);
+        Weather.Init(Sim, _env, _sun, _sky);
+        _sfx = new Sfx();
+        AddChild(_sfx);
 
         Rig = new CameraRig();
         AddChild(Rig);
@@ -55,19 +66,28 @@ public partial class Main : Node3D
 
         Hud = new Hud();
         AddChild(Hud);
+        Hud.Bind(Sim.Priorities);
         Hud.ToolPicked += t => _tool = t;
         Hud.SpeedPicked += s => _speed = s;
         Hud.RainPicked += () => { if (!Sim.Raining) Sim.StartRain(30); };
         Hud.ScentToggled += () => _overlay.ShowScent = !_overlay.ShowScent;
+        Hud.StartPressed += () => _started = true;
+        Hud.ContinuePressed += () => Sim.Report = null;
+        Hud.RestartPressed += () => GetTree().ReloadCurrentScene();
 
         foreach (string arg in OS.GetCmdlineUserArgs())
-            if (arg.StartsWith("--shots="))
-                AddChild(new ShotDirector(this, arg.Substring("--shots=".Length)));
+        {
+            if (!arg.StartsWith("--shots=")) continue;
+            _shotMode = true;
+            _started = true;
+            AddChild(new ShotDirector(this, arg.Substring("--shots=".Length)));
+        }
+        if (!_shotMode) Hud.ShowTitle();
     }
 
     private void BuildEnvironment()
     {
-        var sky = new ProceduralSkyMaterial
+        _sky = new ProceduralSkyMaterial
         {
             SkyTopColor = new Color(0.36f, 0.55f, 0.82f),
             SkyHorizonColor = new Color(0.85f, 0.82f, 0.72f),
@@ -75,10 +95,10 @@ public partial class Main : Node3D
             GroundBottomColor = new Color(0.2f, 0.16f, 0.1f),
             SunAngleMax = 30,
         };
-        var env = new Environment
+        _env = new Environment
         {
             BackgroundMode = Environment.BGMode.Sky,
-            Sky = new Sky { SkyMaterial = sky },
+            Sky = new Sky { SkyMaterial = _sky },
             AmbientLightSource = Environment.AmbientSource.Sky,
             AmbientLightColor = new Color(0.75f, 0.62f, 0.5f),
             AmbientLightSkyContribution = 0.6f,
@@ -94,9 +114,7 @@ public partial class Main : Node3D
             AdjustmentSaturation = 1.08f,
             AdjustmentContrast = 1.04f,
         };
-        _env = env;
-        AddChild(new WorldEnvironment { Environment = env });
-        BuildRain();
+        AddChild(new WorldEnvironment { Environment = _env });
         _sun = new DirectionalLight3D
         {
             LightColor = new Color(1f, 0.93f, 0.8f),
@@ -116,58 +134,10 @@ public partial class Main : Node3D
         });
     }
 
-    private void BuildRain()
-    {
-        var process = new ParticleProcessMaterial
-        {
-            EmissionShape = ParticleProcessMaterial.EmissionShapeEnum.Box,
-            EmissionBoxExtents = new Vector3(110, 1, 29),
-            Direction = new Vector3(0.08f, -1, 0),
-            Spread = 2,
-            InitialVelocityMin = 55,
-            InitialVelocityMax = 70,
-            Gravity = new Vector3(0, -20, 0),
-        };
-        var drop = new StandardMaterial3D
-        {
-            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            AlbedoColor = new Color(0.75f, 0.85f, 1f, 0.35f),
-            BillboardMode = BaseMaterial3D.BillboardModeEnum.FixedY,
-            BillboardKeepScale = true,
-        };
-        _rain = new GpuParticles3D
-        {
-            Amount = 4000,
-            Lifetime = 0.9f,
-            Preprocess = 1f,
-            Emitting = false,
-            ProcessMaterial = process,
-            DrawPass1 = new QuadMesh { Size = new Vector2(0.06f, 1.6f), Material = drop },
-            Position = new Vector3(0, 48, -31),
-            VisibilityAabb = new Aabb(new Vector3(-120, -60, -40), new Vector3(240, 70, 80)),
-        };
-        AddChild(_rain);
-    }
-
-    /// <summary>Grey the sky and dim the sun while it rains.</summary>
-    private void UpdateWeatherLook(double delta)
-    {
-        _rain.Emitting = Sim.Raining;
-        float target = Sim.Raining ? 1f : 0f;
-        _wet = Mathf.MoveToward(_wet, target, (float)delta * 0.5f);
-        _sun.LightEnergy = Mathf.Lerp(1.35f, 0.45f, _wet);
-        _env.AmbientLightEnergy = Mathf.Lerp(0.75f, 0.55f, _wet);
-        _env.AdjustmentSaturation = Mathf.Lerp(1.08f, 0.8f, _wet);
-    }
-
-    /// <summary>Jump the weather look to the current state (for screenshots).</summary>
-    public void SnapWeatherLook() => UpdateWeatherLook(10);
-
     public override void _Process(double delta)
     {
-        UpdateWeatherLook(delta);
-        _accumulator += delta * SpeedScale[_speed];
+        bool running = _started && !Hud.ModalOpen && Sim.GameOver == null;
+        _accumulator += running ? delta * SpeedScale[_speed] : 0;
         int steps = 0;
         while (_accumulator >= SimConfig.TickSeconds && steps < 8)
         {
@@ -176,9 +146,16 @@ public partial class Main : Node3D
             steps++;
         }
         if (steps == 8) _accumulator = 0;
-        _ants.Draw(_speed == 0 ? 1f : (float)(_accumulator / SimConfig.TickSeconds));
+        _ants.Draw(running && _speed > 0 ? (float)(_accumulator / SimConfig.TickSeconds) : 1f);
+        Weather.Update(delta);
+        _surface.ShowSeason(Sim);
         Hud.Show(Sim, _tool, _speed, _brush);
-        if (_painting) PaintAt(GetViewport().GetMousePosition());
+        if (!_shotMode) _sfx.Update(Sim, delta);
+        if (_painting && running) PaintAt(GetViewport().GetMousePosition());
+
+        if (_shotMode) return;
+        if (Sim.Report != null && !Hud.ModalOpen) Hud.ShowReport(Sim.Report);
+        if (Sim.GameOver != null && !_gameOverShown) { _gameOverShown = true; Hud.ShowGameOver(Sim); }
     }
 
     /// <summary>One simulation tick plus the view updates that follow it.</summary>
@@ -205,6 +182,17 @@ public partial class Main : Node3D
         _ants.Tick();
         RefreshViews();
         _ants.Draw(1f);
+        _surface.ShowSeason(Sim);
+        Weather.Snap();
+    }
+
+    /// <summary>Run a little longer with the view following every tick (for flights in progress).</summary>
+    public void StepFor(float seconds)
+    {
+        int ticks = (int)(seconds / SimConfig.TickSeconds);
+        for (int t = 0; t < ticks; t++) StepOnce();
+        _ants.Tick();
+        _ants.Draw(1f);
     }
 
     public void SetScentVisible(bool on) => _overlay.ShowScent = on;
@@ -226,7 +214,9 @@ public partial class Main : Node3D
                 case Key.Key1: _tool = Tool.Dig; break;
                 case Key.Key2: _tool = Tool.Nursery; break;
                 case Key.Key3: _tool = Tool.Store; break;
-                case Key.Key4: _tool = Tool.Cancel; break;
+                case Key.Key4: _tool = Tool.Trail; break;
+                case Key.Key5: _tool = Tool.Avoid; break;
+                case Key.Key6: _tool = Tool.Cancel; break;
                 case Key.R: if (!Sim.Raining) Sim.StartRain(30); break;
                 case Key.T: _overlay.ShowScent = !_overlay.ShowScent; break;
                 case Key.Space: _speed = _speed == 0 ? 1 : 0; break;
@@ -241,7 +231,18 @@ public partial class Main : Node3D
     private void PaintAt(Vector2 screen)
     {
         var p = Rig.PointOnSlab(screen);
-        if (p == null || !Layout.PointToCell(p.Value, out int x, out int y)) return;
+        if (p == null) return;
+        int sx = Mathf.FloorToInt(p.Value.X + Layout.HalfWidth);
+        // Above the ground line: the surface tools (trail and avoid) and cancel work on the lane.
+        if (p.Value.Y > -0.1f)
+        {
+            if (sx < 0 || sx >= SimConfig.Width) return;
+            if (_erasing || _tool == Tool.Cancel) Sim.ClearSurface(sx, _brush);
+            else if (_tool == Tool.Trail) Sim.PaintTrail(sx, _brush);
+            else if (_tool == Tool.Avoid) Sim.PaintAvoid(sx, 0, true);
+            return;
+        }
+        if (!Layout.PointToCell(p.Value, out int x, out int y)) return;
         if (_erasing) { Sim.Cancel(x, y, _brush); return; }
         switch (_tool)
         {

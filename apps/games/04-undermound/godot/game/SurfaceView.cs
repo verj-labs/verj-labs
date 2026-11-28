@@ -17,6 +17,14 @@ public partial class SurfaceView : Node3D
     private readonly Dictionary<FoodSource, MeshInstance3D> _food = new();
     private Mesh _berry = null!, _crumb = null!, _seeds = null!;
     private Material _berryMat = null!, _crumbMat = null!;
+    private Mesh? _spiderMesh;
+    private Material? _spiderMat;
+    private ShaderMaterial _grassMat = null!;
+    private StandardMaterial3D _groundMat = null!;
+    private MeshInstance3D _snow = null!;
+    private StandardMaterial3D _snowMat = null!;
+    private MultiMeshInstance3D _flags = null!;
+    private int _flagHash = -1;
 
     private const string GrassShader = @"
 shader_type spatial;
@@ -29,11 +37,15 @@ void vertex() {
     VERTEX.x += sway;
     VERTEX.z += sway * 0.5;
 }
+uniform vec3 season_color = vec3(0.5, 0.6, 0.2);
+uniform float season_mix = 0.0;
+uniform float snow = 0.0;
 void fragment() {
-    vec3 c = pow(COLOR.rgb, vec3(2.2));
+    vec3 c = mix(pow(COLOR.rgb, vec3(2.2)), season_color, season_mix);
     vec3 tip = c * vec3(1.3, 1.2, 0.75);
     vec3 root = c * 0.35;
     ALBEDO = mix(root, tip, t);
+    ALBEDO = mix(ALBEDO, vec3(0.85, 0.88, 0.92), clamp(snow * (0.2 + 0.8 * smoothstep(0.3, 1.0, t)), 0.0, 0.85));
     ROUGHNESS = 0.75;
     SPECULAR = 0.2;
     BACKLIGHT = vec3(0.18, 0.24, 0.08);
@@ -61,7 +73,95 @@ void fragment() {
         _seeds = MeshKit.Seeds();
         _berryMat = new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.18f, MetallicSpecular = 0.8f };
         _crumbMat = new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.85f };
+        BuildSnow();
+        _flags = new MultiMeshInstance3D
+        {
+            Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = MeshKit.Flag(), InstanceCount = SimConfig.Width },
+            MaterialOverride = new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.7f, CullMode = BaseMaterial3D.CullModeEnum.Disabled },
+        };
+        AddChild(_flags);
         Refresh();
+    }
+
+    /// <summary>The spider mesh, so a dead spider can lie on the ground as food.</summary>
+    public void SetSpiderMesh(Mesh mesh, Material mat)
+    {
+        _spiderMesh = mesh;
+        _spiderMat = mat;
+    }
+
+    private void BuildSnow()
+    {
+        _snowMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.95f, 0.97f, 1f, 0f),
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            Roughness = 0.6f,
+            AlbedoTexture = new NoiseTexture2D
+            {
+                Width = 256, Height = 256, Seamless = true,
+                Noise = new FastNoiseLite { Frequency = 0.05f, FractalOctaves = 3 },
+                ColorRamp = SnowRamp(),
+            },
+            Uv1Scale = new Vector3(140, 60, 1),
+        };
+        _snow = new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(_world.Width + 1400, 700) },
+            Position = new Vector3(0, 0.04f, Layout.FrontZ - 350),
+            MaterialOverride = _snowMat,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Visible = false,
+        };
+        AddChild(_snow);
+    }
+
+    private static Gradient SnowRamp()
+    {
+        var g = new Gradient();
+        g.SetColor(0, new Color(0.85f, 0.88f, 0.95f));
+        g.SetColor(1, new Color(1f, 1f, 1f));
+        return g;
+    }
+
+    // Grass colour each season blends toward (linear colour) and how far.
+    private static Vector3 GrassColour(Season s) => s switch
+    {
+        Season.Summer => new Vector3(0.36f, 0.34f, 0.04f),
+        Season.Autumn => new Vector3(0.62f, 0.22f, 0.03f),
+        Season.Winter => new Vector3(0.32f, 0.26f, 0.14f),
+        _ => new Vector3(0.06f, 0.3f, 0.02f),
+    };
+
+    private static float GrassMix(Season s) => s switch
+    {
+        Season.Summer => 0.35f,
+        Season.Autumn => 0.7f,
+        Season.Winter => 0.8f,
+        _ => 0.1f,
+    };
+
+    private static Color GroundTint(Season s) => s switch
+    {
+        Season.Summer => new Color(1.08f, 1f, 0.86f),
+        Season.Autumn => new Color(1.04f, 0.96f, 0.88f),
+        Season.Winter => new Color(0.86f, 0.86f, 0.9f),
+        _ => Colors.White,
+    };
+
+    /// <summary>Colour the garden for the time of year; seasons blend over the last fifth of each.</summary>
+    public void ShowSeason(Sim sim)
+    {
+        var now = sim.Season;
+        var next = (Season)(((int)now + 1) % 4);
+        float blend = Mathf.SmoothStep(0.8f, 1f, sim.SeasonProgress);
+        _grassMat.SetShaderParameter("season_color", GrassColour(now).Lerp(GrassColour(next), blend));
+        _grassMat.SetShaderParameter("season_mix", Mathf.Lerp(GrassMix(now), GrassMix(next), blend));
+        float snow = Mathf.Clamp(sim.Snow * 1.4f, 0, 1);
+        _grassMat.SetShaderParameter("snow", snow);
+        _groundMat.AlbedoColor = GroundTint(now).Lerp(GroundTint(next), blend);
+        _snow.Visible = snow > 0.01f;
+        _snowMat.AlbedoColor = new Color(0.95f, 0.97f, 1f, Mathf.Clamp(snow * 1.2f, 0, 0.95f));
     }
 
     /// <summary>Height of the ground (mound included) at a surface column, for ants walking on it.</summary>
@@ -75,6 +175,24 @@ void fragment() {
     {
         UpdateMound();
         UpdateFood();
+        UpdateFlags();
+    }
+
+    private void UpdateFlags()
+    {
+        int hash = 17, count = 0;
+        for (int x = 0; x < _world.Width; x++) if (_world.Avoid[x]) { hash = hash * 31 + x; count++; }
+        if (hash == _flagHash) return;
+        _flagHash = hash;
+        var mm = _flags.Multimesh;
+        int n = 0;
+        for (int x = 0; x < _world.Width; x++)
+        {
+            if (!_world.Avoid[x]) continue;
+            var pos = new Vector3(x + 0.5f - _world.Width / 2f, GroundHeight(x + 0.5f), -0.55f);
+            mm.SetInstanceTransform(n++, new Transform3D(new Basis(Vector3.Up, 0.3f * (x % 3 - 1)), pos));
+        }
+        mm.VisibleInstanceCount = n;
     }
 
     private void BuildGround()
@@ -99,7 +217,7 @@ void fragment() {
             BumpStrength = 6f,
             Noise = new FastNoiseLite { Frequency = 0.05f, FractalOctaves = 3 },
         };
-        var mat = new StandardMaterial3D
+        var mat = _groundMat = new StandardMaterial3D
         {
             AlbedoTexture = tex,
             NormalEnabled = true,
@@ -159,11 +277,8 @@ void fragment() {
             mm.SetInstanceTransform(k, transforms[k].T);
             mm.SetInstanceColor(k, transforms[k].C);
         }
-        AddChild(new MultiMeshInstance3D
-        {
-            Multimesh = mm,
-            MaterialOverride = new ShaderMaterial { Shader = new Shader { Code = GrassShader } },
-        });
+        _grassMat = new ShaderMaterial { Shader = new Shader { Code = GrassShader } };
+        AddChild(new MultiMeshInstance3D { Multimesh = mm, MaterialOverride = _grassMat });
     }
 
     private void BuildPebblesAndLeaves()
@@ -246,15 +361,24 @@ void fragment() {
         {
             if (!_food.TryGetValue(f, out var mi))
             {
+                bool insect = f.Kind == FoodKind.Insect && _spiderMesh != null;
                 mi = new MeshInstance3D
                 {
-                    Mesh = f.Kind switch { FoodKind.Berry => _berry, FoodKind.Crumb => _crumb, _ => _seeds },
-                    MaterialOverride = f.Kind == FoodKind.Berry ? _berryMat : _crumbMat,
+                    Mesh = insect ? _spiderMesh : f.Kind switch { FoodKind.Berry => _berry, FoodKind.Crumb => _crumb, _ => _seeds },
+                    MaterialOverride = insect ? _spiderMat : f.Kind == FoodKind.Berry ? _berryMat : _crumbMat,
                 };
                 AddChild(mi);
                 _food[f] = mi;
             }
             float size = 0.45f + 1.1f * Mathf.Pow(f.Amount / 60f, 1f / 3f);
+            if (f.Kind == FoodKind.Insect)
+            {
+                // A dead spider on its back, legs curled up, shrinking as it is eaten.
+                float s = 0.5f + 0.5f * f.Amount / 60f;
+                mi.Transform = new Transform3D(new Basis(Vector3.Back, Mathf.Pi).Scaled(new Vector3(s, s * 0.7f, s)),
+                    new Vector3(f.X - _world.Width / 2f, 0.9f * s, -1.4f));
+                continue;
+            }
             float lift = f.Kind == FoodKind.Berry ? size * 0.9f : f.Kind == FoodKind.Crumb ? size * 0.4f : 0;
             mi.Scale = new Vector3(size, size, size);
             mi.Position = new Vector3(f.X - _world.Width / 2f, lift, -0.9f - size * 0.4f);

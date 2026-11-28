@@ -48,6 +48,8 @@ public static class Palette
     public static readonly Color Rock = new(0.36f, 0.34f, 0.32f);
     public static readonly Color AntBody = new(0.10f, 0.06f, 0.045f);
     public static readonly Color AntLeg = new(0.16f, 0.10f, 0.07f);
+    public static readonly Color SoldierBody = new(0.30f, 0.11f, 0.06f);
+    public static readonly Color AlateBody = new(0.16f, 0.09f, 0.05f);
     public static readonly Color Egg = new(0.97f, 0.95f, 0.86f);
     public static readonly Color Larva = new(0.95f, 0.90f, 0.78f);
     public static readonly Color Berry = new(0.62f, 0.05f, 0.10f);

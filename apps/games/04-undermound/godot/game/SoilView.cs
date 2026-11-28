@@ -155,11 +155,34 @@ public partial class SoilView : Node3D
             Tint(CornerColour(m, x, y - 1, back), room), Tint(CornerColour(m, x + 1, y - 1, back), room),
             Tint(CornerColour(m, x + 1, y, back), room), Tint(CornerColour(m, x, y, back), room));
 
+        AddFillets(x, y, l, r, t, b);
+
         // Walls toward solid neighbours (the world edge counts as solid).
         if (Solid(x - 1, y)) Wall(new Vector3(l, t, zb), new Vector3(l, t, zf), new Vector3(l, b, zf), new Vector3(l, b, zb), Vector3.Right, WallColour(x - 1, y));
         if (Solid(x + 1, y)) Wall(new Vector3(r, t, zf), new Vector3(r, t, zb), new Vector3(r, b, zb), new Vector3(r, b, zf), Vector3.Left, WallColour(x + 1, y));
         if (Solid(x, y + 1)) Wall(new Vector3(l, b, zf), new Vector3(r, b, zf), new Vector3(r, b, zb), new Vector3(l, b, zb), Vector3.Up, WallColour(x, y + 1));
         if (y > 1 && Solid(x, y - 1)) Wall(new Vector3(l, t, zb), new Vector3(r, t, zb), new Vector3(r, t, zf), new Vector3(l, t, zf), Vector3.Down, WallColour(x, y - 1));
+    }
+
+    /// <summary>
+    /// Round off the tunnel's inside corners on the cut face: where both neighbours of a corner
+    /// are soil, a small soil-coloured triangle covers it, so tunnels look dug, not stamped.
+    /// </summary>
+    private void AddFillets(int x, int y, float l, float r, float t, float b)
+    {
+        const float f = 0.38f;
+        float z = Layout.FrontZ + 0.002f;
+        bool up = y == 1 ? false : Solid(x, y - 1), down = Solid(x, y + 1), left = Solid(x - 1, y), right = Solid(x + 1, y);
+        void Tri(Vector3 a, Vector3 bb, Vector3 c, int nx, int ny)
+        {
+            var col = CornerColour(_world.InBounds(nx, ny) ? Mat(_world.Index(nx, ny)) : CellType.Clay, nx, ny, 1);
+            _v.Add(a); _v.Add(bb); _v.Add(c);
+            for (int k = 0; k < 3; k++) { _n.Add(Vector3.Back); _c.Add(col); }
+        }
+        if (up && left) Tri(new Vector3(l, t, z), new Vector3(l + f, t, z), new Vector3(l, t - f, z), x - 1, y);
+        if (up && right) Tri(new Vector3(r, t, z), new Vector3(r, t - f, z), new Vector3(r - f, t, z), x + 1, y);
+        if (down && left) Tri(new Vector3(l, b, z), new Vector3(l, b + f, z), new Vector3(l + f, b, z), x - 1, y);
+        if (down && right) Tri(new Vector3(r, b, z), new Vector3(r - f, b, z), new Vector3(r, b + f, z), x + 1, y);
     }
 
     /// <summary>Rooms show as a warm tint on the back wall: rosy for the nursery, amber for a store.</summary>

@@ -1,39 +1,49 @@
 # Undermound
 
 A 3D colony sim inside a living glass ant farm. Dig the nest, mark nurseries and food stores, and
-watch thousands of ants forage, raise brood and survive the rain. *Every tunnel you dig, your
-colony fills.*
+guide your colony through a year in the garden: rain and floods, a wolf spider at the entrance,
+winged queens in summer, a race for food in autumn and a frozen winter. *Every tunnel you dig,
+your colony fills.*
 
-Design: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
+The vision: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-![The ant farm after 15 minutes](docs/screenshots/01-overview.png)
+![Spring overview](docs/screenshots/03-spring.png)
 
 | | |
 |---|---|
-| ![Queen and brood](docs/screenshots/02-nest.png) | ![Foragers on the surface](docs/screenshots/03-surface.png) |
-| ![Rain flooding the deep nursery](docs/screenshots/05-rain.png) | ![The garden above the nest](docs/screenshots/06-hero.png) |
+| ![The wolf spider at the entrance](docs/screenshots/05-spider.png) | ![The nuptial flight](docs/screenshots/07-flight.png) |
+| ![The queen and her brood](docs/screenshots/04-nest.png) | ![Autumn](docs/screenshots/09-autumn.png) |
+| ![Winter](docs/screenshots/10-winter.png) | ![Spring meltwater](docs/screenshots/12-melt.png) |
 
 Built in **Godot 4.7 with C#** (.NET 8). The simulation (`godot/core/`) is plain C# with no Godot
 types, so it can move to Unity later; the 3D view is in `godot/game/`.
 
-## Status: 0.1, first playable
+## Status: 0.2, a full year
 
 - [x] Dig tunnels by painting; ants dig, carry soil up and build a mound
-- [x] Foragers search the surface, bring food home and lay scent trails that fade
-- [x] Food store and nursery rooms; the queen lays eggs; eggs → larvae → workers
-- [x] Rain: water pours into the entrance, runs down tunnels, pools and soaks away; flooded brood dies;
-      the mound around the entrance shelters it; the sky greys and rain falls
-- [x] 3D ant farm: soil layers with rocks, hollow tunnels, room tints, a wooden frame, a macro garden
-      on top with towering grass and food; ants with walking legs that crawl on the back wall off the floor
-- [x] HUD, tools, game speed, camera pan and zoom
-- [x] 17 core tests and a screenshot script
+- [x] Nursery and food store rooms; the queen settles in the deepest dry nursery cell
+- [x] Brood grows with warmth and nurses' care; castes: workers, soldiers, winged queens
+- [x] Foraging with scent trails; painted trails to lead foragers; avoid flags; alarm scent
+- [x] Priority sliders: dig, forage, nurse, and the soldier share of new brood
+- [x] A year of four seasons with temperature by depth: winter stops laying and foraging and
+      freezes the shallow soil; snow builds up and melts into the nest in spring
+- [x] Rain and floods: water runs down shafts, pools and soaks away; ants climb out of deep
+      water; workers carry brood and the queen to dry cells; sumps and the mound help
+- [x] The wolf spider hunts on the surface; soldiers fight it; a dead spider is food
+- [x] The nuptial flight: winged queens leave after a summer rain; the year report counts them
+- [x] Game over when the queen dies or the colony is gone; title screen; year report
+- [x] 3D: soil layers, hollow tunnels with rounded corners, room tints, the wooden frame, a macro
+      garden that changes with the seasons, rain, snow and falling leaves; ants with a walk
+      cycle that crawl on the back wall; soldiers, winged queens, the spider
+- [x] Sound synthesised in code: garden, wind, rain, digging, chimes, alarm, flight, seasons
+- [x] 35 core tests and a scripted-year screenshot run
 
-Not built yet: priorities, scent painting, seasons, predators, the nuptial flight, sound, a proper
-ant walk cycle and soil art beyond the cell grid (see the design doc).
+Next (0.3): a tutorial year, save and load, follow-an-ant camera, recorded sound, a balance pass
+with players, and the first version of the lineage map (see the vision, §10 and §16).
 
 ## Run it
 
-Needs Godot 4.7 **.NET** edition and the .NET 8 SDK.
+Needs the Godot 4.7 **.NET** edition and the .NET 8 SDK.
 
 ```bash
 cd godot
@@ -41,13 +51,23 @@ dotnet build              # compile the C#
 godot --path .            # or open project.godot in the Godot editor and press F5
 ```
 
-Controls: left drag to use the current tool (Shift + drag erases), right drag or WASD to pan,
-mouse wheel to zoom, 1–4 for tools (Dig, Nursery, Food store, Cancel), `[` `]` for brush size,
-R for rain, T to show scent trails, Space to pause, `+`/`-` for speed.
+| Control | Does |
+|---|---|
+| Left drag | Use the tool (Shift + drag erases) |
+| 1–6 | Tools: Dig, Nursery, Store, Trail, Avoid, Cancel |
+| `[` `]` | Brush size |
+| Right drag, WASD | Move the camera |
+| Mouse wheel | Zoom toward the pointer |
+| R | Rain now |
+| T | Show or hide scent trails |
+| Space, `+`, `-` | Pause and speed (1×, 2×, 4×) |
+
+Trail, Avoid and Cancel work on the surface (above the ground line); the other tools on the soil.
 
 ## Tests and screenshots
 
 ```bash
-./tools/test.sh                 # core simulation tests, no engine needed
-./tools/screenshots.sh out/     # renders a scripted scene to PNGs (needs xvfb on Linux)
+./tools/test.sh                 # 35 core simulation tests, no engine needed
+./tools/test.sh spider          # only tests whose name contains "spider"
+./tools/screenshots.sh out/     # plays a scripted year and saves 13 PNGs (xvfb on Linux)
 ```

@@ -7,7 +7,7 @@ public enum CellType : byte { Air, Tunnel, Topsoil, Clay, Sand, Rock }
 
 public enum Room : byte { None, Nursery, Store }
 
-public enum FoodKind : byte { Berry, Crumb, Seeds }
+public enum FoodKind : byte { Berry, Crumb, Seeds, Insect }
 
 public sealed class FoodSource
 {
@@ -35,7 +35,10 @@ public sealed class World
     public readonly float[] DigProgress;
     public readonly Room[] Rooms;
     public readonly float[] Water;
-    public readonly float[] Scent;     // per surface column
+    public readonly float[] Scent;     // per surface column: food trails laid by foragers
+    public readonly float[] Guide;     // per surface column: trails painted by the player
+    public readonly bool[] Avoid;      // per surface column: places the player told ants to avoid
+    public readonly float[] Alarm;     // per surface column: alarm scent where ants were attacked
     public readonly int[] Mound;       // soil pellets piled per surface column
     public readonly List<FoodSource> Food = new();
 
@@ -60,6 +63,9 @@ public sealed class World
         Rooms = new Room[n];
         Water = new float[n];
         Scent = new float[width];
+        Guide = new float[width];
+        Avoid = new bool[width];
+        Alarm = new float[width];
         Mound = new int[width];
         ChunksX = (width + ChunkSize - 1) / ChunkSize;
         ChunksY = (height + ChunkSize - 1) / ChunkSize;

@@ -55,12 +55,20 @@ void fragment() {
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
 uniform sampler2D scent : filter_linear;
+uniform float cells = 160.0;
 void fragment() {
-    float s = texture(scent, vec2(UV.x, 0.5)).r;
+    vec4 d = texture(scent, vec2(UV.x, 0.5));
     float across = 1.0 - abs(UV.y - 0.5) * 2.0;
-    float glow = clamp(s * 1.4, 0.0, 1.0) * smoothstep(0.3, 1.0, across);
-    ALBEDO = vec3(0.9, 0.7, 0.25) * glow * 0.35;
-    ALPHA = glow;
+    float edge = smoothstep(0.3, 1.0, across);
+    // Food trails: a faint gold haze.
+    float food = clamp(d.r * 1.4, 0.0, 1.0) * edge;
+    // The player's trail: brighter gold dashes that march toward the food.
+    float dash = step(0.5, fract(UV.x * cells * 0.5 - TIME * 0.8));
+    float guide = clamp(d.g, 0.0, 1.0) * (0.45 + 0.55 * dash) * smoothstep(0.1, 0.8, across);
+    // Alarm: pulsing red where ants were attacked.
+    float alarm = clamp(d.b, 0.0, 1.0) * (0.6 + 0.4 * sin(TIME * 9.0)) * edge;
+    ALBEDO = vec3(0.9, 0.7, 0.25) * food * 0.35 + vec3(1.0, 0.72, 0.22) * guide * 0.45 + vec3(1.0, 0.15, 0.1) * alarm;
+    ALPHA = max(max(food, guide), alarm);
 }";
 
     public void Init(World world)
@@ -118,6 +126,8 @@ void fragment() {
         for (int x = 0; x < w; x++)
         {
             _scentBytes[x * 4] = (byte)(Mathf.Clamp(wd.Scent[x] / 4f, 0, 1) * 255);
+            _scentBytes[x * 4 + 1] = (byte)(Mathf.Clamp(wd.Guide[x] / SimConfig.GuideStrength, 0, 1) * 255);
+            _scentBytes[x * 4 + 2] = (byte)(Mathf.Clamp(wd.Alarm[x] / 2f, 0, 1) * 255);
             _scentBytes[x * 4 + 3] = 255;
         }
         _scentImage.SetData(w, 1, false, Image.Format.Rgba8, _scentBytes);
