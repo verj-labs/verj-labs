@@ -1,0 +1,7 @@
+.test-bin/
+tests/bin/
+tests/obj/
+godot/.godot/
+godot/bin/
+godot/obj/
+out/
