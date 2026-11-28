@@ -7,13 +7,13 @@ your colony fills.*
 
 The vision: [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-![Spring overview](docs/screenshots/03-spring.png)
+![Spring overview](docs/screenshots/03-spring.jpg)
 
 | | |
 |---|---|
-| ![The wolf spider at the entrance](docs/screenshots/05-spider.png) | ![The nuptial flight](docs/screenshots/07-flight.png) |
-| ![The queen and her brood](docs/screenshots/04-nest.png) | ![Autumn](docs/screenshots/09-autumn.png) |
-| ![Winter](docs/screenshots/10-winter.png) | ![Spring meltwater](docs/screenshots/12-melt.png) |
+| ![The wolf spider at the entrance](docs/screenshots/05-spider.jpg) | ![The nuptial flight](docs/screenshots/07-flight.jpg) |
+| ![The queen and her brood](docs/screenshots/04-nest.jpg) | ![Autumn](docs/screenshots/09-autumn.jpg) |
+| ![Winter](docs/screenshots/10-winter.jpg) | ![Spring meltwater](docs/screenshots/12-melt.jpg) |
 
 Built in **Godot 4.7 with C#** (.NET 8). The simulation (`godot/core/`) is plain C# with no Godot
 types, so it can move to Unity later; the 3D view is in `godot/game/`.
